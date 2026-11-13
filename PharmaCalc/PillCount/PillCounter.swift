@@ -194,7 +194,12 @@ enum PillCounter {
         let minD2 = (1.6 * r) * (1.6 * r)
         for p in pk.prefix(400) {
             let x = p.i % e.w, y = p.i / e.w
-            if found.contains(where: { Float(($0.x - x) * ($0.x - x) + ($0.y - y) * ($0.y - y)) < minD2 }) { continue }
+            var near = false
+            for f in found {
+                let dx = Float(f.x - x), dy = Float(f.y - y)
+                if dx * dx + dy * dy < minD2 { near = true; break }
+            }
+            if near { continue }
             if ringCheck(x, y, r, e, lo: lo, hi: hi).sectors >= 12 { found.append((x, y)) }
         }
         return found.count
