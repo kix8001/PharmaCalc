@@ -13,7 +13,7 @@ enum CalcGroup: String, CaseIterable {
 enum CalcItem: String, CaseIterable, Identifiable {
     case renal, body
     case endDate, nextVisit, validity, cycle, age
-    case remaining, sheet, uneven
+    case pillCount, remaining, sheet, uneven
     case powder, pediatric, weightDose
     case drip, gamma
 
@@ -28,6 +28,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .validity: return "処方箋の有効期限"
         case .cycle: return "休薬期間のある処方"
         case .age: return "年齢・月齢"
+        case .pillCount: return "錠剤カウント（カメラ）"
         case .remaining: return "残薬調整"
         case .sheet: return "PTPシート換算"
         case .uneven: return "不均等投与の総数"
@@ -48,6 +49,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .validity: return "交付日を含めて4日"
         case .cycle: return "3週投与1週休薬など"
         case .age: return "生年月日から年齢・月齢・日齢"
+        case .pillCount: return "バラ錠を撮影して数える"
         case .remaining: return "残薬を差し引いた処方日数・数量"
         case .sheet: return "錠数 → シート＋バラ"
         case .uneven: return "朝2・夕1など"
@@ -67,6 +69,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .validity: return "処方せん 期限 4日"
         case .cycle: return "休薬 クール 抗がん剤"
         case .age: return "誕生日 月齢"
+        case .pillCount: return "カウント 数える 写真 撮影 バラ 監査"
         case .remaining: return "残薬 余り 調整"
         case .sheet: return "ptp シート バラ"
         case .uneven: return "朝 昼 夕 寝る前"
@@ -87,6 +90,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .validity: return "doc.text"
         case .cycle: return "arrow.triangle.2.circlepath"
         case .age: return "birthday.cake"
+        case .pillCount: return "camera.viewfinder"
         case .remaining: return "minus.forwardslash.plus"
         case .sheet: return "square.grid.3x3"
         case .uneven: return "sunrise"
@@ -102,7 +106,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         switch self {
         case .renal, .body: return .renal
         case .endDate, .nextVisit, .validity, .cycle, .age: return .days
-        case .remaining, .sheet, .uneven: return .quantity
+        case .pillCount, .remaining, .sheet, .uneven: return .quantity
         case .powder, .pediatric, .weightDose: return .dose
         case .drip, .gamma: return .injection
         }
@@ -117,6 +121,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .validity: ValidityView()
         case .cycle: CycleView()
         case .age: AgeView()
+        case .pillCount: PillCountView()
         case .remaining: RemainingView()
         case .sheet: SheetView()
         case .uneven: UnevenView()
