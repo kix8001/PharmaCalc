@@ -12,7 +12,7 @@
 - 修正したら push して Actions の結果まで確認する。リリースのたびに `project.yml` の `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` を上げる。コミットは「薬剤師電卓 iOS 0.x.y: 変更点…」。
 
 ## 構成（`PharmaCalc/`）
-- `App/`：起動・タブ（計算／バーコード／履歴／情報）・ホームの電卓一覧（`CalcItem` に電卓を登録）
+- `App/`：起動・タブ（計算／バーコード／履歴／情報）・ホーム（`CalcItem` に電卓を登録。ユーザーが選んだ電卓をアイコンタイルで並べる `HomeTiles`／`TileGrid`／`TileEditView`。並びは UserDefaults の `homeTiles`）
 - `Core/`：`PatientStore`（患者情報。全電卓で共有、端末に保存しない）、計算式（`Renal`・`BodyCalc`）、共通部品（`NumField`・`ResultRow`・`calcForm`）、日付（`JPDate`）
 - `Calculators/`：各電卓の画面
 - `PillCount/`：錠剤カウント。`PillCounter` が画像処理（ぼかしで刻印を消す→RGBの勾配で両向きの円ハフ変換→半径は「円の数が急に減る手前」から推定→周囲16方向の輪郭と1.6Rの間隔で確認）を自前で行う。丸い錠剤向け。調整は実写真（袋入り45錠）と合成画像で行った。結果の印はタップで増減、範囲指定もできる

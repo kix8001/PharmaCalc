@@ -7,6 +7,17 @@ enum CalcGroup: String, CaseIterable {
     case quantity = "数量・残薬"
     case dose = "用量"
     case injection = "注射・点滴"
+
+    /// タイルの色
+    var color: Color {
+        switch self {
+        case .renal: return .blue
+        case .days: return .orange
+        case .quantity: return .green
+        case .dose: return .purple
+        case .injection: return .pink
+        }
+    }
 }
 
 /// 電卓の一覧（ホーム画面・検索・お気に入りで共通）
@@ -37,6 +48,28 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "体重あたりの用量"
         case .drip: return "点滴の滴下速度"
         case .gamma: return "γ計算（μg/kg/min）"
+        }
+    }
+
+    /// タイル用の短い名前
+    var shortTitle: String {
+        switch self {
+        case .renal: return "腎機能"
+        case .body: return "体表面積"
+        case .endDate: return "服用終了日"
+        case .nextVisit: return "次回受診"
+        case .validity: return "処方箋期限"
+        case .cycle: return "休薬サイクル"
+        case .age: return "年齢・月齢"
+        case .pillCount: return "錠剤カウント"
+        case .remaining: return "残薬調整"
+        case .sheet: return "シート換算"
+        case .uneven: return "不均等投与"
+        case .powder: return "散剤換算"
+        case .pediatric: return "小児薬用量"
+        case .weightDose: return "体重あたり"
+        case .drip: return "点滴速度"
+        case .gamma: return "γ計算"
         }
     }
 
@@ -134,13 +167,34 @@ enum CalcItem: String, CaseIterable, Identifiable {
     }
 }
 
+/// ホームに並べるタイルの設定（端末に保存）
+enum HomeTiles {
+    static let key = "homeTiles"
+    static let defaults: [CalcItem] = [.renal, .endDate, .remaining, .sheet, .pillCount, .powder]
+
+    static func decode(_ raw: String) -> [CalcItem] {
+        raw.split(separator: ",").compactMap { CalcItem(rawValue: String($0)) }
+    }
+
+    static func encode(_ items: [CalcItem]) -> String {
+        items.map(\.rawValue).joined(separator: ",")
+    }
+
+    /// 初回は、以前の「よく使う」があればそれを、無ければ既定のタイルを使う
+    static func initialRaw() -> String {
+        let old = UserDefaults.standard.string(forKey: "favorites") ?? ""
+        let fav = decode(old)
+        return encode(fav.isEmpty ? defaults : fav)
+    }
+}
+
 struct HomeView: View {
     @State private var query = ""
-    @AppStorage("favorites") private var favRaw = ""
+    @State private var path = NavigationPath()
+    @State private var editing = false
+    @AppStorage(HomeTiles.key) private var tilesRaw = HomeTiles.initialRaw()
 
-    private var favs: [CalcItem] {
-        favRaw.split(separator: ",").compactMap { CalcItem(rawValue: String($0)) }
-    }
+    private var tiles: [CalcItem] { HomeTiles.decode(tilesRaw) }
 
     private var filtered: [CalcItem] {
         let q = query.lowercased()
@@ -150,7 +204,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 if query.isEmpty {
                     Section {
@@ -158,11 +212,31 @@ struct HomeView: View {
                     } header: {
                         Text("患者情報（全計算で共通）")
                     }
-                    if !favs.isEmpty {
-                        Section("よく使う") {
-                            ForEach(favs) { row($0) }
+
+                    Section {
+                        if tiles.isEmpty {
+                            Button {
+                                editing = true
+                            } label: {
+                                Label("よく使う計算をホームに追加", systemImage: "plus.square.on.square")
+                            }
+                        } else {
+                            TileGrid(items: tiles,
+                                     open: { path.append($0) },
+                                     remove: { toggleTile($0) })
+                                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+                                .listRowBackground(Color.clear)
+                        }
+                    } header: {
+                        HStack {
+                            Text("ホーム")
+                            Spacer()
+                            Button("編集") { editing = true }
+                                .font(.subheadline)
+                                .textCase(nil)
                         }
                     }
+
                     ForEach(CalcGroup.allCases, id: \.self) { g in
                         Section(g.rawValue) {
                             ForEach(CalcItem.allCases.filter { $0.group == g }) { row($0) }
@@ -174,43 +248,174 @@ struct HomeView: View {
             }
             .navigationTitle("薬剤師電卓")
             .searchable(text: $query, prompt: "計算を探す")
+            .navigationDestination(for: CalcItem.self) { $0.destination }
+            .sheet(isPresented: $editing) {
+                TileEditView(tilesRaw: $tilesRaw)
+            }
         }
     }
 
-    private func toggleFav(_ c: CalcItem) {
-        var f = favs
-        if let i = f.firstIndex(of: c) { f.remove(at: i) } else { f.append(c) }
-        favRaw = f.map(\.rawValue).joined(separator: ",")
+    private func toggleTile(_ c: CalcItem) {
+        var t = tiles
+        if let i = t.firstIndex(of: c) { t.remove(at: i) } else { t.append(c) }
+        tilesRaw = HomeTiles.encode(t)
     }
 
     private func row(_ c: CalcItem) -> some View {
-        let isFav = favs.contains(c)
-        return NavigationLink {
-            c.destination
-        } label: {
+        let onHome = tiles.contains(c)
+        return NavigationLink(value: c) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(c.title)
                     Text(c.subtitle).font(.caption).foregroundStyle(.secondary)
                 }
             } icon: {
-                Image(systemName: c.icon).foregroundStyle(.tint)
+                Image(systemName: c.icon).foregroundStyle(c.group.color)
             }
         }
         .swipeActions(edge: .trailing) {
             Button {
-                toggleFav(c)
+                toggleTile(c)
             } label: {
-                Label(isFav ? "外す" : "よく使う", systemImage: isFav ? "star.slash" : "star")
+                Label(onHome ? "外す" : "ホームへ", systemImage: onHome ? "minus.square" : "plus.square")
             }
-            .tint(.yellow)
+            .tint(onHome ? .gray : .accentColor)
         }
         .contextMenu {
             Button {
-                toggleFav(c)
+                toggleTile(c)
             } label: {
-                Label(isFav ? "よく使うから外す" : "よく使うに追加", systemImage: isFav ? "star.slash" : "star")
+                Label(onHome ? "ホームから外す" : "ホームに追加",
+                      systemImage: onHome ? "minus.square" : "plus.square")
             }
+        }
+    }
+}
+
+/// ホームのアイコンタイル
+struct TileGrid: View {
+    let items: [CalcItem]
+    let open: (CalcItem) -> Void
+    let remove: (CalcItem) -> Void
+
+    private let columns = [GridItem(.adaptive(minimum: 96, maximum: 140), spacing: 12)]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(items) { c in
+                Button {
+                    open(c)
+                } label: {
+                    VStack(spacing: 8) {
+                        Image(systemName: c.icon)
+                            .font(.system(size: 26, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(c.group.color.gradient))
+                        Text(c.shortTitle)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemGroupedBackground)))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button(role: .destructive) {
+                        remove(c)
+                    } label: {
+                        Label("ホームから外す", systemImage: "minus.square")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// ホームのタイルを選ぶ・並べ替える
+struct TileEditView: View {
+    @Binding var tilesRaw: String
+    @Environment(\.dismiss) private var dismiss
+
+    private var tiles: [CalcItem] { HomeTiles.decode(tilesRaw) }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    if tiles.isEmpty {
+                        Text("下の一覧から追加してください").foregroundStyle(.secondary)
+                    }
+                    ForEach(tiles) { c in
+                        tileLabel(c)
+                    }
+                    .onMove { from, to in
+                        var t = tiles
+                        t.move(fromOffsets: from, toOffset: to)
+                        tilesRaw = HomeTiles.encode(t)
+                    }
+                    .onDelete { idx in
+                        var t = tiles
+                        t.remove(atOffsets: idx)
+                        tilesRaw = HomeTiles.encode(t)
+                    }
+                } header: {
+                    Text("ホームに表示（\(tiles.count)個）")
+                } footer: {
+                    Text("右の三本線をドラッグして並べ替え、左の赤いボタンで外します。")
+                }
+
+                ForEach(CalcGroup.allCases, id: \.self) { g in
+                    let rest = CalcItem.allCases.filter { $0.group == g && !tiles.contains($0) }
+                    if !rest.isEmpty {
+                        Section(g.rawValue) {
+                            ForEach(rest) { c in
+                                Button {
+                                    tilesRaw = HomeTiles.encode(tiles + [c])
+                                } label: {
+                                    HStack {
+                                        tileLabel(c)
+                                        Spacer()
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(.green)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    Button("最初の並びに戻す") {
+                        tilesRaw = HomeTiles.encode(HomeTiles.defaults)
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("ホームの編集")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完了") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func tileLabel(_ c: CalcItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: c.icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(RoundedRectangle(cornerRadius: 7).fill(c.group.color.gradient))
+            Text(c.title)
         }
     }
 }
