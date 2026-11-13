@@ -16,5 +16,5 @@
 - `Core/`：`PatientStore`（患者情報。全電卓で共有、端末に保存しない）、計算式（`Renal`・`BodyCalc`）、共通部品（`NumField`・`ResultRow`・`calcForm`）、日付（`JPDate`）
 - `Calculators/`：各電卓の画面
 - `PillCount/`：錠剤カウント。`PillCounter` が画像処理（ぼかしで刻印を消す→RGBの勾配で両向きの円ハフ変換→半径は「円の数が急に減る手前」から推定→周囲16方向の輪郭と1.6Rの間隔で確認）を自前で行う。丸い錠剤向け。調整は実写真（袋入り45錠）と合成画像で行った。結果の印はタップで増減、範囲指定もできる
-- `Barcode/`：AVFoundation でGS1データバー等を読む `Scanner`、`GS1` 解析、PMDA電子添文URL、読み取り履歴
+- `Barcode/`：`ScanScreen`／`HistoryScreen` が本体（タブでは `ScanView`／`HistoryView` が NavigationStack で包む。ホームのタイルからは本体を直接開く）。AVFoundation でGS1データバー等を読む `Scanner`、`GS1` 解析、PMDA電子添文URL、読み取り履歴
 - 計算式は画面のフッターに必ず表示する。SwiftUI の `View.Body` と衝突するので型名に `Body` を使わない。

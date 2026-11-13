@@ -1,7 +1,7 @@
 import AVFoundation
 import SwiftUI
 
-struct ScanView: View {
+struct ScanScreen: View {
     @EnvironmentObject var history: ScanHistory
     @AppStorage("autoOpen") private var autoOpen = true
     @State private var torch = false
@@ -12,56 +12,54 @@ struct ScanView: View {
     @FocusState private var manualFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                camera
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 300)
-                    .clipped()
-                Form {
-                    if let r = result { resultSection(r) }
-                    Section {
-                        Toggle("読み取ったらすぐ添付文書を開く", isOn: $autoOpen)
-                    } footer: {
-                        Text("PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、10cmほど離して画面いっぱいに写すと読みやすくなります。")
+        VStack(spacing: 0) {
+            camera
+                .frame(maxWidth: .infinity)
+                .frame(height: 300)
+                .clipped()
+            Form {
+                if let r = result { resultSection(r) }
+                Section {
+                    Toggle("読み取ったらすぐ添付文書を開く", isOn: $autoOpen)
+                } footer: {
+                    Text("PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、10cmほど離して画面いっぱいに写すと読みやすくなります。")
+                }
+                Section("手入力") {
+                    HStack {
+                        TextField("GTIN（14桁）またはJAN（13桁）", text: $manual)
+                            .keyboardType(.numberPad)
+                            .focused($manualFocused)
+                        Button("開く") {
+                            manualFocused = false
+                            handle(manual)
+                        }
+                        .disabled(manual.isEmpty)
                     }
-                    Section("手入力") {
-                        HStack {
-                            TextField("GTIN（14桁）またはJAN（13桁）", text: $manual)
-                                .keyboardType(.numberPad)
-                                .focused($manualFocused)
-                            Button("開く") {
-                                manualFocused = false
-                                handle(manual)
-                            }
-                            .disabled(manual.isEmpty)
-                        }
-                        Link(destination: PMDA.searchURL) {
-                            Label("PMDAで薬品名から探す", systemImage: "magnifyingglass")
-                        }
+                    Link(destination: PMDA.searchURL) {
+                        Label("PMDAで薬品名から探す", systemImage: "magnifyingglass")
                     }
                 }
             }
-            .navigationTitle("バーコード")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        torch.toggle()
-                    } label: {
-                        Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill")
-                    }
+        }
+        .navigationTitle("バーコード")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    torch.toggle()
+                } label: {
+                    Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill")
                 }
             }
-            .sheet(item: $web) { page in
-                SafariView(url: page.url).ignoresSafeArea()
-            }
-            .onAppear {
-                if auth == .notDetermined {
-                    AVCaptureDevice.requestAccess(for: .video) { _ in
-                        DispatchQueue.main.async {
-                            auth = AVCaptureDevice.authorizationStatus(for: .video)
-                        }
+        }
+        .sheet(item: $web) { page in
+            SafariView(url: page.url).ignoresSafeArea()
+        }
+        .onAppear {
+            if auth == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .video) { _ in
+                    DispatchQueue.main.async {
+                        auth = AVCaptureDevice.authorizationStatus(for: .video)
                     }
                 }
             }
@@ -131,7 +129,7 @@ struct ScanView: View {
     }
 }
 
-struct HistoryView: View {
+struct HistoryScreen: View {
     @EnvironmentObject var history: ScanHistory
     @State private var web: WebPage?
     @State private var query = ""
@@ -142,43 +140,41 @@ struct HistoryView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if history.items.isEmpty {
-                    Text("バーコードを読み取ると、ここに履歴が残ります")
-                        .foregroundStyle(.secondary)
+        List {
+            if history.items.isEmpty {
+                Text("バーコードを読み取ると、ここに履歴が残ります")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(filtered) { item in
+                NavigationLink {
+                    HistoryDetailView(id: item.id)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.memo.isEmpty ? "名称未登録" : item.memo)
+                            .foregroundStyle(item.memo.isEmpty ? .secondary : .primary)
+                        Text(item.gtin).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        Text(item.date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-                ForEach(filtered) { item in
-                    NavigationLink {
-                        HistoryDetailView(id: item.id)
+                .swipeActions(edge: .leading) {
+                    Button {
+                        if let url = PMDA.url(gtin: item.gtin) { web = WebPage(url: url) }
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.memo.isEmpty ? "名称未登録" : item.memo)
-                                .foregroundStyle(item.memo.isEmpty ? .secondary : .primary)
-                            Text(item.gtin).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                            Text(item.date.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
+                        Label("添付文書", systemImage: "doc.text")
                     }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            if let url = PMDA.url(gtin: item.gtin) { web = WebPage(url: url) }
-                        } label: {
-                            Label("添付文書", systemImage: "doc.text")
-                        }
-                        .tint(.teal)
-                    }
-                }
-                .onDelete { idx in
-                    let ids = idx.map { filtered[$0].id }
-                    history.items.removeAll { ids.contains($0.id) }
+                    .tint(.teal)
                 }
             }
-            .navigationTitle("履歴")
-            .searchable(text: $query, prompt: "薬品名・GTIN")
-            .sheet(item: $web) { page in
-                SafariView(url: page.url).ignoresSafeArea()
+            .onDelete { idx in
+                let ids = idx.map { filtered[$0].id }
+                history.items.removeAll { ids.contains($0.id) }
             }
+        }
+        .navigationTitle("履歴")
+        .searchable(text: $query, prompt: "薬品名・GTIN")
+        .sheet(item: $web) { page in
+            SafariView(url: page.url).ignoresSafeArea()
         }
     }
 }
@@ -219,5 +215,18 @@ struct HistoryDetailView: View {
         } else {
             Text("削除されました").foregroundStyle(.secondary)
         }
+    }
+}
+
+/// タブ用（ホームのタイルからは ScanScreen をそのまま開く）
+struct ScanView: View {
+    var body: some View {
+        NavigationStack { ScanScreen() }
+    }
+}
+
+struct HistoryView: View {
+    var body: some View {
+        NavigationStack { HistoryScreen() }
     }
 }

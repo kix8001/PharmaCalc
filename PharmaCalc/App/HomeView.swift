@@ -7,6 +7,7 @@ enum CalcGroup: String, CaseIterable {
     case quantity = "数量・残薬"
     case dose = "用量"
     case injection = "注射・点滴"
+    case tools = "バーコード・その他"
 
     /// タイルの色
     var color: Color {
@@ -16,6 +17,7 @@ enum CalcGroup: String, CaseIterable {
         case .quantity: return .green
         case .dose: return .purple
         case .injection: return .pink
+        case .tools: return .teal
         }
     }
 }
@@ -27,6 +29,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     case pillCount, remaining, sheet, uneven
     case powder, pediatric, weightDose
     case drip, gamma
+    case barcode, scanHistory
 
     var id: String { rawValue }
 
@@ -48,6 +51,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "体重あたりの用量"
         case .drip: return "点滴の滴下速度"
         case .gamma: return "γ計算（μg/kg/min）"
+        case .barcode: return "バーコード → 添付文書"
+        case .scanHistory: return "読み取り履歴"
         }
     }
 
@@ -70,6 +75,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "体重あたり"
         case .drip: return "点滴速度"
         case .gamma: return "γ計算"
+        case .barcode: return "添付文書"
+        case .scanHistory: return "読取履歴"
         }
     }
 
@@ -91,6 +98,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "mg/kg/日 → 1回量"
         case .drip: return "mL/h・滴/分"
         case .gamma: return "γ ⇄ mL/h"
+        case .barcode: return "PTPのGS1バーコードを読んで電子添文を開く"
+        case .scanHistory: return "読み取った薬と薬品名メモ"
         }
     }
 
@@ -111,6 +120,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "mg/kg"
         case .drip: return "輸液 滴下"
         case .gamma: return "ガンマ 持続 シリンジ"
+        case .barcode: return "バーコード gs1 jan 添文 添付文書 pmda ptp スキャン"
+        case .scanHistory: return "履歴 バーコード"
         }
     }
 
@@ -132,6 +143,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: return "person.badge.plus"
         case .drip: return "drop.triangle"
         case .gamma: return "syringe"
+        case .barcode: return "barcode.viewfinder"
+        case .scanHistory: return "clock.arrow.circlepath"
         }
     }
 
@@ -142,6 +155,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .pillCount, .remaining, .sheet, .uneven: return .quantity
         case .powder, .pediatric, .weightDose: return .dose
         case .drip, .gamma: return .injection
+        case .barcode, .scanHistory: return .tools
         }
     }
 
@@ -163,6 +177,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .weightDose: WeightDoseView()
         case .drip: DripView()
         case .gamma: GammaView()
+        case .barcode: ScanScreen()
+        case .scanHistory: HistoryScreen()
         }
     }
 }
@@ -170,7 +186,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
 /// ホームに並べるタイルの設定（端末に保存）
 enum HomeTiles {
     static let key = "homeTiles"
-    static let defaults: [CalcItem] = [.renal, .endDate, .remaining, .sheet, .pillCount, .powder]
+    static let defaults: [CalcItem] = [.barcode, .pillCount, .renal, .endDate, .remaining, .sheet, .powder]
 
     static func decode(_ raw: String) -> [CalcItem] {
         raw.split(separator: ",").compactMap { CalcItem(rawValue: String($0)) }
@@ -181,6 +197,16 @@ enum HomeTiles {
     }
 
     /// 初回は、以前の「よく使う」があればそれを、無ければ既定のタイルを使う
+    /// 0.3.0 で並びを保存した人にも、新しいタイル（バーコード）を一度だけ先頭に足す
+    static func migrate(_ raw: String) -> String {
+        let d = UserDefaults.standard
+        guard !d.bool(forKey: "homeTilesV2") else { return raw }
+        d.set(true, forKey: "homeTilesV2")
+        var t = decode(raw)
+        if !t.contains(.barcode) { t.insert(.barcode, at: 0) }
+        return encode(t)
+    }
+
     static func initialRaw() -> String {
         let old = UserDefaults.standard.string(forKey: "favorites") ?? ""
         let fav = decode(old)
@@ -252,6 +278,7 @@ struct HomeView: View {
             .sheet(isPresented: $editing) {
                 TileEditView(tilesRaw: $tilesRaw)
             }
+            .onAppear { tilesRaw = HomeTiles.migrate(tilesRaw) }
         }
     }
 
