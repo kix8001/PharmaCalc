@@ -1,4 +1,4 @@
-# 薬剤師電卓（iOS）
+# 薬剤師電卓（iOS / Android）
 
 SwiftUI製の薬剤師向け電卓アプリ。iOS 16以上。
 
@@ -19,3 +19,6 @@ SwiftUI製の薬剤師向け電卓アプリ。iOS 16以上。
 
 ## ワークフローの設置（初回のみ・手作業）
 `ci/pharmacalc-ios.yml` の内容を `.github/workflows/pharmacalc-ios.yml` として GitHub 上で作成する（Claude の権限ではワークフローファイルを追加できないため）。
+
+## Android 版
+`android/` にある（Kotlin + Jetpack Compose）。`ci/android.yml` を `.github/workflows/android.yml` として置くと、push のたびに APK（`PharmaCalc-apk`）ができる。
