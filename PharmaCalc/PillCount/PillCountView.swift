@@ -50,7 +50,7 @@ struct PillCountView: View {
                         Text("写真の上を指でなぞって、数える範囲を四角で囲んでください。")
                             .foregroundStyle(.orange)
                     } else {
-                        Text("緑の丸が自動で数えた錠剤です。丸をタップすると1つ減り、印のない錠剤をタップすると追加します（青の丸）。オレンジの数字は、くっついた錠剤をまとめて数えたものです。机の端や袋などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。")
+                        Text("緑の点が自動で数えた錠剤です。点をタップすると消え、点のない錠剤をタップすると追加します（青の点）。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。")
                     }
                 }
 
@@ -163,6 +163,7 @@ struct MarkedImageView: View {
         GeometryReader { geo in
             let s = geo.size.width / max(image.size.width, 1)
             let r = min(max(radius * s, 6), 40)
+            let dot = min(max(r * 0.45, 6), 12)
             ZStack(alignment: .topLeading) {
                 Image(uiImage: image)
                     .resizable()
@@ -186,14 +187,16 @@ struct MarkedImageView: View {
                 ForEach(markers) { m in
                     ZStack {
                         Circle()
-                            .stroke(m.manual ? Color.blue : Color.green, lineWidth: 2.5)
-                            .frame(width: r * 2, height: r * 2)
+                            .fill(m.manual ? Color.blue : Color.green)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                            .frame(width: dot, height: dot)
                         if m.count > 1 {
                             Text("\(m.count)")
-                                .font(.caption.bold())
+                                .font(.caption2.bold())
                                 .foregroundStyle(.white)
-                                .padding(4)
+                                .padding(3)
                                 .background(Circle().fill(Color.orange))
+                                .offset(x: dot, y: -dot)
                         }
                     }
                     .position(x: m.x * s, y: m.y * s)
