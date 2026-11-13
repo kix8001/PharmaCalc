@@ -92,7 +92,7 @@ struct ValidityView: View {
                 ResultRow(title: "有効期限", value: JPDate.text(end), big: false, color: .orange)
                 ResultRow(title: "今日から", value: remainingText(end), big: false)
             }
-            Section("有効な4日間") {
+            Section {
                 ForEach(0..<4, id: \.self) { i in
                     let d = JPDate.add(issued, i)
                     HStack {
@@ -102,6 +102,8 @@ struct ValidityView: View {
                             .foregroundStyle(JPDate.isWeekend(d) ? Color.red : Color.primary)
                     }
                 }
+            } header: {
+                Text("有効な4日間")
             } footer: {
                 Text("処方箋の使用期間は交付日を含めて4日以内です（休日も含む）。長期の旅行などの特殊な事情で、医師が処方箋に別の期限を記載した場合はその日まで有効です。祝日は表示に反映していません。")
             }
