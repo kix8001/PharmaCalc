@@ -11,6 +11,8 @@ struct PillCountView: View {
     @State private var showCamera = false
     @State private var photoItem: PhotosPickerItem?
     @State private var expected = ""
+    @State private var roi: CGRect?
+    @State private var selectingROI = false
 
     private var total: Int { markers.reduce(0) { $0 + $1.count } }
 
@@ -26,20 +28,30 @@ struct PillCountView: View {
                     Label("写真から選ぶ", systemImage: "photo")
                 }
             } footer: {
-                Text("黒っぽい無地の紙やトレーの上に、錠剤どうしを少し離して並べ、真上から撮ってください。白い錠剤は黒い背景、色の濃い錠剤は白い背景が向いています。")
+                Text("袋から出し、無地の紙やトレーの上に重ならないように広げて、真上から画面いっぱいに撮ってください。白い錠剤は黒い背景、色の濃い錠剤は白い背景が向いています。")
             }
 
             if let prepared {
                 Section {
                     ZStack {
-                        MarkedImageView(image: prepared.image, markers: $markers, radius: radius)
+                        MarkedImageView(image: prepared.image, markers: $markers, radius: radius,
+                                        roi: roi, selecting: selectingROI) { rect in
+                            roi = rect
+                            selectingROI = false
+                            analyze()
+                        }
                         if busy {
                             ProgressView().controlSize(.large)
                         }
                     }
                     .listRowInsets(EdgeInsets())
                 } footer: {
-                    Text("緑の丸が自動で数えた錠剤です。丸をタップすると1つ減り、印のない錠剤をタップすると追加します（青の丸）。オレンジの数字は、くっついた錠剤をまとめて数えたものです。")
+                    if selectingROI {
+                        Text("写真の上を指でなぞって、数える範囲を四角で囲んでください。")
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("緑の丸が自動で数えた錠剤です。丸をタップすると1つ減り、印のない錠剤をタップすると追加します（青の丸）。オレンジの数字は、くっついた錠剤をまとめて数えたものです。机の端や袋などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。")
+                    }
                 }
 
                 Section("結果") {
@@ -51,6 +63,20 @@ struct PillCountView: View {
                                 .foregroundStyle(.green)
                         } else {
                             WarningRow(total > e ? "予定より\(total - e)錠多い" : "予定より\(e - total)錠足りない")
+                        }
+                    }
+                }
+
+                Section {
+                    Button {
+                        selectingROI.toggle()
+                    } label: {
+                        Label(selectingROI ? "範囲の指定をやめる" : "数える範囲を指定", systemImage: "crop")
+                    }
+                    if roi != nil {
+                        Button("範囲を解除（全体を数える）") {
+                            roi = nil
+                            analyze()
                         }
                     }
                 }
@@ -93,6 +119,8 @@ struct PillCountView: View {
     private func load(_ img: UIImage) {
         busy = true
         markers = []
+        roi = nil
+        selectingROI = false
         Task.detached(priority: .userInitiated) {
             let p = PreparedImage.make(from: img)
             await MainActor.run {
@@ -106,8 +134,9 @@ struct PillCountView: View {
         guard let p = prepared else { return }
         busy = true
         let s = sensitivity
+        let area = roi
         Task.detached(priority: .userInitiated) {
-            let r = PillCounter.analyze(p, sensitivity: s)
+            let r = PillCounter.analyze(p, sensitivity: s, roi: area)
             await MainActor.run {
                 markers = r.markers
                 radius = r.unitRadius
@@ -117,21 +146,43 @@ struct PillCountView: View {
     }
 }
 
-/// 写真の上に印を重ねて表示し、タップで印を足し引きする
+/// 写真の上に印を重ねて表示し、タップで印を足し引きする。範囲指定中はなぞって四角を描く
 struct MarkedImageView: View {
     let image: UIImage
     @Binding var markers: [PillMarker]
     /// 錠剤1つの半径（画像の画素）
     let radius: CGFloat
+    /// 数える範囲（画像の画素）
+    var roi: CGRect?
+    var selecting = false
+    var onSelectROI: (CGRect) -> Void = { _ in }
+
+    @State private var dragRect: CGRect?
 
     var body: some View {
         GeometryReader { geo in
             let s = geo.size.width / max(image.size.width, 1)
-            let r = min(max(radius * s, 8), 40)
+            let r = min(max(radius * s, 6), 40)
             ZStack(alignment: .topLeading) {
                 Image(uiImage: image)
                     .resizable()
                     .frame(width: geo.size.width, height: geo.size.height)
+
+                if let rect = dragRect ?? roi.map({ CGRect(x: $0.minX * s, y: $0.minY * s,
+                                                            width: $0.width * s, height: $0.height * s) }) {
+                    Path { p in
+                        p.addRect(CGRect(origin: .zero, size: geo.size))
+                        p.addRect(rect)
+                    }
+                    .fill(Color.black.opacity(0.45), style: FillStyle(eoFill: true))
+                    .allowsHitTesting(false)
+                    Rectangle()
+                        .stroke(Color.yellow, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        .frame(width: rect.width, height: rect.height)
+                        .position(x: rect.midX, y: rect.midY)
+                        .allowsHitTesting(false)
+                }
+
                 ForEach(markers) { m in
                     ZStack {
                         Circle()
@@ -146,11 +197,33 @@ struct MarkedImageView: View {
                         }
                     }
                     .position(x: m.x * s, y: m.y * s)
+                    .allowsHitTesting(false)
+                }
+
+                if selecting {
+                    Color.white.opacity(0.001)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { v in
+                                    dragRect = CGRect(x: min(v.startLocation.x, v.location.x),
+                                                      y: min(v.startLocation.y, v.location.y),
+                                                      width: abs(v.location.x - v.startLocation.x),
+                                                      height: abs(v.location.y - v.startLocation.y))
+                                        .intersection(CGRect(origin: .zero, size: geo.size))
+                                }
+                                .onEnded { _ in
+                                    if let d = dragRect, d.width > 20, d.height > 20, s > 0 {
+                                        onSelectROI(CGRect(x: d.minX / s, y: d.minY / s,
+                                                           width: d.width / s, height: d.height / s))
+                                    }
+                                    dragRect = nil
+                                }
+                        )
                 }
             }
             .contentShape(Rectangle())
             .onTapGesture(coordinateSpace: .local) { p in
-                tap(p, scale: s, r: r)
+                if !selecting { tap(p, scale: s, r: r) }
             }
         }
         .aspectRatio(image.size.width / max(image.size.height, 1), contentMode: .fit)

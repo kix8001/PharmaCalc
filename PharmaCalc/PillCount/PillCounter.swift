@@ -8,7 +8,7 @@ struct PreparedImage {
     let height: Int
 
     /// 向きを直し、長辺を maxSide 画素に縮小する
-    static func make(from src: UIImage, maxSide: CGFloat = 900) -> PreparedImage? {
+    static func make(from src: UIImage, maxSide: CGFloat = 1200) -> PreparedImage? {
         let longSide = max(src.size.width, src.size.height)
         guard longSide > 0 else { return nil }
         let scale = min(1, maxSide / longSide)
@@ -52,132 +52,166 @@ struct PillCountResult {
 }
 
 /// 画像から錠剤を数える
-/// 1. 画像の縁の色を背景色とみなす
-/// 2. 背景との色の差を大津の方法で2値化（錠剤の刻印などの穴は埋める）
-/// 3. 塊の面積の中央値から1錠の大きさを推定
-/// 4. 少し削って（収縮）くっついた錠剤を分け、それでも大きい塊は面積比で数える
+/// 1. 画像でいちばん多い色を背景色とみなし、背景との色の差で錠剤を拾う
+/// 2. 距離変換（錠剤の縁からの距離）を計算し、塊ごとの最大値から錠剤の半径を推定
+/// 3. 細すぎる物（袋のしわ・反射）や大きすぎる物（机の端・箱）は除く
+/// 4. 距離変換の山を錠剤の中心とみなす。2つの山の間がくびれていれば別の錠剤、くびれていなければ同じ錠剤
+/// 5. 山の数より面積が明らかに大きい塊（横並びの楕円錠など）は面積比で補う
 enum PillCounter {
     private struct Comp {
-        var area: Int
-        var cx: Double
-        var cy: Double
+        var area = 0
+        var maxD: Float = 0
+        var border = false
     }
 
-    static func analyze(_ p: PreparedImage, sensitivity: Double) -> PillCountResult {
-        let w = p.width, h = p.height, n = w * h
-        guard w > 8, h > 8 else { return PillCountResult(markers: [], unitRadius: 12) }
+    static func analyze(_ p: PreparedImage, sensitivity: Double, roi: CGRect? = nil) -> PillCountResult {
+        let empty = PillCountResult(markers: [], unitRadius: 12)
+        let full = CGRect(x: 0, y: 0, width: p.width, height: p.height)
+        let r0 = (roi ?? full).intersection(full).integral
+        let x0 = Int(r0.minX), y0 = Int(r0.minY)
+        let w = Int(r0.width), h = Int(r0.height), n = w * h
+        guard w >= 16, h >= 16 else { return empty }
+        let W = p.width
         let px = p.rgba
+        @inline(__always) func at(_ i: Int) -> Int { ((y0 + i / w) * W + x0 + i % w) * 4 }
 
-        // 1. 背景色（縁の画素の中央値）
-        let margin = max(2, min(w, h) / 25)
-        var hr = [Int](repeating: 0, count: 256)
-        var hg = hr, hb = hr
-        var edgeCount = 0
-        for y in 0..<h {
-            let edgeRow = y < margin || y >= h - margin
-            for x in 0..<w where edgeRow || x < margin || x >= w - margin {
-                let i = (y * w + x) * 4
-                hr[Int(px[i])] += 1
-                hg[Int(px[i + 1])] += 1
-                hb[Int(px[i + 2])] += 1
-                edgeCount += 1
+        // 1. 背景色＝いちばん多い色（RGB各5ビットで集計）
+        var bins = [Int](repeating: 0, count: 32 * 32 * 32)
+        for i in 0..<n {
+            let k = at(i)
+            bins[(Int(px[k]) >> 3) << 10 | (Int(px[k + 1]) >> 3) << 5 | (Int(px[k + 2]) >> 3)] += 1
+        }
+        var mode = 0
+        for k in 0..<bins.count where bins[k] > bins[mode] { mode = k }
+        var sr = 0, sg = 0, sb = 0, sc = 0
+        for i in 0..<n {
+            let k = at(i)
+            if (Int(px[k]) >> 3) << 10 | (Int(px[k + 1]) >> 3) << 5 | (Int(px[k + 2]) >> 3) == mode {
+                sr += Int(px[k]); sg += Int(px[k + 1]); sb += Int(px[k + 2]); sc += 1
             }
         }
-        let br = median(hr, edgeCount), bg = median(hg, edgeCount), bb = median(hb, edgeCount)
+        guard sc > 0 else { return empty }
+        let br = Double(sr) / Double(sc), bgc = Double(sg) / Double(sc), bb = Double(sb) / Double(sc)
 
-        // 2. 背景との色の差 → 2値化
+        // 背景との色の差 → しきい値（背景のばらつき＋感度）
         var dist = [UInt8](repeating: 0, count: n)
+        var hist = [Int](repeating: 0, count: 256)
         for i in 0..<n {
-            let r = Int(px[i * 4]) - br
-            let g = Int(px[i * 4 + 1]) - bg
-            let b = Int(px[i * 4 + 2]) - bb
-            dist[i] = UInt8(min(255, Int(Double(r * r + g * g + b * b).squareRoot())))
+            let k = at(i)
+            let dr = Double(px[k]) - br, dg = Double(px[k + 1]) - bgc, db = Double(px[k + 2]) - bb
+            let v = UInt8(min(255, Int((dr * dr + dg * dg + db * db).squareRoot())))
+            dist[i] = v
+            hist[Int(v)] += 1
         }
-        let thr = max(12, Int(Double(otsu(dist)) * (1.5 - sensitivity)))
+        var noise = 0, acc = 0
+        for v in 0..<256 {
+            acc += hist[v]
+            if acc * 10 >= n * 3 { noise = v; break }
+        }
+        let thr = max(15, noise * 3) + Int((1 - sensitivity) * 50)
         var mask = [UInt8](repeating: 0, count: n)
         for i in 0..<n where Int(dist[i]) >= thr { mask[i] = 1 }
         mask = dilate(erode(mask, w, h), w, h)
-        mask = fillHoles(mask, w, h)
 
-        // 3. 塊を拾って1錠の大きさを推定
-        let (labels, all) = components(mask, w, h)
-        let minArea = max(15, n / 15000)
-        var keep = [Bool](repeating: false, count: all.count)
-        var areas: [Int] = []
-        for (k, c) in all.enumerated() where c.area >= minArea && c.area < n / 4 {
-            keep[k] = true
-            areas.append(c.area)
+        // 2. 距離変換と塊 → 錠剤の半径
+        var D = distanceTransform(mask, w, h)
+        var (labels, comps) = components(mask, D, w, h)
+        var elig = comps.filter { !$0.border && $0.maxD >= 2 && Double($0.area) < Double(n) * 0.3 }
+        if elig.isEmpty { elig = comps.filter { $0.maxD >= 2 } }
+        guard !elig.isEmpty else { return empty }
+        elig.sort { $0.maxD < $1.maxD }
+        let totalArea = elig.reduce(0) { $0 + $1.area }
+        var R = elig[elig.count - 1].maxD
+        var accA = 0
+        for c in elig {
+            accA += c.area
+            if accA * 2 >= totalArea { R = c.maxD; break }
         }
-        guard !areas.isEmpty else { return PillCountResult(markers: [], unitRadius: 12) }
-        let unit = robustUnit(areas)
-        let radius = (Double(unit) / Double.pi).squareRoot()
+        guard R >= 2 else { return empty }
 
-        // 対象の塊だけ残したマスク
-        var clean = [UInt8](repeating: 0, count: n)
-        for i in 0..<n where labels[i] >= 0 && keep[Int(labels[i])] { clean[i] = 1 }
+        // 刻印などの小さい穴だけ埋めて計算し直す（錠剤の間のすき間は埋めない）
+        if fillSmallHoles(&mask, w, h, maxArea: Int(0.06 * Float.pi * R * R)) {
+            D = distanceTransform(mask, w, h)
+            (labels, comps) = components(mask, D, w, h)
+        }
 
-        // 4. 削ってくっついた錠剤を分ける
-        let r = Int(min(12, max(1, radius * 0.3)))
-        var eroded = clean
-        for _ in 0..<r { eroded = erode(eroded, w, h) }
-        let expected = Double.pi * pow(max(1, radius - Double(r)), 2)
-        var parts = components(eroded, w, h).1.filter { Double($0.area) >= expected * 0.2 }
+        // 3. 錠剤らしい塊だけ残す
+        let unitArea = Float.pi * R * R
+        let keep = comps.map { c in
+            c.maxD >= R * 0.45 && c.maxD <= R * 2.2 && !(c.border && Float(c.area) > unitArea * 3)
+        }
 
-        var markers: [PillMarker]
-        if parts.isEmpty {
-            parts = all.enumerated().filter { keep[$0.offset] }.map(\.element)
-            markers = parts.map { c in
-                PillMarker(x: c.cx, y: c.cy, count: max(1, Int((Double(c.area) / Double(unit)).rounded())))
-            }
-        } else {
-            let eUnit = Double(robustUnit(parts.map(\.area)))
-            markers = parts.map { c in
-                PillMarker(x: c.cx, y: c.cy, count: max(1, Int((Double(c.area) / eUnit).rounded())))
+        // 4. 距離変換の山を探す
+        var cand: [(d: Float, i: Int)] = []
+        for y in 1..<(h - 1) {
+            for x in 1..<(w - 1) {
+                let i = y * w + x
+                let d = D[i]
+                guard d >= R * 0.5, labels[i] >= 0, keep[Int(labels[i])] else { continue }
+                if d >= D[i - 1] && d >= D[i + 1] && d >= D[i - w] && d >= D[i + w]
+                    && d >= D[i - w - 1] && d >= D[i - w + 1] && d >= D[i + w - 1] && d >= D[i + w + 1] {
+                    cand.append((d, i))
+                }
             }
         }
-        return PillCountResult(markers: markers, unitRadius: CGFloat(radius))
+        cand.sort { $0.d > $1.d }
+
+        func samePill(_ a: Int, _ c: Int) -> Bool {
+            let ax = Float(a % w), ay = Float(a / w), cx = Float(c % w), cy = Float(c / w)
+            let len = hypotf(ax - cx, ay - cy)
+            if len < R * 0.5 { return true }
+            if len > R * 2.6 { return false }
+            let steps = Int(len) + 1
+            var mn = Float.greatestFiniteMagnitude
+            for t in 0...steps {
+                let f = Float(t) / Float(steps)
+                let xx = Int((cx + (ax - cx) * f).rounded()), yy = Int((cy + (ay - cy) * f).rounded())
+                mn = min(mn, D[yy * w + xx])
+            }
+            return mn >= 0.9 * min(D[a], D[c])
+        }
+
+        let cell = max(1, Int(R))
+        var grid: [Int: [Int]] = [:]
+        var peaks: [Int] = []
+        for c in cand {
+            let gx = (c.i % w) / cell, gy = (c.i / w) / cell
+            var dup = false
+            search: for ix in (gx - 3)...(gx + 3) {
+                for iy in (gy - 3)...(gy + 3) {
+                    for a in grid[ix &* 100_000 &+ iy] ?? [] where samePill(a, c.i) {
+                        dup = true
+                        break search
+                    }
+                }
+            }
+            if !dup {
+                peaks.append(c.i)
+                grid[gx &* 100_000 &+ gy, default: []].append(c.i)
+                if peaks.count > 3000 { break }
+            }
+        }
+
+        // 5. 面積で補正（山が1つだけの塊の面積の中央値を1錠分とする）
+        var perComp: [Int32: [Int]] = [:]
+        for (k, i) in peaks.enumerated() { perComp[labels[i], default: []].append(k) }
+        var counts = [Int](repeating: 1, count: peaks.count)
+        let singles = perComp.filter { $0.value.count == 1 }.map { comps[Int($0.key)].area }.sorted()
+        if !singles.isEmpty {
+            let unit = Double(singles[singles.count / 2])
+            for (c, ks) in perComp {
+                let est = Int(Double(comps[Int(c)].area) / unit + 0.35)
+                if est > ks.count { counts[ks[0]] += est - ks.count }
+            }
+        }
+
+        let markers = peaks.enumerated().map { k, i in
+            PillMarker(x: CGFloat(x0 + i % w), y: CGFloat(y0 + i / w), count: counts[k])
+        }
+        return PillCountResult(markers: markers, unitRadius: CGFloat(R))
     }
 
     // MARK: - 部品
-
-    private static func median(_ hist: [Int], _ total: Int) -> Int {
-        var acc = 0
-        for (v, c) in hist.enumerated() {
-            acc += c
-            if acc * 2 >= total { return v }
-        }
-        return 0
-    }
-
-    /// 面積の中央値の近くだけで取り直した中央値（くっついた塊や欠片に引っぱられにくくする）
-    private static func robustUnit(_ areas: [Int]) -> Int {
-        let s = areas.sorted()
-        let m0 = s[s.count / 2]
-        let near = s.filter { Double($0) >= Double(m0) * 0.6 && Double($0) <= Double(m0) * 1.4 }
-        return max(1, near.isEmpty ? m0 : near[near.count / 2])
-    }
-
-    /// 大津の方法でしきい値を求める
-    private static func otsu(_ v: [UInt8]) -> Int {
-        var hist = [Int](repeating: 0, count: 256)
-        for x in v { hist[Int(x)] += 1 }
-        let total = v.count
-        var sum = 0.0
-        for i in 0..<256 { sum += Double(i * hist[i]) }
-        var sumB = 0.0, wB = 0, best = 0.0, thr = 0
-        for t in 0..<256 {
-            wB += hist[t]
-            if wB == 0 { continue }
-            let wF = total - wB
-            if wF == 0 { break }
-            sumB += Double(t * hist[t])
-            let mB = sumB / Double(wB)
-            let mF = (sum - sumB) / Double(wF)
-            let between = Double(wB) * Double(wF) * (mB - mF) * (mB - mF)
-            if between > best { best = between; thr = t }
-        }
-        return thr + 1
-    }
 
     private static func erode(_ m: [UInt8], _ w: Int, _ h: Int) -> [UInt8] {
         var o = [UInt8](repeating: 0, count: w * h)
@@ -201,32 +235,45 @@ enum PillCounter {
         return o
     }
 
-    /// 外とつながっていない背景（刻印や割線の穴）を埋める
-    private static func fillHoles(_ m: [UInt8], _ w: Int, _ h: Int) -> [UInt8] {
-        var outside = [Bool](repeating: false, count: w * h)
-        var stack: [Int] = []
-        func push(_ i: Int) {
-            if m[i] == 0 && !outside[i] {
-                outside[i] = true
-                stack.append(i)
+    /// 距離変換（縁からの距離。縦横1・斜め√2 の近似）
+    private static func distanceTransform(_ m: [UInt8], _ w: Int, _ h: Int) -> [Float] {
+        let a: Float = 1, b: Float = 1.4142
+        var d = [Float](repeating: 0, count: w * h)
+        for i in 0..<(w * h) where m[i] != 0 { d[i] = 1e9 }
+        for y in 0..<h {
+            for x in 0..<w {
+                let i = y * w + x
+                if d[i] == 0 { continue }
+                var v = d[i]
+                if x == 0 || y == 0 || x == w - 1 || y == h - 1 { v = min(v, 1) }
+                if x > 0 { v = min(v, d[i - 1] + a) }
+                if y > 0 {
+                    v = min(v, d[i - w] + a)
+                    if x > 0 { v = min(v, d[i - w - 1] + b) }
+                    if x < w - 1 { v = min(v, d[i - w + 1] + b) }
+                }
+                d[i] = v
             }
         }
-        for x in 0..<w { push(x); push((h - 1) * w + x) }
-        for y in 0..<h { push(y * w); push(y * w + w - 1) }
-        while let j = stack.popLast() {
-            let x = j % w, y = j / w
-            if x > 0 { push(j - 1) }
-            if x < w - 1 { push(j + 1) }
-            if y > 0 { push(j - w) }
-            if y < h - 1 { push(j + w) }
+        for y in stride(from: h - 1, through: 0, by: -1) {
+            for x in stride(from: w - 1, through: 0, by: -1) {
+                let i = y * w + x
+                if d[i] == 0 { continue }
+                var v = d[i]
+                if x < w - 1 { v = min(v, d[i + 1] + a) }
+                if y < h - 1 {
+                    v = min(v, d[i + w] + a)
+                    if x < w - 1 { v = min(v, d[i + w + 1] + b) }
+                    if x > 0 { v = min(v, d[i + w - 1] + b) }
+                }
+                d[i] = v
+            }
         }
-        var o = [UInt8](repeating: 0, count: w * h)
-        for i in 0..<(w * h) where m[i] != 0 || !outside[i] { o[i] = 1 }
-        return o
+        return d
     }
 
-    /// 4近傍でつながった塊に番号をつける
-    private static func components(_ m: [UInt8], _ w: Int, _ h: Int) -> ([Int32], [Comp]) {
+    /// 4近傍でつながった塊に番号をつけ、面積・距離の最大値・縁に触れているかを集める
+    private static func components(_ m: [UInt8], _ D: [Float], _ w: Int, _ h: Int) -> ([Int32], [Comp]) {
         var labels = [Int32](repeating: -1, count: w * h)
         var comps: [Comp] = []
         var stack: [Int] = []
@@ -235,19 +282,47 @@ enum PillCounter {
             let id = Int32(comps.count)
             labels[start] = id
             stack.append(start)
-            var area = 0, sx = 0, sy = 0
+            var c = Comp()
             while let j = stack.popLast() {
-                area += 1
+                c.area += 1
+                c.maxD = max(c.maxD, D[j])
                 let x = j % w, y = j / w
-                sx += x
-                sy += y
+                if x <= 2 || y <= 2 || x >= w - 3 || y >= h - 3 { c.border = true }
                 if x > 0, m[j - 1] != 0, labels[j - 1] < 0 { labels[j - 1] = id; stack.append(j - 1) }
                 if x < w - 1, m[j + 1] != 0, labels[j + 1] < 0 { labels[j + 1] = id; stack.append(j + 1) }
                 if y > 0, m[j - w] != 0, labels[j - w] < 0 { labels[j - w] = id; stack.append(j - w) }
                 if y < h - 1, m[j + w] != 0, labels[j + w] < 0 { labels[j + w] = id; stack.append(j + w) }
             }
-            comps.append(Comp(area: area, cx: Double(sx) / Double(area), cy: Double(sy) / Double(area)))
+            comps.append(c)
         }
         return (labels, comps)
+    }
+
+    /// 縁につながらない小さい背景（刻印・割線の穴）を埋める。埋めたら true
+    private static func fillSmallHoles(_ m: inout [UInt8], _ w: Int, _ h: Int, maxArea: Int) -> Bool {
+        var seen = [Bool](repeating: false, count: w * h)
+        var stack: [Int] = []
+        var pix: [Int] = []
+        var changed = false
+        for start in 0..<(w * h) where m[start] == 0 && !seen[start] {
+            seen[start] = true
+            stack.append(start)
+            pix.removeAll(keepingCapacity: true)
+            var edge = false
+            while let j = stack.popLast() {
+                pix.append(j)
+                let x = j % w, y = j / w
+                if x <= 1 || y <= 1 || x >= w - 2 || y >= h - 2 { edge = true }
+                if x > 0, m[j - 1] == 0, !seen[j - 1] { seen[j - 1] = true; stack.append(j - 1) }
+                if x < w - 1, m[j + 1] == 0, !seen[j + 1] { seen[j + 1] = true; stack.append(j + 1) }
+                if y > 0, m[j - w] == 0, !seen[j - w] { seen[j - w] = true; stack.append(j - w) }
+                if y < h - 1, m[j + w] == 0, !seen[j + w] { seen[j + w] = true; stack.append(j + w) }
+            }
+            if !edge && pix.count <= maxArea {
+                for j in pix { m[j] = 1 }
+                changed = true
+            }
+        }
+        return changed
     }
 }
