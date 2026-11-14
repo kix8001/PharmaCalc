@@ -19,17 +19,28 @@ import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.CurrencyYen
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Sanitizer
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /** 計算の分類 */
 enum class CalcGroup(val label: String, val color: Color) {
-    RENAL("腎機能・体格", Color(0xFF2F6FEB)),
+    RENAL("腎機能・体格・検査値", Color(0xFF2F6FEB)),
     DAYS("日数・日付", Color(0xFFF08A24)),
     QUANTITY("数量・残薬", Color(0xFF2E9D4A)),
     DOSE("用量", Color(0xFF8E44D9)),
     INJECTION("注射・点滴", Color(0xFFE0457B)),
     TOOLS("バーコード・その他", Color(0xFF14918A)),
+    CONVERT("換算", Color(0xFF5856D6)),
+    HOME_CARE("在宅", Color(0xFFA2845E)),
+    INSURANCE("保険・負担金", Color(0xFF32ADE6)),
 }
 
 /** 電卓の一覧（ホームのタイル・一覧・検索で共通） */
@@ -54,7 +65,15 @@ enum class CalcItem(
     DRIP("点滴の滴下速度", "点滴速度", "mL/h・滴/分", "輸液 滴下", Icons.Filled.Opacity, CalcGroup.INJECTION),
     GAMMA("γ計算（μg/kg/min）", "γ計算", "γ ⇄ mL/h", "ガンマ 持続 シリンジ", Icons.Filled.Vaccines, CalcGroup.INJECTION),
     BARCODE("バーコード → 添付文書", "添付文書", "PTPのGS1バーコードを読んで電子添文を開く", "バーコード gs1 jan 添文 添付文書 pmda ptp スキャン", Icons.Filled.QrCodeScanner, CalcGroup.TOOLS),
-    SCAN_HISTORY("読み取り履歴", "読取履歴", "読み取った薬と薬品名メモ", "履歴 バーコード", Icons.Filled.History, CalcGroup.TOOLS);
+    SCAN_HISTORY("読み取り履歴", "読取履歴", "読み取った薬と薬品名メモ", "履歴 バーコード", Icons.Filled.History, CalcGroup.TOOLS),
+    LAB("補正Ca・Child-Pugh", "補正Ca", "アルブミン補正・肝機能の重症度", "カルシウム ca アルブミン 肝 child pugh 検査", Icons.Filled.Science, CalcGroup.RENAL),
+    OPIOID("オピオイド換算", "オピオイド", "経口モルヒネ換算・切り替え・レスキュー量", "麻薬 オピオイド モルヒネ オキシコドン フェンタニル レスキュー がん 緩和 在宅", Icons.Filled.SwapHoriz, CalcGroup.CONVERT),
+    STEROID("ステロイド換算", "ステロイド", "プレドニゾロン換算", "ステロイド プレドニゾロン デキサメタゾン 換算", Icons.Filled.Medication, CalcGroup.CONVERT),
+    PCA("持続皮下注・PCA", "PCA", "流量・早送り量・薬液が何日もつか", "pca 持続皮下 シリンジ ポンプ 在宅 緩和 早送り", Icons.Filled.MedicalServices, CalcGroup.HOME_CARE),
+    NUTRITION("栄養・輸液（必要量・NPC/N）", "栄養・輸液", "必要エネルギー・水分・たんぱく、輸液のカロリー", "栄養 カロリー 輸液 tpn 経腸 harris benedict 水分 npc 在宅", Icons.Filled.Restaurant, CalcGroup.HOME_CARE),
+    OXYGEN("酸素ボンベの残り時間", "酸素ボンベ", "在宅酸素の残量と使える時間", "酸素 ボンベ hot 在宅 同調器", Icons.Filled.Air, CalcGroup.HOME_CARE),
+    DILUTION("消毒液の希釈", "消毒液", "次亜塩素酸ナトリウムなどの作り方", "消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅", Icons.Filled.Sanitizer, CalcGroup.HOME_CARE),
+    FEE("薬剤料・窓口負担", "負担金", "薬価から点数（五捨五超入）と窓口負担", "点数 薬価 負担 窓口 お金 五捨五超入 保険", Icons.Filled.CurrencyYen, CalcGroup.INSURANCE);
 
     fun matches(q: String): Boolean = (title + subtitle + keywords).lowercase().contains(q.lowercase())
 }

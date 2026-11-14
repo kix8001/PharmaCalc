@@ -91,6 +91,14 @@ fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
         CalcItem.GAMMA -> GammaScreen()
         CalcItem.BARCODE -> ScanScreen()
         CalcItem.SCAN_HISTORY -> HistoryScreen { push(Screen.HistoryDetail(it)) }
+        CalcItem.LAB -> app.pharmacalc.android.calc.LabScreen()
+        CalcItem.OPIOID -> app.pharmacalc.android.calc.OpioidScreen()
+        CalcItem.STEROID -> app.pharmacalc.android.calc.SteroidScreen()
+        CalcItem.PCA -> app.pharmacalc.android.calc.PCAScreen()
+        CalcItem.NUTRITION -> app.pharmacalc.android.calc.NutritionScreen()
+        CalcItem.OXYGEN -> app.pharmacalc.android.calc.OxygenScreen()
+        CalcItem.DILUTION -> app.pharmacalc.android.calc.DilutionScreen()
+        CalcItem.FEE -> app.pharmacalc.android.calc.FeeScreen()
     }
 }
 

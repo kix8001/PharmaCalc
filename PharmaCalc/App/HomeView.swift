@@ -2,11 +2,14 @@ import SwiftUI
 
 /// 計算の分類
 enum CalcGroup: String, CaseIterable {
-    case renal = "腎機能・体格"
+    case renal = "腎機能・体格・検査値"
     case days = "日数・日付"
     case quantity = "数量・残薬"
     case dose = "用量"
     case injection = "注射・点滴"
+    case convert = "換算"
+    case homeCare = "在宅"
+    case insurance = "保険・負担金"
     case tools = "バーコード・その他"
 
     /// タイルの色
@@ -18,18 +21,24 @@ enum CalcGroup: String, CaseIterable {
         case .dose: return .purple
         case .injection: return .pink
         case .tools: return .teal
+        case .convert: return .indigo
+        case .homeCare: return .brown
+        case .insurance: return .cyan
         }
     }
 }
 
 /// 電卓の一覧（ホーム画面・検索・お気に入りで共通）
 enum CalcItem: String, CaseIterable, Identifiable {
-    case renal, body
+    case renal, body, lab
     case endDate, nextVisit, validity, cycle, age
     case pillCount, remaining, sheet, uneven
     case powder, pediatric, weightDose
     case drip, gamma
     case barcode, scanHistory
+    case opioid, steroid
+    case pca, nutrition, oxygen, dilution
+    case fee
 
     var id: String { rawValue }
 
@@ -52,7 +61,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .drip: return "点滴の滴下速度"
         case .gamma: return "γ計算（μg/kg/min）"
         case .barcode: return "バーコード → 添付文書"
-        case .scanHistory: return "読み取り履歴"
+        case .lab: return "補正Ca・Child-Pugh"
+        case .opioid: return "オピオイド換算"
+        case .steroid: return "ステロイド換算"
+        case .pca: return "持続皮下注・PCA"
+        case .nutrition: return "栄養・輸液（必要量・NPC/N）"
+        case .oxygen: return "酸素ボンベの残り時間"
+        case .dilution: return "消毒液の希釈"
+        case .fee: return "薬剤料・窓口負担"
         }
     }
 
@@ -76,7 +92,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .drip: return "点滴速度"
         case .gamma: return "γ計算"
         case .barcode: return "添付文書"
-        case .scanHistory: return "読取履歴"
+        case .lab: return "補正Ca"
+        case .opioid: return "オピオイド"
+        case .steroid: return "ステロイド"
+        case .pca: return "PCA"
+        case .nutrition: return "栄養・輸液"
+        case .oxygen: return "酸素ボンベ"
+        case .dilution: return "消毒液"
+        case .fee: return "負担金"
         }
     }
 
@@ -99,7 +122,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .drip: return "mL/h・滴/分"
         case .gamma: return "γ ⇄ mL/h"
         case .barcode: return "PTPのGS1バーコードを読んで電子添文を開く"
-        case .scanHistory: return "読み取った薬と薬品名メモ"
+        case .lab: return "アルブミン補正・肝機能の重症度"
+        case .opioid: return "経口モルヒネ換算・切り替え・レスキュー量"
+        case .steroid: return "プレドニゾロン換算"
+        case .pca: return "流量・早送り量・薬液が何日もつか"
+        case .nutrition: return "必要エネルギー・水分・たんぱく、輸液のカロリー"
+        case .oxygen: return "在宅酸素の残量と使える時間"
+        case .dilution: return "次亜塩素酸ナトリウムなどの作り方"
+        case .fee: return "薬価から点数（五捨五超入）と窓口負担"
         }
     }
 
@@ -121,7 +151,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .drip: return "輸液 滴下"
         case .gamma: return "ガンマ 持続 シリンジ"
         case .barcode: return "バーコード gs1 jan 添文 添付文書 pmda ptp スキャン"
-        case .scanHistory: return "履歴 バーコード"
+        case .lab: return "カルシウム ca アルブミン 肝 child pugh 検査"
+        case .opioid: return "麻薬 オピオイド モルヒネ オキシコドン フェンタニル レスキュー がん 緩和 在宅"
+        case .steroid: return "ステロイド プレドニゾロン デキサメタゾン 換算"
+        case .pca: return "pca 持続皮下 シリンジ ポンプ 在宅 緩和 早送り"
+        case .nutrition: return "栄養 カロリー 輸液 tpn 経腸 harris benedict 水分 npc 在宅"
+        case .oxygen: return "酸素 ボンベ hot 在宅 同調器"
+        case .dilution: return "消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅"
+        case .fee: return "点数 薬価 負担 窓口 お金 五捨五超入 保険"
         }
     }
 
@@ -144,7 +181,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .drip: return "drop.triangle"
         case .gamma: return "syringe"
         case .barcode: return "barcode.viewfinder"
-        case .scanHistory: return "clock.arrow.circlepath"
+        case .lab: return "testtube.2"
+        case .opioid: return "arrow.left.arrow.right"
+        case .steroid: return "pills"
+        case .pca: return "syringe.fill"
+        case .nutrition: return "fork.knife"
+        case .oxygen: return "lungs"
+        case .dilution: return "drop.halffull"
+        case .fee: return "yensign.circle"
         }
     }
 
@@ -156,6 +200,10 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .powder, .pediatric, .weightDose: return .dose
         case .drip, .gamma: return .injection
         case .barcode, .scanHistory: return .tools
+        case .lab: return .renal
+        case .opioid, .steroid: return .convert
+        case .pca, .nutrition, .oxygen, .dilution: return .homeCare
+        case .fee: return .insurance
         }
     }
 
@@ -179,6 +227,14 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .gamma: GammaView()
         case .barcode: ScanScreen()
         case .scanHistory: HistoryScreen()
+        case .lab: LabView()
+        case .opioid: OpioidView()
+        case .steroid: SteroidView()
+        case .pca: PCAView()
+        case .nutrition: NutritionView()
+        case .oxygen: OxygenView()
+        case .dilution: DilutionView()
+        case .fee: FeeView()
         }
     }
 }

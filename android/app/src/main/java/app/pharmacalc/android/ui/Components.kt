@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilterChip
@@ -32,6 +33,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -197,5 +200,26 @@ fun LabeledRow(label: String, value: String, valueColor: Color? = null) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(label, modifier = Modifier.weight(1f))
         Text(value, color = valueColor ?: MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/** 選択肢が多いときのプルダウン */
+@Composable
+fun <T> DropdownRow(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+    var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(title)
+        Spacer(Modifier.weight(1f))
+        androidx.compose.foundation.layout.Box {
+            TextButton(onClick = { open = true }) {
+                Text(options.firstOrNull { it.first == selected }?.second ?: "")
+                Icon(androidx.compose.material.icons.Icons.Filled.ArrowDropDown, null)
+            }
+            androidx.compose.material3.DropdownMenu(open, { open = false }) {
+                options.forEach { (v, label) ->
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(v); open = false })
+                }
+            }
+        }
     }
 }
