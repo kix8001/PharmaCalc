@@ -17,8 +17,8 @@ struct LabView: View {
                 NumField(title: "アルブミン", text: $alb, unit: "g/dL")
                 if let c = parseNum(ca), let a = parseNum(alb), c > 0, a > 0 {
                     let corr = a < 4 ? c + (4 - a) : c
-                    ResultRow(title: "補正Ca", value: fmt(corr, 1), unit: "mg/dL", color: .orange,
-                              note: corr > 10.4 ? "高カルシウム血症の目安（10.4mg/dL超）" : (corr < 8.5 ? "低カルシウム血症の目安（8.5mg/dL未満）" : nil))
+                    ResultRow(title: "補正Ca", value: fmt(corr, 1), unit: "mg/dL", note: corr > 10.4 ? "高カルシウム血症の目安（10.4mg/dL超）" : (corr < 8.5 ? "低カルシウム血症の目安（8.5mg/dL未満）" : nil),
+                              color: .orange)
                 }
             } header: {
                 Text("補正カルシウム（Payne式）")
@@ -46,8 +46,8 @@ struct LabView: View {
                     let si = i < 1.7 ? 1 : (i <= 2.3 ? 2 : 3)
                     let total = sb + sa + si + ascites + enceph
                     let grade = total <= 6 ? "A" : (total <= 9 ? "B" : "C")
-                    ResultRow(title: "Child-Pugh", value: "\(grade)（\(total)点）", color: .orange,
-                              note: "ビリルビン\(sb)・アルブミン\(sa)・PT-INR\(si)・腹水\(ascites)・脳症\(enceph)点")
+                    ResultRow(title: "Child-Pugh", value: "\(grade)（\(total)点）", note: "ビリルビン\(sb)・アルブミン\(sa)・PT-INR\(si)・腹水\(ascites)・脳症\(enceph)点",
+                              color: .orange)
                 }
             } header: {
                 Text("Child-Pugh分類")
@@ -81,8 +81,8 @@ struct FeeView: View {
                     NumField(title: "1日分の薬価の合計", text: $r.price, unit: "円")
                     NumField(title: "日数・回数", text: $r.days, unit: "日", integer: true)
                     if let p = parseNum(r.price), p > 0, let d = parseInt(r.days), d > 0 {
-                        ResultRow(title: "薬剤料", value: "\(Self.points(p) * d)", unit: "点", big: false,
-                                  note: "\(Self.points(p))点 × \(d)")
+                        ResultRow(title: "薬剤料", value: "\(Self.points(p) * d)", unit: "点", note: "\(Self.points(p))点 × \(d)",
+                                  big: false)
                     }
                 } header: {
                     Text("\((rows.firstIndex { $0.id == r.id } ?? 0) + 1)剤目")

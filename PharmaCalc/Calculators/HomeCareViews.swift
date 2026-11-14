@@ -47,8 +47,8 @@ struct PCAView: View {
                     ResultRow(title: "早送り1回（1時間量）", value: fmtTrim(bolus, 3), unit: "mL",
                               note: "薬の量 \(fmtTrim(d / 24, 2))mg")
                     if let r = parseInt(rescueTimes), r > 0 {
-                        ResultRow(title: "早送り込みの1日の液量", value: fmtTrim(used, 2), unit: "mL/日", big: false,
-                                  note: "薬の量 \(fmtTrim(used * c, 2))mg/日")
+                        ResultRow(title: "早送り込みの1日の液量", value: fmtTrim(used, 2), unit: "mL/日", note: "薬の量 \(fmtTrim(used * c, 2))mg/日",
+                                  big: false)
                     }
                     if let v = parseNum(container), v > 0 {
                         ResultRow(title: "容器が空になるまで", value: fmtTrim(v / used, 1), unit: "日",
@@ -94,12 +94,12 @@ struct NutritionView: View {
                 let af = parseNum(activity) ?? 1, sf = parseNum(stress) ?? 1
                 Section {
                     ResultRow(title: "基礎エネルギー消費量", value: fmtTrim(bee, 0), unit: "kcal/日", big: false)
-                    ResultRow(title: "必要エネルギー", value: fmtTrim(bee * af * sf, 0), unit: "kcal/日", color: .orange,
-                              note: "簡易法（25〜30kcal/kg）なら \(fmtTrim(w * 25, 0))〜\(fmtTrim(w * 30, 0))kcal/日")
-                    ResultRow(title: "必要水分量", value: "\(fmtTrim(w * 30, 0))〜\(fmtTrim(w * 35, 0))", unit: "mL/日", big: false,
-                              note: "30〜35mL/kg/日（心不全・腎不全では制限することがあります）")
-                    ResultRow(title: "必要たんぱく質", value: "\(fmtTrim(w * 1.0, 0))〜\(fmtTrim(w * 1.2, 0))", unit: "g/日", big: false,
-                              note: "1.0〜1.2g/kg/日（腎機能に合わせて調整）")
+                    ResultRow(title: "必要エネルギー", value: fmtTrim(bee * af * sf, 0), unit: "kcal/日", note: "簡易法（25〜30kcal/kg）なら \(fmtTrim(w * 25, 0))〜\(fmtTrim(w * 30, 0))kcal/日",
+                              color: .orange)
+                    ResultRow(title: "必要水分量", value: "\(fmtTrim(w * 30, 0))〜\(fmtTrim(w * 35, 0))", unit: "mL/日", note: "30〜35mL/kg/日（心不全・腎不全では制限することがあります）",
+                              big: false)
+                    ResultRow(title: "必要たんぱく質", value: "\(fmtTrim(w * 1.0, 0))〜\(fmtTrim(w * 1.2, 0))", unit: "g/日", note: "1.0〜1.2g/kg/日（腎機能に合わせて調整）",
+                              big: false)
                 } header: {
                     Text("必要量（Harris-Benedict式）")
                 } footer: {
@@ -118,8 +118,8 @@ struct NutritionView: View {
                     ResultRow(title: "総エネルギー", value: fmtTrim(npc + aa * 4, 0), unit: "kcal", color: .orange)
                     ResultRow(title: "非たんぱくカロリー（NPC）", value: fmtTrim(npc, 0), unit: "kcal", big: false)
                     if aa > 0 {
-                        ResultRow(title: "NPC/N比", value: fmtTrim(npc / (aa * 0.16), 0), big: false,
-                                  note: "一般に150〜200。腎不全では高め、侵襲が大きいときは低め")
+                        ResultRow(title: "NPC/N比", value: fmtTrim(npc / (aa * 0.16), 0), note: "一般に150〜200。腎不全では高め、侵襲が大きいときは低め",
+                                  big: false)
                     }
                 }
             } header: {
@@ -166,8 +166,8 @@ struct OxygenView: View {
                 Section {
                     ResultRow(title: "残りの酸素量", value: fmtTrim(remain, 0), unit: "L")
                     ResultRow(title: "使える時間", value: hm(minutes), color: .orange)
-                    ResultRow(title: "安全を見た時間（8割）", value: hm(safe), big: false,
-                              note: "移動や外出の計画はこちらで")
+                    ResultRow(title: "安全を見た時間（8割）", value: hm(safe), note: "移動や外出の計画はこちらで",
+                              big: false)
                 } header: {
                     Text("結果")
                 } footer: {
@@ -208,8 +208,8 @@ struct DilutionView: View {
                         WarningRow("作りたい濃度が原液以上です")
                     } else {
                         let x = v * t / s
-                        ResultRow(title: "原液", value: fmtTrim(x, 1), unit: "mL", color: .orange,
-                                  note: "ペットボトルのキャップ1杯は約5mL → 約\(fmtTrim(x / 5, 1))杯")
+                        ResultRow(title: "原液", value: fmtTrim(x, 1), unit: "mL", note: "ペットボトルのキャップ1杯は約5mL → 約\(fmtTrim(x / 5, 1))杯",
+                                  color: .orange)
                         ResultRow(title: "水", value: fmtTrim(v - x, 1), unit: "mL")
                         ResultRow(title: "濃度（ppm）", value: fmtTrim(t * 10000, 0), unit: "ppm", big: false)
                     }

@@ -90,8 +90,8 @@ struct OpioidView: View {
                         ResultRow(title: "レスキュー（1時間量）", value: fmtTrim(target / 24, 3), unit: "mg", big: false)
                     case .patch:
                         ResultRow(title: "レスキュー：モルヒネ速放", value: fmtTrim(mme / 6, 1), unit: "mg/回", big: false)
-                        ResultRow(title: "レスキュー：オキシコドン速放", value: fmtTrim(mme / 6 / 1.5, 1), unit: "mg/回", big: false,
-                                  note: "貼付剤のときは経口の速放性製剤をレスキューに使います（1日量の1/6が目安）")
+                        ResultRow(title: "レスキュー：オキシコドン速放", value: fmtTrim(mme / 6 / 1.5, 1), unit: "mg/回", note: "貼付剤のときは経口の速放性製剤をレスキューに使います（1日量の1/6が目安）",
+                                  big: false)
                     }
                 } header: {
                     Text("変更先")

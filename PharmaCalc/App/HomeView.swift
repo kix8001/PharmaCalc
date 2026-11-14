@@ -33,7 +33,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     case renal, body, lab
     case endDate, nextVisit, validity, cycle, age
     case pillCount, remaining, sheet, uneven
-    case powder, pediatric, weightDose
+    case powder, pediatric, pedDrugs, weightDose
     case drip, gamma
     case barcode, scanHistory
     case opioid, steroid
@@ -56,11 +56,13 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .sheet: return "PTPシート換算"
         case .uneven: return "不均等投与の総数"
         case .powder: return "散剤の換算（mg ⇄ g）"
-        case .pediatric: return "小児薬用量"
+        case .pediatric: return "小児薬用量（成人量から）"
+        case .pedDrugs: return "小児用量（薬剤別）"
         case .weightDose: return "体重あたりの用量"
         case .drip: return "点滴の滴下速度"
         case .gamma: return "γ計算（μg/kg/min）"
         case .barcode: return "バーコード → 添付文書"
+        case .scanHistory: return "読み取り履歴"
         case .lab: return "補正Ca・Child-Pugh"
         case .opioid: return "オピオイド換算"
         case .steroid: return "ステロイド換算"
@@ -88,10 +90,12 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .uneven: return "不均等投与"
         case .powder: return "散剤換算"
         case .pediatric: return "小児薬用量"
+        case .pedDrugs: return "小児用量"
         case .weightDose: return "体重あたり"
         case .drip: return "点滴速度"
         case .gamma: return "γ計算"
         case .barcode: return "添付文書"
+        case .scanHistory: return "読取履歴"
         case .lab: return "補正Ca"
         case .opioid: return "オピオイド"
         case .steroid: return "ステロイド"
@@ -118,10 +122,12 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .uneven: return "朝2・夕1など"
         case .powder: return "成分量 ⇄ 製剤量、1包あたり"
         case .pediatric: return "Augsberger・von Harnack・Young"
+        case .pedDrugs: return "年齢・体重から主な小児薬の用量を一覧（薬は登録できる）"
         case .weightDose: return "mg/kg/日 → 1回量"
         case .drip: return "mL/h・滴/分"
         case .gamma: return "γ ⇄ mL/h"
         case .barcode: return "PTPのGS1バーコードを読んで電子添文を開く"
+        case .scanHistory: return "読み取った薬と薬品名メモ"
         case .lab: return "アルブミン補正・肝機能の重症度"
         case .opioid: return "経口モルヒネ換算・切り替え・レスキュー量"
         case .steroid: return "プレドニゾロン換算"
@@ -147,10 +153,12 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .uneven: return "朝 昼 夕 寝る前"
         case .powder: return "散 力価 % 包"
         case .pediatric: return "小児 子供 こども"
+        case .pedDrugs: return "小児 子供 こども ムコダイン ムコソルバン トランサミン カロナール 抗生剤 シロップ ds 散"
         case .weightDose: return "mg/kg"
         case .drip: return "輸液 滴下"
         case .gamma: return "ガンマ 持続 シリンジ"
         case .barcode: return "バーコード gs1 jan 添文 添付文書 pmda ptp スキャン"
+        case .scanHistory: return "履歴 バーコード"
         case .lab: return "カルシウム ca アルブミン 肝 child pugh 検査"
         case .opioid: return "麻薬 オピオイド モルヒネ オキシコドン フェンタニル レスキュー がん 緩和 在宅"
         case .steroid: return "ステロイド プレドニゾロン デキサメタゾン 換算"
@@ -177,10 +185,12 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .uneven: return "sunrise"
         case .powder: return "scalemass"
         case .pediatric: return "figure.and.child.holdinghands"
+        case .pedDrugs: return "list.bullet.clipboard"
         case .weightDose: return "person.badge.plus"
         case .drip: return "drop.triangle"
         case .gamma: return "syringe"
         case .barcode: return "barcode.viewfinder"
+        case .scanHistory: return "clock.arrow.circlepath"
         case .lab: return "testtube.2"
         case .opioid: return "arrow.left.arrow.right"
         case .steroid: return "pills"
@@ -197,7 +207,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .renal, .body: return .renal
         case .endDate, .nextVisit, .validity, .cycle, .age: return .days
         case .pillCount, .remaining, .sheet, .uneven: return .quantity
-        case .powder, .pediatric, .weightDose: return .dose
+        case .powder, .pediatric, .pedDrugs, .weightDose: return .dose
         case .drip, .gamma: return .injection
         case .barcode, .scanHistory: return .tools
         case .lab: return .renal
@@ -222,6 +232,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .uneven: UnevenView()
         case .powder: PowderView()
         case .pediatric: PediatricView()
+        case .pedDrugs: PedDoseView()
         case .weightDose: WeightDoseView()
         case .drip: DripView()
         case .gamma: GammaView()
