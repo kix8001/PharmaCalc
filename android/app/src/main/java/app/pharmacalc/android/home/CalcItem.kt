@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.CurrencyYen
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Medication
@@ -60,7 +61,8 @@ enum class CalcItem(
     SHEET("PTPシート換算", "シート換算", "錠数 → シート＋バラ", "ptp シート バラ", Icons.Filled.GridOn, CalcGroup.QUANTITY),
     UNEVEN("不均等投与の総数", "不均等投与", "朝2・夕1など", "朝 昼 夕 寝る前", Icons.Filled.WbSunny, CalcGroup.QUANTITY),
     POWDER("散剤の換算（mg ⇄ g）", "散剤換算", "成分量 ⇄ 製剤量、1包あたり", "散 力価 % 包", Icons.Filled.Scale, CalcGroup.DOSE),
-    PEDIATRIC("小児薬用量", "小児薬用量", "Augsberger・von Harnack・Young", "小児 子供 こども", Icons.Filled.ChildCare, CalcGroup.DOSE),
+    PEDIATRIC("小児薬用量（成人量から）", "小児薬用量", "Augsberger・von Harnack・Young", "小児 子供 こども", Icons.Filled.ChildCare, CalcGroup.DOSE),
+    PED_DRUGS("小児用量（薬剤別）", "小児用量", "年齢・体重から主な小児薬の用量を一覧（薬は登録できる）", "小児 子供 こども ムコダイン ムコソルバン トランサミン カロナール 抗生剤 シロップ ds 散", Icons.Filled.Checklist, CalcGroup.DOSE),
     WEIGHT_DOSE("体重あたりの用量", "体重あたり", "mg/kg/日 → 1回量", "mg/kg", Icons.Filled.MonitorWeight, CalcGroup.DOSE),
     DRIP("点滴の滴下速度", "点滴速度", "mL/h・滴/分", "輸液 滴下", Icons.Filled.Opacity, CalcGroup.INJECTION),
     GAMMA("γ計算（μg/kg/min）", "γ計算", "γ ⇄ mL/h", "ガンマ 持続 シリンジ", Icons.Filled.Vaccines, CalcGroup.INJECTION),

@@ -61,6 +61,7 @@ sealed interface Screen {
     data object Patient : Screen { override val title = "患者情報" }
     data object EditTiles : Screen { override val title = "ホームの編集" }
     data class HistoryDetail(val id: String) : Screen { override val title get() = "履歴の詳細" }
+    data class PedDrugEdit(val id: String?) : Screen { override val title get() = if (id == null) "薬を追加" else "薬を編集" }
 }
 
 enum class Tab(val label: String, val title: String, val icon: ImageVector) {
@@ -86,6 +87,7 @@ fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
         CalcItem.UNEVEN -> UnevenScreen()
         CalcItem.POWDER -> PowderScreen()
         CalcItem.PEDIATRIC -> PediatricScreen()
+        CalcItem.PED_DRUGS -> app.pharmacalc.android.ped.PedDoseScreen { push(Screen.PedDrugEdit(it)) }
         CalcItem.WEIGHT_DOSE -> WeightDoseScreen()
         CalcItem.DRIP -> DripScreen()
         CalcItem.GAMMA -> GammaScreen()
@@ -155,6 +157,7 @@ fun App() {
                     Screen.Patient -> PatientScreen()
                     Screen.EditTiles -> TileEditScreen()
                     is Screen.HistoryDetail -> HistoryDetailScreen(top.id, onDeleted = pop)
+                    is Screen.PedDrugEdit -> app.pharmacalc.android.ped.PedDrugEditScreen(top.id, done = pop)
                 }
             }
         }

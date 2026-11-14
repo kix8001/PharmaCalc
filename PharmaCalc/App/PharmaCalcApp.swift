@@ -5,14 +5,12 @@ struct PharmaCalcApp: App {
     @StateObject private var patient = PatientStore()
     @StateObject private var history = ScanHistory()
     @StateObject private var pedDrugs = PedDrugStore()
-    @StateObject private var pedDrugs = PedDrugStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(patient)
                 .environmentObject(history)
-                .environmentObject(pedDrugs)
                 .environmentObject(pedDrugs)
                 .environment(\.locale, Locale(identifier: "ja_JP"))
                 .tint(.teal)

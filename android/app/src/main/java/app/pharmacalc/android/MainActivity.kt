@@ -15,6 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         ScanHistory.init(applicationContext)
         HomeTiles.init(applicationContext)
+        app.pharmacalc.android.ped.PedDrugStore.init(applicationContext)
         setContent { PharmaTheme { App() } }
     }
 }
