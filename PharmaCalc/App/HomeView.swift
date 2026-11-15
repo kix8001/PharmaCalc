@@ -30,7 +30,7 @@ enum CalcGroup: String, CaseIterable {
 
 /// 電卓の一覧（ホーム画面・検索・お気に入りで共通）
 enum CalcItem: String, CaseIterable, Identifiable {
-    case renal, body, lab
+    case renal, renalDrugs, body, lab
     case endDate, nextVisit, validity, cycle, age
     case pillCount, remaining, sheet, uneven
     case powder, pediatric, pedDrugs, weightDose
@@ -45,6 +45,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .renal: return "腎機能（CCr・eGFR）"
+        case .renalDrugs: return "腎機能で注意する薬（添付文書）"
         case .body: return "体表面積・BMI・理想体重"
         case .endDate: return "服用終了日"
         case .nextVisit: return "次回受診までの日数"
@@ -78,6 +79,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     var shortTitle: String {
         switch self {
         case .renal: return "腎機能"
+        case .renalDrugs: return "腎機能と薬"
         case .body: return "体表面積"
         case .endDate: return "服用終了日"
         case .nextVisit: return "次回受診"
@@ -110,6 +112,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .renal: return "Cockcroft-Gault・日本人eGFR・シスタチンC"
+        case .renalDrugs: return "CCr・eGFRで減量・禁忌がある薬と添付文書の記載"
         case .body: return "DuBois・藤本・Mosteller"
         case .endDate: return "開始日＋処方日数 → 最終服用日"
         case .nextVisit: return "受診日までに必要な日数・錠数"
@@ -142,6 +145,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     var keywords: String {
         switch self {
         case .renal: return "ccr egfr クレアチニン 腎 シスタチン"
+        case .renalDrugs: return "腎 ccr egfr 減量 禁忌 用量調節 添付文書 透析"
         case .body: return "bsa bmi ibw 体重 身長"
         case .endDate, .nextVisit: return "日数 日付 カレンダー"
         case .validity: return "処方せん 期限 4日"
@@ -173,6 +177,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .renal: return "drop"
+        case .renalDrugs: return "list.bullet.rectangle"
         case .body: return "figure.stand"
         case .endDate: return "calendar"
         case .nextVisit: return "calendar.badge.clock"
@@ -204,7 +209,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
 
     var group: CalcGroup {
         switch self {
-        case .renal, .body: return .renal
+        case .renal, .renalDrugs, .body: return .renal
         case .endDate, .nextVisit, .validity, .cycle, .age: return .days
         case .pillCount, .remaining, .sheet, .uneven: return .quantity
         case .powder, .pediatric, .pedDrugs, .weightDose: return .dose
@@ -220,6 +225,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     @ViewBuilder var destination: some View {
         switch self {
         case .renal: RenalView()
+        case .renalDrugs: RenalDrugsView()
         case .body: BodyView()
         case .endDate: EndDateView()
         case .nextVisit: NextVisitView()

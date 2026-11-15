@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.6.1"
-    CURRENT_PROJECT_VERSION: "11"
+    MARKETING_VERSION: "0.7.0"
+    CURRENT_PROJECT_VERSION: "12"
 targets:
   PharmaCalc:
     type: application
@@ -16,6 +16,8 @@ targets:
     sources:
       - path: PharmaCalc
       - path: data/ped_presets.json
+        buildPhase: resources
+      - path: data/renal_drugs.json
         buildPhase: resources
     info:
       path: PharmaCalc/Info.plist

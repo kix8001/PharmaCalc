@@ -21,6 +21,15 @@ struct RenalView: View {
             ccrSection
             egfrCrSection
             egfrCysSection
+            Section {
+                NavigationLink {
+                    RenalDrugsView()
+                } label: {
+                    Label("腎機能で注意する薬（添付文書）", systemImage: "list.bullet.rectangle")
+                }
+            } footer: {
+                Text("CCr・eGFRで減量や禁忌がある薬と、添付文書の該当箇所を見られます。")
+            }
         }
         .calcForm("腎機能")
     }

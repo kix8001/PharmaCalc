@@ -49,7 +49,7 @@ fun PatientScreen() = CalcPage {
 }
 
 @Composable
-fun RenalScreen() = CalcPage {
+fun RenalScreen(openDrugs: () -> Unit = {}) = CalcPage {
     val p = Patient
     var roundUp by rememberSaveable { mutableStateOf(false) }
     Section("患者情報（共通）") { PatientFields(PField.entries.toSet()) }
@@ -104,6 +104,10 @@ fun RenalScreen() = CalcPage {
             ResultRow("eGFRcys", fmt(e), "mL/min/1.73m²", note = Renal.stage(e))
             if (bsa != null) ResultRow("体表面積未補正", fmt(Renal.deindex(e, bsa)), "mL/min")
         } else MissingRow("年齢・シスタチンCを入力してください")
+    }
+
+    Section(footer = "CCr・eGFRで減量や禁忌がある薬と、添付文書の該当箇所を見られます。") {
+        androidx.compose.material3.TextButton(onClick = openDrugs) { Text("腎機能で注意する薬（添付文書）") }
     }
 }
 

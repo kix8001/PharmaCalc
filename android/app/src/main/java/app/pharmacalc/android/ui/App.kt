@@ -61,6 +61,7 @@ sealed interface Screen {
     data object Patient : Screen { override val title = "患者情報" }
     data object EditTiles : Screen { override val title = "ホームの編集" }
     data class HistoryDetail(val id: String) : Screen { override val title get() = "履歴の詳細" }
+    data class RenalDrugDetail(val name: String) : Screen { override val title get() = name }
     data class PedDrugEdit(val id: String?) : Screen { override val title get() = if (id == null) "薬を追加" else "薬を編集" }
 }
 
@@ -74,7 +75,8 @@ enum class Tab(val label: String, val title: String, val icon: ImageVector) {
 @Composable
 fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
     when (item) {
-        CalcItem.RENAL -> RenalScreen()
+        CalcItem.RENAL -> RenalScreen { push(Screen.Calc(CalcItem.RENAL_DRUGS)) }
+        CalcItem.RENAL_DRUGS -> app.pharmacalc.android.renal.RenalDrugsScreen { push(Screen.RenalDrugDetail(it)) }
         CalcItem.BODY -> BodyScreen()
         CalcItem.END_DATE -> EndDateScreen()
         CalcItem.NEXT_VISIT -> NextVisitScreen()
@@ -157,6 +159,7 @@ fun App() {
                     Screen.Patient -> PatientScreen()
                     Screen.EditTiles -> TileEditScreen()
                     is Screen.HistoryDetail -> HistoryDetailScreen(top.id, onDeleted = pop)
+                    is Screen.RenalDrugDetail -> app.pharmacalc.android.renal.RenalDrugDetailScreen(top.name)
                     is Screen.PedDrugEdit -> app.pharmacalc.android.ped.PedDrugEditScreen(top.id, done = pop)
                 }
             }

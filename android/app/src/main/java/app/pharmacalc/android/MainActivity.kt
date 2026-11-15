@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
         ScanHistory.init(applicationContext)
         HomeTiles.init(applicationContext)
         app.pharmacalc.android.ped.PedDrugStore.init(applicationContext)
+        app.pharmacalc.android.renal.RenalDrugData.init(applicationContext)
         setContent { PharmaTheme { App() } }
     }
 }

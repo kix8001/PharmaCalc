@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.CurrencyYen
 import androidx.compose.material.icons.filled.MedicalServices
@@ -50,6 +51,7 @@ enum class CalcItem(
     val icon: ImageVector, val group: CalcGroup,
 ) {
     RENAL("腎機能（CCr・eGFR）", "腎機能", "Cockcroft-Gault・日本人eGFR・シスタチンC", "ccr egfr クレアチニン 腎 シスタチン", Icons.Filled.WaterDrop, CalcGroup.RENAL),
+    RENAL_DRUGS("腎機能で注意する薬（添付文書）", "腎機能と薬", "CCr・eGFRで減量・禁忌がある薬と添付文書の記載", "腎 ccr egfr 減量 禁忌 用量調節 添付文書 透析", Icons.Filled.FactCheck, CalcGroup.RENAL),
     BODY("体表面積・BMI・理想体重", "体表面積", "DuBois・藤本・Mosteller", "bsa bmi ibw 体重 身長", Icons.Filled.Accessibility, CalcGroup.RENAL),
     END_DATE("服用終了日", "服用終了日", "開始日＋処方日数 → 最終服用日", "日数 日付 カレンダー", Icons.Filled.Event, CalcGroup.DAYS),
     NEXT_VISIT("次回受診までの日数", "次回受診", "受診日までに必要な日数・錠数", "日数 日付 カレンダー", Icons.Filled.EventRepeat, CalcGroup.DAYS),
