@@ -101,16 +101,26 @@ struct NumField: View {
     @Binding var text: String
     var unit: String = ""
     var integer: Bool = false
+    @FocusState private var focused: Bool
 
     var body: some View {
         HStack {
             Text(title)
-            Spacer()
+            Spacer(minLength: 8)
             TextField("—", text: $text)
                 .keyboardType(integer ? .numberPad : .decimalPad)
                 .multilineTextAlignment(.trailing)
                 .font(.body.monospacedDigit())
-                .frame(maxWidth: 130)
+                .focused($focused)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.tertiarySystemFill))
+                        .overlay(RoundedRectangle(cornerRadius: 8)
+                            .stroke(focused ? Color.accentColor : Color.clear, lineWidth: 1.5))
+                )
+                .frame(maxWidth: 150)
             if !unit.isEmpty {
                 Text(unit)
                     .font(.callout)
@@ -118,6 +128,10 @@ struct NumField: View {
                     .frame(minWidth: 52, alignment: .leading)
             }
         }
+        .frame(minHeight: 48)
+        // 行のどこをタップしても入力できるように
+        .contentShape(Rectangle())
+        .onTapGesture { focused = true }
     }
 }
 

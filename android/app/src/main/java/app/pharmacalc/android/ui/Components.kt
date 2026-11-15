@@ -3,6 +3,9 @@ package app.pharmacalc.android.ui
 import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,7 +88,13 @@ fun Divider() = HorizontalDivider(color = MaterialTheme.colorScheme.outlineVaria
 
 @Composable
 fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: String = "", integer: Boolean = false) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    val focus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    // 行のどこをタップしても入力できるように
+    Row(verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(
+            interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            indication = null) { focus.requestFocus(); keyboard?.show() }) {
         Text(title, modifier = Modifier.weight(1f))
         OutlinedTextField(
             value = value, onValueChange = onChange, singleLine = true,
@@ -93,7 +102,7 @@ fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: Str
             keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Next),
             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.End),
-            modifier = Modifier.width(120.dp)
+            modifier = Modifier.width(140.dp).focusRequester(focus)
         )
         if (unit.isNotEmpty()) {
             Text(unit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
