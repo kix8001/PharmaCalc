@@ -107,20 +107,37 @@ struct NumField: View {
         HStack {
             Text(title)
             Spacer(minLength: 8)
-            TextField("—", text: $text)
-                .keyboardType(integer ? .numberPad : .decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(.body.monospacedDigit())
-                .focused($focused)
+            HStack(spacing: 4) {
+                if !text.isEmpty {
+                    // クリアボタン（入力があるときだけ）
+                    Button {
+                        text = ""
+                        focused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.body)
+                            .foregroundStyle(Color(.tertiaryLabel))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("\(title)を消す")
+                }
+                TextField("—", text: $text)
+                    .keyboardType(integer ? .numberPad : .decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .font(.body.monospacedDigit())
+                    .focused($focused)
+            }
                 .padding(.vertical, 8)
-                .padding(.horizontal, 10)
+                .padding(.leading, text.isEmpty ? 10 : 4)
+                .padding(.trailing, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color(.tertiarySystemFill))
                         .overlay(RoundedRectangle(cornerRadius: 8)
                             .stroke(focused ? Color.accentColor : Color.clear, lineWidth: 1.5))
                 )
-                .frame(maxWidth: 150)
+                .frame(maxWidth: 160)
             if !unit.isEmpty {
                 Text(unit)
                     .font(.callout)

@@ -59,6 +59,7 @@ enum class CalcItem(
     CYCLE("休薬期間のある処方", "休薬サイクル", "3週投与1週休薬など", "休薬 クール 抗がん剤", Icons.Filled.Autorenew, CalcGroup.DAYS),
     AGE("年齢・月齢", "年齢・月齢", "生年月日から年齢・月齢・日齢", "誕生日 月齢", Icons.Filled.Cake, CalcGroup.DAYS),
     PILL_COUNT("錠剤カウント（カメラ）", "錠剤カウント", "バラ錠を撮影して数える", "カウント 数える 写真 撮影 バラ 監査", Icons.Filled.CameraAlt, CalcGroup.QUANTITY),
+    REMAINDER("余り電卓", "余り電卓", "割り算のあまり・シート＋バラを大きなキーで", "余り あまり 割り算 電卓 シート バラ", Icons.Filled.Calculate, CalcGroup.QUANTITY),
     REMAINING("残薬調整", "残薬調整", "残薬を差し引いた処方日数・数量", "残薬 余り 調整", Icons.Filled.Calculate, CalcGroup.QUANTITY),
     SHEET("PTPシート換算", "シート換算", "錠数 → シート＋バラ", "ptp シート バラ", Icons.Filled.GridOn, CalcGroup.QUANTITY),
     UNEVEN("不均等投与の総数", "不均等投与", "朝2・夕1など", "朝 昼 夕 寝る前", Icons.Filled.WbSunny, CalcGroup.QUANTITY),

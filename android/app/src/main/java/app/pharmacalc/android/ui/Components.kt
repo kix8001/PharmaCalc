@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilterChip
@@ -102,7 +103,14 @@ fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: Str
             keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Next),
             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.End),
-            modifier = Modifier.width(140.dp).focusRequester(focus)
+            // クリアボタン（入力があるときだけ）
+            leadingIcon = if (value.isEmpty()) null else @Composable {
+                androidx.compose.material3.IconButton(onClick = { onChange(""); focus.requestFocus() }) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Cancel, "${title}を消す",
+                        tint = MaterialTheme.colorScheme.outline)
+                }
+            },
+            modifier = Modifier.width(160.dp).focusRequester(focus)
         )
         if (unit.isNotEmpty()) {
             Text(unit, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

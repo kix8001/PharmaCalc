@@ -84,6 +84,7 @@ fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
         CalcItem.CYCLE -> CycleScreen()
         CalcItem.AGE -> AgeScreen()
         CalcItem.PILL_COUNT -> PillCountScreen()
+        CalcItem.REMAINDER -> app.pharmacalc.android.calc.RemainderScreen()
         CalcItem.REMAINING -> RemainingScreen()
         CalcItem.SHEET -> SheetScreen()
         CalcItem.UNEVEN -> UnevenScreen()
