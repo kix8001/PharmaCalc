@@ -94,6 +94,7 @@ private fun badge(s: String) = when (s) {
     "効能又は効果に関連する注意" -> "効能の注意"
     "重要な基本的注意" -> "重要な注意"
     "9.2 腎機能障害患者" -> "腎機能障害"
+    "警告" -> "警告"
     else -> "薬物動態（参考）"
 }
 
@@ -116,6 +117,10 @@ fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
                     verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    d.excerpts.filter { it.first == "禁忌" }.forEach { (_, t) ->
+                        Text("禁忌：" + t.replace("\n", " "), style = MaterialTheme.typography.bodySmall, color = Color(0xFFD32F2F),
+                            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (d.noNumbers) {
                             Text("数値の基準なし", style = MaterialTheme.typography.labelSmall,
@@ -124,7 +129,7 @@ fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
                                     .padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                         d.excerpts.map { it.first }.distinct().sorted().forEach { s ->
-                            val red = s == "禁忌"
+                            val red = s == "禁忌" || s == "警告"
                             Text(badge(s), style = MaterialTheme.typography.labelSmall,
                                 color = if (red) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.background(
@@ -136,7 +141,7 @@ fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
             }
         }
     }
-    Text("${RenalDrugData.source}の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。",
+    Text("${RenalDrugData.source}の「警告」「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」のうち腎機能（CCr・eGFR・クレアチニン・腎・透析）に触れた項目と「9.2 腎機能障害患者」の全文を、文言を変えずに載せています。「16.6 薬物動態」は腎機能の数値があるものだけ参考として載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -153,7 +158,7 @@ fun RenalDrugDetailScreen(name: String) = CalcPage {
         Section(section) {
             SelectionContainer {
                 Text(text, style = MaterialTheme.typography.bodyMedium,
-                    color = if (section == "禁忌") Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface)
+                    color = if (section == "禁忌" || section == "警告") Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface)
             }
         }
     }

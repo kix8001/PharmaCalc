@@ -101,6 +101,12 @@ struct RenalDrugsView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(d.name).font(.headline)
                                     Text(d.generic).font(.caption).foregroundStyle(.secondary)
+                                    ForEach(d.excerpts.filter { $0.section == "禁忌" }, id: \.self) { e in
+                                        Text("禁忌：" + e.text.replacingOccurrences(of: "\n", with: " "))
+                                            .font(.caption)
+                                            .foregroundStyle(.red)
+                                            .lineLimit(2)
+                                    }
                                     HStack(spacing: 6) {
                                         if d.noNumbers == true {
                                             Text("数値の基準なし")
@@ -113,8 +119,8 @@ struct RenalDrugsView: View {
                                             Text(badge(s))
                                                 .font(.caption2.bold())
                                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                                .background(Capsule().fill(s == "禁忌" ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.12)))
-                                                .foregroundStyle(s == "禁忌" ? Color.red : Color.accentColor)
+                                                .background(Capsule().fill(s == "禁忌" || s == "警告" ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.12)))
+                                                .foregroundStyle(s == "禁忌" || s == "警告" ? Color.red : Color.accentColor)
                                         }
                                     }
                                 }
@@ -126,7 +132,7 @@ struct RenalDrugsView: View {
             Section {
                 EmptyView()
             } footer: {
-                Text("\(RenalDrugData.source)の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。")
+                Text("\(RenalDrugData.source)の「警告」「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」のうち腎機能（CCr・eGFR・クレアチニン・腎・透析）に触れた項目と「9.2 腎機能障害患者」の全文を、文言を変えずに載せています。「16.6 薬物動態」は腎機能の数値があるものだけ参考として載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。")
             }
         }
         .calcForm("腎機能で注意する薬")
@@ -140,6 +146,7 @@ struct RenalDrugsView: View {
         case "効能又は効果に関連する注意": return "効能の注意"
         case "重要な基本的注意": return "重要な注意"
         case "9.2 腎機能障害患者": return "腎機能障害"
+        case "警告": return "警告"
         default: return "薬物動態（参考）"
         }
     }
@@ -170,7 +177,7 @@ struct RenalDrugDetailView: View {
                     Text(e.text)
                         .font(.callout)
                         .textSelection(.enabled)
-                        .foregroundStyle(e.section == "禁忌" ? Color.red : Color.primary)
+                        .foregroundStyle(e.section == "禁忌" || e.section == "警告" ? Color.red : Color.primary)
                 }
             }
             if let url = drug.pmdaURL {

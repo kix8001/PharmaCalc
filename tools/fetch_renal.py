@@ -1,7 +1,8 @@
 # 腎機能で用量調節・禁忌がある薬の一覧（data/renal_drugs.json）を PMDA の電子添文から作るスクリプト。
 # 添付文書の「禁忌」「用法及び用量」「用法及び用量に関連する注意」「9.2 腎機能障害患者」のうち、
 # クレアチニン・CCr・eGFR などの数値の基準を含む項目だけを、文言を変えずに抜き出す。
-# 用量の決まりが無く、薬物動態（16.6）にだけ CCr などが書かれている薬も（参考）として載せる。
+# 数値の基準の有無にかかわらず、警告・禁忌・用量・重要な基本的注意の「腎」「透析」に触れた項目と 9.2 は全部載せる。
+# 薬物動態（16.6）は腎機能の数値があるものだけ（参考）として載せる。
 # 使い方：python3 tools/fetch_renal.py   （www.pmda.go.jp に接続できる環境で。1秒に1回だけ問い合わせる）
 import json, os, re, sys, time, html, zipfile, subprocess, urllib.parse, tempfile, unicodedata
 
@@ -42,9 +43,8 @@ CANDIDATES = {
 }
 
 KEY = re.compile(r"クレアチニン|CLcr|CLCR|Ccr|CCr|CCR|eGFR|GFR|mL/min|mL/分|ｍL/min")
-# 数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せる
-RENAL_WORD = re.compile(r"腎")
-FALLBACK_SECTIONS = {"禁忌", "用法及び用量に関連する注意", "重要な基本的注意", "9.2 腎機能障害患者"}
+# 腎機能に触れた記載（「副腎」は除く）
+RENAL_WORD = re.compile(r"(?<!副)腎|透析")
 
 
 def run_curl(cmd):
@@ -164,33 +164,37 @@ def items(seg):
     return out or [seg]
 
 
-SECTIONS = [("ContraIndications", "禁忌"), ("EfficacyRelatedPrecautions", "効能又は効果に関連する注意"),
-            ("InfoDoseAdmin", "用法及び用量"),
+SECTIONS = [("Warnings", "警告"), ("ContraIndications", "禁忌"),
+            ("EfficacyRelatedPrecautions", "効能又は効果に関連する注意"), ("InfoDoseAdmin", "用法及び用量"),
             ("InfoPrecautionsDosage", "用法及び用量に関連する注意"), ("ImportantPrecautions", "重要な基本的注意"),
             ("PatientsWithRenalImpairment", "9.2 腎機能障害患者"),
             ("SpecificPopulation", "（参考）16.6 薬物動態")]
 
 
-def extract(s, fallback=False):
-    found = []
+def extract(s):
+    """腎機能に関する記載を、添付文書の順に返す。2つ目の値は CCr・eGFR などの数値の基準があるか"""
+    found, seen, numeric = [], set(), False
     for tag, label in SECTIONS:
-        if fallback and label not in FALLBACK_SECTIONS:
-            continue
         m = re.search(r"<%s\b.*?</%s>" % (tag, tag), s, re.S)
         if not m:
             continue
         for it in items(m.group(0)):
             t = to_text(it)
             n = unicodedata.normalize("NFKC", t)
-            # 9.2 は腎機能障害患者の項目なので全部、ほかは「腎」に触れた項目だけ
-            if fallback:
-                ok = label == "9.2 腎機能障害患者" or RENAL_WORD.search(n)
+            has_num = bool(KEY.search(n))
+            renal = bool(RENAL_WORD.search(n))
+            if tag == "PatientsWithRenalImpairment":
+                ok = True                      # 9.2 は全部
+            elif tag == "SpecificPopulation":
+                ok = has_num and renal         # 薬物動態は腎機能の数値があるものだけ（参考）
             else:
-                # 薬物動態（16.6）は肝機能障害などの項目もあるので「腎」を含むものだけ
-                ok = KEY.search(n) and (tag != "SpecificPopulation" or "腎" in n)
-            if ok:
+                ok = has_num or renal          # 禁忌・警告・用量などは数値か「腎」「透析」に触れたもの
+            if ok and t and t not in seen:
+                seen.add(t)
                 found.append({"section": label, "text": t})
-    return found
+                if has_num and tag != "SpecificPopulation":
+                    numeric = True
+    return found, numeric
 
 
 def norm(x):
@@ -211,14 +215,11 @@ def main():
             # 規格・会社違いで記載が違うことがあるので、候補を見比べて腎機能の記載が一番多いものを使う
             best = None
             for generic, names, code in rs[:4]:
-                e = extract(xml(code))
+                e, num = extract(xml(code))
                 score = sum(len(x["text"]) for x in e)
                 if best is None or score > best[0]:
-                    best = (score, generic, names, code, e)
-            _, generic, names, code, ex = best
-            numeric = bool(ex)
-            if not ex:
-                ex = extract(xml(code), fallback=True)
+                    best = (score, generic, names, code, e, num)
+            _, generic, names, code, ex, numeric = best
             if not ex:
                 none.append(w)
                 continue
