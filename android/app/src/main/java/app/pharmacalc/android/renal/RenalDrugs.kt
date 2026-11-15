@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -219,7 +221,7 @@ private fun DrugRow(d: RenalDrug, onClick: () -> Unit) {
 private fun FavStar(id: String) {
     val fav = id in RenalFavorites.ids
     androidx.compose.material3.IconButton(onClick = { RenalFavorites.toggle(id) }) {
-        Icon(if (fav) androidx.compose.material.icons.Icons.Filled.Star else androidx.compose.material.icons.Icons.Filled.StarBorder,
+        Icon(if (fav) Icons.Filled.Star else Icons.Filled.StarBorder,
             if (fav) "よく使う薬から外す" else "よく使う薬に登録",
             tint = if (fav) Color(0xFFF5B400) else MaterialTheme.colorScheme.onSurfaceVariant)
     }
