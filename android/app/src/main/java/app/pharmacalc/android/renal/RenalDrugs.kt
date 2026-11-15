@@ -46,6 +46,8 @@ data class RenalDrug(
     val excerpts: List<Pair<String, String>>,
     /** 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ） */
     val noNumbers: Boolean = false,
+    /** 同じ成分のほかの先発品の販売名（検索用） */
+    val aliases: String = "",
 ) {
     /** 一覧と詳細をつなぐ ID（成分ごとに一意） */
     val id get() = (pmda ?: "") + "|" + name
@@ -67,7 +69,7 @@ object RenalDrugData {
                 RenalDrug(d.getString("category"), d.getString("name"), d.optString("products"), d.optString("generic"),
                     d.optString("pmda").ifEmpty { null },
                     (0 until ex.length()).map { j -> ex.getJSONObject(j).let { it.getString("section") to it.getString("text") } },
-                    d.optBoolean("noNumbers", false))
+                    d.optBoolean("noNumbers", false), d.optString("aliases"))
             }
         }
     }
@@ -108,7 +110,7 @@ fun RenalDrugsScreen(open: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(0) }  // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
     val list = RenalDrugData.drugs.filter { d ->
         (category == null || d.category == category) &&
-            (query.isEmpty() || (d.name + d.products + d.generic).contains(query, ignoreCase = true)) &&
+            (query.isEmpty() || (d.name + d.products + d.generic + d.aliases).contains(query, ignoreCase = true)) &&
             (filter != 1 || d.excerpts.any { it.first == "禁忌" || it.first == "警告" }) &&
             (filter != 2 || !d.noNumbers)
     }

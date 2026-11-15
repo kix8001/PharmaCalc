@@ -79,16 +79,21 @@ def main():
             except Exception as e:
                 print("  取得失敗", names, e, flush=True)
                 continue
-            score = sum(len(x["text"]) for x in ex)
-            if best is None or score > best[0]:
-                best = (score, names, doc, ex, num)
+            # 先発品（先頭）に腎機能の記載があればそれを使い、無いときだけ次の製品を見る
+            best = (names, doc, ex, num)
+            if ex:
+                break
         done += 1
         if done % 50 == 0:
             print("…", done, "／", len(groups), "成分", len(result), "件", flush=True)
-        if not best or not best[3]:
+        if not best or not best[2]:
             continue
-        _, names, doc, ex, num = best
+        names, doc, ex, num = best
         d = {"category": cname, "name": short_name(names), "products": names, "generic": generic, "pmda": yj7, "excerpts": ex}
+        # 同じ成分の先発品の販売名（検索用）
+        brands = sorted({short_name(n) for n, _ in prods if "「" not in n} - {d["name"]})
+        if brands:
+            d["aliases"] = "／".join(brands)
         if not num:
             d["noNumbers"] = True
         result.append(d)

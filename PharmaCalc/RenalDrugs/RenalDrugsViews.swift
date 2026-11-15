@@ -14,6 +14,8 @@ struct RenalDrug: Decodable, Identifiable, Hashable {
     var excerpts: [Excerpt]
     /// 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ）
     var noNumbers: Bool?
+    /// 同じ成分のほかの先発品の販売名（検索用）
+    var aliases: String?
 
     /// 成分（YJコード先頭7桁）ごとに一意
     var id: String { (pmda ?? "") + "|" + name }
@@ -73,7 +75,7 @@ struct RenalDrugsView: View {
     private func list(_ c: String) -> [RenalDrug] {
         RenalDrugData.drugs.filter { d in
             d.category == c &&
-            (query.isEmpty || (d.name + d.products + d.generic).localizedCaseInsensitiveContains(query)) &&
+            (query.isEmpty || (d.name + d.products + d.generic + (d.aliases ?? "")).localizedCaseInsensitiveContains(query)) &&
             (filter != 1 || d.excerpts.contains { $0.section == "禁忌" || $0.section == "警告" }) &&
             (filter != 2 || d.noNumbers != true)
         }
