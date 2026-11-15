@@ -44,6 +44,8 @@ import org.json.JSONObject
 data class RenalDrug(
     val category: String, val name: String, val products: String, val generic: String, val pmda: String?,
     val excerpts: List<Pair<String, String>>,
+    /** 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ） */
+    val noNumbers: Boolean = false,
 )
 
 object RenalDrugData {
@@ -61,7 +63,8 @@ object RenalDrugData {
                 val ex = d.getJSONArray("excerpts")
                 RenalDrug(d.getString("category"), d.getString("name"), d.optString("products"), d.optString("generic"),
                     d.optString("pmda").ifEmpty { null },
-                    (0 until ex.length()).map { j -> ex.getJSONObject(j).let { it.getString("section") to it.getString("text") } })
+                    (0 until ex.length()).map { j -> ex.getJSONObject(j).let { it.getString("section") to it.getString("text") } },
+                    d.optBoolean("noNumbers", false))
             }
         }
     }
@@ -114,6 +117,12 @@ fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
                     Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (d.noNumbers) {
+                            Text("数値の基準なし", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.background(Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(50))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
                         d.excerpts.map { it.first }.distinct().sorted().forEach { s ->
                             val red = s == "禁忌"
                             Text(badge(s), style = MaterialTheme.typography.labelSmall,
@@ -127,7 +136,7 @@ fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
             }
         }
     }
-    Text("${RenalDrugData.source}の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。",
+    Text("${RenalDrugData.source}の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 

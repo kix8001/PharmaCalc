@@ -16,18 +16,18 @@ CANDIDATES = {
     "抗凝固薬": ["エリキュース", "リクシアナ", "イグザレルト", "プラザキサ"],
     "糖尿病薬": ["メトグルコ", "ジャヌビア", "グラクティブ", "エクア", "ネシーナ", "スイニー", "オングリザ", "ザファテック",
                "マリゼブ", "テネリア", "トラゼンタ", "フォシーガ", "ジャディアンス", "カナグル", "スーグラ", "ルセフィ", "デベルザ",
-               "スターシス", "ファスティック", "グルファスト", "シュアポスト", "アマリール", "グリミクロン", "エクメット", "イニシンク",
+               "スターシス", "ファスティック", "グルファスト", "レパグリニド", "アマリール", "グリミクロン", "エクメット", "イニシンク",
                "メタクト", "リベルサス"],
-    "鎮痛・神経障害性疼痛": ["リリカ", "タリージェ", "サインバルタ", "トラマール", "トラムセット", "ワントラム", "タペンタ",
+    "鎮痛・神経障害性疼痛": ["リリカ", "タリージェ", "サインバルタ", "トラマール", "トラムセット", "ワントラム",
                     "オキシコンチン", "MSコンチン", "ロキソニン", "セレコックス", "カロナール"],
     "抗ウイルス薬": ["バルトレックス", "ファムビル", "ゾビラックス", "タミフル", "パキロビッド", "ゾコーバ", "ラゲブリオ",
                 "バラクルード", "ベムリディ", "ビリアード"],
     "抗菌薬・抗真菌薬": ["クラビット", "シプロキサン", "グレースビット", "ジェニナック", "オゼックス", "バクタ", "クラリス",
                    "ケフレックス", "ケフラール", "サワシリン", "オーグメンチン", "セフゾン", "フロモックス", "メイアクト", "ファロム",
                    "ジフルカン", "ラミシール"],
-    "痛風・高尿酸血症": ["ザイロリック", "フェブリク", "ウリアデック", "コルヒチン"],
+    "痛風・高尿酸血症": ["アロプリノール", "フェブリク", "ウリアデック", "コルヒチン", "クエンメット"],
     "脂質異常症": ["クレストール", "リバロ", "ベザトール", "リピディル", "トライコア", "パルモディア"],
-    "循環器": ["ジゴシン", "サンリズム", "シベノール", "リスモダン", "ソタコール", "タンボコール", "テノーミン", "セララ",
+    "循環器": ["ジゴシン", "サンリズム", "シベノール", "リスモダン", "タンボコール", "テノーミン", "セララ",
              "アルダクトン", "ミネブロ", "エンレスト", "ベリキューボ", "サムスカ", "シロスタゾール", "プレタール"],
     "胃腸薬": ["ガスター", "アシノン", "プロテカジン", "アルタット", "プリンペラン"],
     "骨粗鬆症": ["アクトネル", "ベネット", "フォサマック", "ボナロン", "ボノテオ", "リカルボン", "ボンビバ"],
@@ -37,11 +37,14 @@ CANDIDATES = {
                "ガバペン", "ビ・シフロール", "ミラペックス", "シンメトレル", "メマリー", "レミニール", "ギャバロン", "テルネリン",
                "デパケン", "ラミクタール", "ルネスタ", "ベルソムラ"],
     "抗アレルギー薬": ["ジルテック", "ザイザル", "タリオン", "アレロック", "アレグラ", "ビラノア", "デザレックス", "ルパフィン"],
-    "その他": ["リウマトレックス", "メトレート", "ダイアモックス", "ウラリット", "ネキシウム", "エベレンゾ", "ダーブロック",
-             "リオナ", "ホスレノール", "フォスリボール", "カリメート", "ロケルマ", "ジャクスタピッド", "ゼチーア", "スピリーバ"],
+    "その他": ["リウマトレックス", "ダイアモックス", "ネキシウム", "エベレンゾ", "ダーブロック",
+             "リオナ", "ホスレノール", "カリメート", "ロケルマ", "ジャクスタピッド", "ゼチーア", "スピリーバ"],
 }
 
 KEY = re.compile(r"クレアチニン|CLcr|CLCR|Ccr|CCr|CCR|eGFR|GFR|mL/min|mL/分|ｍL/min")
+# 数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せる
+RENAL_WORD = re.compile(r"腎")
+FALLBACK_SECTIONS = {"禁忌", "用法及び用量に関連する注意", "重要な基本的注意", "9.2 腎機能障害患者"}
 
 
 def run_curl(cmd):
@@ -168,15 +171,24 @@ SECTIONS = [("ContraIndications", "禁忌"), ("EfficacyRelatedPrecautions", "効
             ("SpecificPopulation", "（参考）16.6 薬物動態")]
 
 
-def extract(s):
+def extract(s, fallback=False):
     found = []
     for tag, label in SECTIONS:
+        if fallback and label not in FALLBACK_SECTIONS:
+            continue
         m = re.search(r"<%s\b.*?</%s>" % (tag, tag), s, re.S)
         if not m:
             continue
         for it in items(m.group(0)):
             t = to_text(it)
-            if KEY.search(unicodedata.normalize("NFKC", t)):
+            n = unicodedata.normalize("NFKC", t)
+            # 9.2 は腎機能障害患者の項目なので全部、ほかは「腎」に触れた項目だけ
+            if fallback:
+                ok = label == "9.2 腎機能障害患者" or RENAL_WORD.search(n)
+            else:
+                # 薬物動態（16.6）は肝機能障害などの項目もあるので「腎」を含むものだけ
+                ok = KEY.search(n) and (tag != "SpecificPopulation" or "腎" in n)
+            if ok:
                 found.append({"section": label, "text": t})
     return found
 
@@ -190,9 +202,9 @@ def main():
     for cat, words in CANDIDATES.items():
         for w in words:
             rs = rows(search(w))
-            # 内服・外用（YJコード8桁目が A＝注射は除く）で、販売名に検索語を含むもの
+            # 販売名に検索語を含む内服・外用（注射剤は販売名の「注」で除く）
             rs = [r for r in rs if norm(w) in norm(r[1]) and len(r[2].split("_")) > 1
-                  and len(r[2].split("_")[1]) > 7 and r[2].split("_")[1][7] != "A"]
+                  and not re.search(r"注|点滴", r[1])]
             if not rs:
                 missing.append(w)
                 continue
@@ -204,11 +216,17 @@ def main():
                 if best is None or score > best[0]:
                     best = (score, generic, names, code, e)
             _, generic, names, code, ex = best
+            numeric = bool(ex)
+            if not ex:
+                ex = extract(xml(code), fallback=True)
             if not ex:
                 none.append(w)
                 continue
             yj = code.split("_")[1]
-            result.append({"category": cat, "name": w, "products": names, "generic": generic, "pmda": yj[:7], "excerpts": ex})
+            d = {"category": cat, "name": w, "products": names, "generic": generic, "pmda": yj[:7], "excerpts": ex}
+            if not numeric:
+                d["noNumbers"] = True
+            result.append(d)
             print(w, "→", names[:40], len(ex), flush=True)
     out = {"source": "PMDA 電子添文（2026年11月取得）", "drugs": result}
     with open(OUT, "w", encoding="utf-8") as f:

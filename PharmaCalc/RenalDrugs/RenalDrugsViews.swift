@@ -12,6 +12,8 @@ struct RenalDrug: Decodable, Identifiable, Hashable {
     var generic: String
     var pmda: String?
     var excerpts: [Excerpt]
+    /// 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ）
+    var noNumbers: Bool?
 
     var id: String { name }
     var pmdaURL: URL? {
@@ -100,6 +102,13 @@ struct RenalDrugsView: View {
                                     Text(d.name).font(.headline)
                                     Text(d.generic).font(.caption).foregroundStyle(.secondary)
                                     HStack(spacing: 6) {
+                                        if d.noNumbers == true {
+                                            Text("数値の基準なし")
+                                                .font(.caption2.bold())
+                                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                                .background(Capsule().fill(Color.gray.opacity(0.15)))
+                                                .foregroundStyle(.secondary)
+                                        }
                                         ForEach(Array(Set(d.excerpts.map(\.section))).sorted(), id: \.self) { s in
                                             Text(badge(s))
                                                 .font(.caption2.bold())
@@ -117,7 +126,7 @@ struct RenalDrugsView: View {
             Section {
                 EmptyView()
             } footer: {
-                Text("\(RenalDrugData.source)の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。")
+                Text("\(RenalDrugData.source)の「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」「9.2 腎機能障害患者」と、参考として「16.6 薬物動態」から、クレアチニン・CCr・eGFR などの基準が書かれた項目をそのまま載せています。数値の基準が無い薬は、腎機能に触れた記載（禁忌・用量の注意・9.2 など）を載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。")
             }
         }
         .calcForm("腎機能で注意する薬")
