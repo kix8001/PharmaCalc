@@ -7,6 +7,7 @@ struct PedDoseView: View {
     @State private var query = ""
     @State private var category: String?
     @State private var adding = false
+    @State private var web: WebPage?
 
     private func filtered(_ c: String) -> [PedDrug] {
         store.drugs.filter { d in
@@ -46,6 +47,15 @@ struct PedDoseView: View {
                             } label: {
                                 PedDrugRow(drug: d, age: p.ageV, weight: p.weightV)
                             }
+                            .contextMenu {
+                                if let url = d.pmdaURL {
+                                    Button {
+                                        web = WebPage(url: url)
+                                    } label: {
+                                        Label("添付文書を見る（PMDA）", systemImage: "doc.text.magnifyingglass")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -58,7 +68,7 @@ struct PedDoseView: View {
                 }
                 Button("初期の薬に戻す", role: .destructive) { store.resetToPresets() }
             } footer: {
-                Text("初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。「用量未登録」の薬は、タップして用量を入れられます。")
+                Text("初期登録は PMDA の電子添文（2026年11月）の用法及び用量と照合しています。適応症で用量が違う薬もあるので、迷ったら長押し→「添付文書を見る」で確認してください。「用量未登録」の薬は、タップして用量を入れられます。")
             }
         }
         .calcForm("小児用量（薬剤別）")
@@ -68,6 +78,9 @@ struct PedDoseView: View {
             }
             .environmentObject(store)
             .environmentObject(p)
+        }
+        .sheet(item: $web) { page in
+            SafariView(url: page.url).ignoresSafeArea()
         }
     }
 
@@ -154,6 +167,7 @@ struct PedDrugEditView: View {
     @State private var bands: [BandText] = []
     @State private var note = ""
     @State private var loaded = false
+    @State private var web: WebPage?
 
     struct BandText: Identifiable {
         var id = UUID()
@@ -161,6 +175,7 @@ struct PedDrugEditView: View {
         var min = ""
         var max = ""
         var times = ""
+        var perKg = false
     }
 
     private var amountUnit: String { microgram ? "μg" : "mg" }
@@ -171,7 +186,7 @@ struct PedDrugEditView: View {
         var d = PedDrug(id: original?.id ?? UUID(), name: name, ingredient: ingredient, isSyrup: form == .syrup, conc: max(0, c),
                         basis: basis, times: t, note: note,
                         category: category.trimmingCharacters(in: .whitespaces).isEmpty ? nil : category,
-                        formUnit: form == .other ? formUnit : nil, amountUnit: microgram ? "μg" : nil)
+                        formUnit: form == .other ? formUnit : nil, amountUnit: microgram ? "μg" : nil, pmda: original?.pmda)
         switch basis {
         case .day, .dose:
             guard let lo = parseNum(minPerKg), lo > 0 else { return nil }
@@ -182,7 +197,7 @@ struct PedDrugEditView: View {
                 guard let bl = parseNum(b.below), bl > 0 else { return nil }
                 let lo = parseNum(b.min) ?? 0
                 return AgeBand(below: bl, min: lo, max: max(lo, parseNum(b.max) ?? lo),
-                               times: parseInt(b.times).flatMap { $0 > 0 ? $0 : nil })
+                               times: parseInt(b.times).flatMap { $0 > 0 ? $0 : nil }, perKg: b.perKg ? true : nil)
             }
             guard !list.isEmpty else { return nil }
             d.bands = list
@@ -238,8 +253,9 @@ struct PedDrugEditView: View {
                                 TextField("最小", text: $b.min).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
                                 Text("〜")
                                 TextField("最大", text: $b.max).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                                Text("\(amountUnit)/日").font(.caption)
+                                Text(b.perKg ? "\(amountUnit)/kg/日" : "\(amountUnit)/日").font(.caption)
                             }
+                            Toggle("体重1kgあたりの量", isOn: $b.perKg).font(.caption)
                             HStack {
                                 Text("この範囲の1日の回数（任意）").font(.caption).foregroundStyle(.secondary)
                                 TextField("回", text: $b.times).keyboardType(.numberPad).multilineTextAlignment(.trailing)
@@ -267,6 +283,17 @@ struct PedDrugEditView: View {
             }
             Section("メモ") {
                 TextField("用法の注意など", text: $note, axis: .vertical)
+            }
+            if let url = original?.pmdaURL {
+                Section {
+                    Button {
+                        web = WebPage(url: url)
+                    } label: {
+                        Label("添付文書を見る（PMDA）", systemImage: "doc.text.magnifyingglass")
+                    }
+                } footer: {
+                    Text("同じ成分の製品の一覧が開きます。目的の製品の「HTML」か「PDF」を選んでください。")
+                }
             }
             if original != nil {
                 Section {
@@ -298,6 +325,9 @@ struct PedDrugEditView: View {
             }
         }
         .onAppear(perform: load)
+        .sheet(item: $web) { page in
+            SafariView(url: page.url).ignoresSafeArea()
+        }
     }
 
     private func load() {
@@ -323,7 +353,7 @@ struct PedDrugEditView: View {
         maxDailyPerKg = d.maxDailyPerKg.map { fmtTrim($0, 2) } ?? ""
         bands = d.bands.map {
             BandText(below: fmtTrim($0.below, 1), min: fmtTrim($0.min, 2), max: fmtTrim($0.max, 2),
-                     times: $0.times.map { "\($0)" } ?? "")
+                     times: $0.times.map { "\($0)" } ?? "", perKg: $0.perKg == true)
         }
         if bands.isEmpty { bands = [BandText()] }
         note = d.note

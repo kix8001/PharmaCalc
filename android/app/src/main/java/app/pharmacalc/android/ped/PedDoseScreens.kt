@@ -68,7 +68,7 @@ fun PedDoseScreen(edit: (String?) -> Unit) = CalcPage {
             }
         }
     }
-    Section(footer = "初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。「用量未登録」の薬は、タップして用量を入れられます。") {
+    Section(footer = "初期登録は PMDA の電子添文（2026年11月）の用法及び用量と照合しています。適応症で用量が違う薬もあるので、迷ったらタップして「添付文書を見る」で確認してください。「用量未登録」の薬は、タップして用量を入れられます。") {
         TextButton(onClick = { edit(null) }) {
             Icon(Icons.Filled.AddCircle, null); Text("  薬を追加")
         }
@@ -112,7 +112,8 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
     }
 }
 
-private class BandText(below: String = "", min: String = "", max: String = "", times: String = "") {
+private class BandText(below: String = "", min: String = "", max: String = "", times: String = "", perKg: Boolean = false) {
+    var perKg by mutableStateOf(perKg)
     var below by mutableStateOf(below)
     var min by mutableStateOf(min)
     var max by mutableStateOf(max)
@@ -144,7 +145,7 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
     var note by remember { mutableStateOf(original?.note ?: "") }
     val bands = remember {
         mutableStateListOf<BandText>().apply {
-            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 1), fmtTrim(it.min, 2), fmtTrim(it.max, 2), it.times?.toString() ?: "")) }
+            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 1), fmtTrim(it.min, 2), fmtTrim(it.max, 2), it.times?.toString() ?: "", it.perKg)) }
             if (isEmpty()) add(BandText())
         }
     }
@@ -159,7 +160,7 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
             maxDoseMg = parseNum(maxDose)?.takeIf { it > 0 }, maxDailyMg = parseNum(maxDaily)?.takeIf { it > 0 },
             maxDailyPerKg = parseNum(maxDailyPerKg)?.takeIf { it > 0 },
             category = category.trim().ifEmpty { null }, formUnit = if (form == Form3.OTHER) formUnit.trim() else null,
-            amountUnit = if (microgram) "μg" else null)
+            amountUnit = if (microgram) "μg" else null, pmda = original?.pmda)
         when (basis) {
             DoseBasis.AGE, DoseBasis.WEIGHT -> {
                 val list = bands.mapNotNull { b ->
@@ -167,7 +168,7 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
                     if (bl == null || bl <= 0) null
                     else {
                         val lo = parseNum(b.min) ?: 0.0
-                        AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo), parseInt(b.times)?.takeIf { it > 0 })
+                        AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo), parseInt(b.times)?.takeIf { it > 0 }, b.perKg)
                     }
                 }
                 if (list.isEmpty()) return null
@@ -212,9 +213,11 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
                         IconButton(onClick = { bands.removeAt(i) }) { Icon(Icons.Filled.RemoveCircle, "削除", tint = Color(0xFFE53935)) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${au}/日　この範囲の1日の回数（任意）", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        Text(if (b.perKg) "${au}/kg/日　この範囲の1日の回数（任意）" else "${au}/日　この範囲の1日の回数（任意）",
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                         SmallField(b.times, { b.times = it }, "回", Modifier.width(72.dp))
                     }
+                    app.pharmacalc.android.ui.SwitchRow("体重1kgあたりの量", b.perKg) { b.perKg = it }
                 }
                 TextButton(onClick = { bands.add(BandText()) }) { Text("区切りを追加") }
                 Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。",
@@ -237,6 +240,12 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
     }
     Section("メモ") {
         OutlinedTextField(note, { note = it }, label = { Text("用法の注意など") }, modifier = Modifier.fillMaxWidth())
+    }
+    original?.pmdaUrl?.let { url ->
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        Section(footer = "同じ成分の製品の一覧が開きます。目的の製品の「HTML」か「PDF」を選んでください。") {
+            TextButton(onClick = { app.pharmacalc.android.barcode.PMDA.open(ctx, url) }) { Text("添付文書を見る（PMDA）") }
+        }
     }
     val built = build()
     Button(onClick = { built?.let { PedDrugStore.upsert(it); done() } }, enabled = built != null, modifier = Modifier.fillMaxWidth()) {

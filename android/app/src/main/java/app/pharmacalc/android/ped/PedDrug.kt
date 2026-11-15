@@ -12,7 +12,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** 年齢別・体重別の用量（〜未満なら 1日 min〜max）。min・max とも0なら「この範囲は用量の記載なし」 */
-data class AgeBand(val below: Double, val min: Double, val max: Double, val times: Int? = null) {
+data class AgeBand(val below: Double, val min: Double, val max: Double, val times: Int? = null, val perKg: Boolean = false) {
     val notIndicated get() = min <= 0 && max <= 0
 }
 
@@ -44,7 +44,10 @@ data class PedDrug(
     val formUnit: String? = null,
     /** 成分量の単位（"mg" か "μg"） */
     val amountUnit: String? = null,
+    /** PMDA の一般名ごとの一覧を開くための YJ コード先頭7桁 */
+    val pmda: String? = null,
 ) {
+    val pmdaUrl get() = pmda?.let { "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/$it" }
     val unit get() = formUnit ?: if (isSyrup) "mL" else "g"
     val amount get() = amountUnit ?: "mg"
     val hasProduct get() = conc > 0
@@ -88,7 +91,13 @@ data class PedDrug(
                 val b = bands.sortedBy { it.below }.firstOrNull { key < it.below } ?: return null to "登録した範囲の外です"
                 if (b.notIndicated) return null to "この年齢・体重では用量の記載がありません"
                 val bt = max(1, b.times ?: t)
-                Result(b.min, b.max, b.min / bt, b.max / bt, bt, false) to null
+                var lo = b.min
+                var hi = b.max
+                if (b.perKg) {
+                    if (weight == null || weight <= 0) return null to "体重を入れてください"
+                    lo *= weight; hi *= weight
+                }
+                Result(lo, hi, lo / bt, hi / bt, bt, false) to null
             }
         }
     }
@@ -115,7 +124,7 @@ object PedDrugStore {
         "ムコダインDS50%", "ムコダインシロップ5%", "ムコソルバンDS1.5%", "ムコソルバンシロップ0.3%", "トランサミンシロップ5%",
         "アスベリン散10%", "アスベリンシロップ0.5%", "カロナール細粒20%", "カロナールシロップ2%", "ワイドシリン細粒20%",
         "クラリスDS10%小児用", "メイアクトMS小児用細粒10%", "フロモックス小児用細粒100mg", "ジスロマック細粒小児用10%",
-        "タミフルDS3%", "オノンDS10%", "ザジテンDS0.1%",
+        "タミフルDS3%", "オノンDS10%", "ザジテンDS0.1%", "オゼックス錠小児用",
     )
 
     fun init(ctx: Context) {
@@ -135,10 +144,9 @@ object PedDrugStore {
             var list = saved
             val v = prefs?.getInt(VERSION_KEY, 0) ?: 0
             if (v < presetVersion) {
-                // 古い初期登録は入れ替え、自分で追加した薬は残す。足りない薬は名前で追加
-                if (v < 2) list = list.filter { it.name !in oldNames }
-                val names = list.map { it.name }.toSet()
-                list = list + presets.filter { it.name !in names }
+                // 初期登録の薬は新しい版（添付文書と照合して直した値）に入れ替え、自分で追加した薬は後ろに残す
+                val presetNames = presets.map { it.name }.toSet()
+                list = presets + list.filter { it.name !in presetNames && it.name !in oldNames }
             }
             drugs.addAll(list)
         }
@@ -172,11 +180,11 @@ object PedDrugStore {
             maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
             bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
                 val b = bands.getJSONObject(j)
-                AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"))
+                AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false))
             },
             note = o.optString("note"), category = o.optStringOrNull("category"),
             formUnit = if (form == "other") o.optStringOrNull("unit") ?: "" else null,
-            amountUnit = o.optStringOrNull("amountUnit"),
+            amountUnit = o.optStringOrNull("amountUnit"), pmda = o.optStringOrNull("pmda"),
         )
     }
 
@@ -193,10 +201,11 @@ object PedDrugStore {
                 d.category?.let { put("category", it) }
                 d.formUnit?.let { put("formUnit", it) }
                 d.amountUnit?.let { put("amountUnit", it) }
+                d.pmda?.let { put("pmda", it) }
                 put("bands", JSONArray().apply {
                     d.bands.forEach { b ->
                         put(JSONObject().apply {
-                            put("below", b.below); put("min", b.min); put("max", b.max); b.times?.let { put("times", it) }
+                            put("below", b.below); put("min", b.min); put("max", b.max); b.times?.let { put("times", it) }; if (b.perKg) put("perKg", true)
                         })
                     }
                 })
@@ -219,10 +228,11 @@ object PedDrugStore {
                 maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
                 bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
                     val b = bands.getJSONObject(j)
-                    AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"))
+                    AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false))
                 },
                 note = o.optString("note"), category = o.optStringOrNull("category"),
                 formUnit = o.optStringOrNull("formUnit"), amountUnit = o.optStringOrNull("amountUnit"),
+                pmda = o.optStringOrNull("pmda"),
             )
         }
     }

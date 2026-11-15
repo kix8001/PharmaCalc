@@ -8,6 +8,8 @@ struct AgeBand: Codable, Hashable, Identifiable {
     var max: Double
     /// この範囲だけ1日の回数が違うとき
     var times: Int?
+    /// true なら min・max は体重1kgあたり
+    var perKg: Bool?
 
     var notIndicated: Bool { min <= 0 && max <= 0 }
 }
@@ -55,6 +57,12 @@ struct PedDrug: Codable, Hashable, Identifiable {
     var formUnit: String?
     /// 成分量の単位（"mg" か "μg"）
     var amountUnit: String?
+    /// PMDA の一般名ごとの一覧を開くための YJ コード先頭7桁
+    var pmda: String?
+
+    var pmdaURL: URL? {
+        pmda.flatMap { URL(string: "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/\($0)") }
+    }
 
     var unit: String { formUnit ?? (isSyrup ? "mL" : "g") }
     var amount: String { amountUnit ?? "mg" }
@@ -124,7 +132,13 @@ extension PedDrug {
             }
             if b.notIndicated { return .failure(.notIndicated) }
             let bt = Swift.max(1, b.times ?? t)
-            return .success(PedDoseResult(dailyLo: b.min, dailyHi: b.max, doseLo: b.min / Double(bt), doseHi: b.max / Double(bt),
+            var lo = b.min, hi = b.max
+            if b.perKg == true {
+                guard let w = weight, w > 0 else { return .failure(.needWeight) }
+                lo *= w
+                hi *= w
+            }
+            return .success(PedDoseResult(dailyLo: lo, dailyHi: hi, doseLo: lo / Double(bt), doseHi: hi / Double(bt),
                                           times: bt, capped: false))
         }
     }
@@ -146,6 +160,7 @@ private struct PresetBand: Decodable {
     var min: Double
     var max: Double
     var times: Int?
+    var perKg: Bool?
 }
 
 private struct PresetDrug: Decodable {
@@ -165,14 +180,15 @@ private struct PresetDrug: Decodable {
     var maxDailyPerKg: Double?
     var bands: [PresetBand]?
     var note: String?
+    var pmda: String?
 
     var drug: PedDrug {
         PedDrug(name: name, ingredient: ingredient, isSyrup: form == "syrup", conc: conc,
                 basis: DoseBasis(rawValue: basis) ?? .memo, minPerKg: minPerKg ?? 0, maxPerKg: maxPerKg ?? minPerKg ?? 0,
                 times: times ?? 3, maxDoseMg: maxDoseMg, maxDailyMg: maxDailyMg, maxDailyPerKg: maxDailyPerKg,
-                bands: (bands ?? []).map { AgeBand(below: $0.below, min: $0.min, max: $0.max, times: $0.times) },
+                bands: (bands ?? []).map { AgeBand(below: $0.below, min: $0.min, max: $0.max, times: $0.times, perKg: $0.perKg) },
                 note: note ?? "", category: category,
-                formUnit: form == "other" ? (unit ?? "") : nil, amountUnit: amountUnit)
+                formUnit: form == "other" ? (unit ?? "") : nil, amountUnit: amountUnit, pmda: pmda)
     }
 }
 
@@ -191,7 +207,7 @@ enum PedPresets {
         "ムコダインDS50%", "ムコダインシロップ5%", "ムコソルバンDS1.5%", "ムコソルバンシロップ0.3%", "トランサミンシロップ5%",
         "アスベリン散10%", "アスベリンシロップ0.5%", "カロナール細粒20%", "カロナールシロップ2%", "ワイドシリン細粒20%",
         "クラリスDS10%小児用", "メイアクトMS小児用細粒10%", "フロモックス小児用細粒100mg", "ジスロマック細粒小児用10%",
-        "タミフルDS3%", "オノンDS10%", "ザジテンDS0.1%",
+        "タミフルDS3%", "オノンDS10%", "ザジテンDS0.1%", "オゼックス錠小児用",
     ]
 }
 
@@ -213,10 +229,10 @@ final class PedDrugStore: ObservableObject {
         }
         let saved = d.integer(forKey: versionKey)
         if saved < PedPresets.version {
-            // 古い初期登録は入れ替え、自分で追加した薬は残す。足りない薬は名前で追加
-            if saved < 2 { list.removeAll { PedPresets.oldNames.contains($0.name) } }
-            let names = Set(list.map(\.name))
-            list += PedPresets.drugs.filter { !names.contains($0.name) }
+            // 初期登録の薬は新しい版（添付文書と照合して直した値）に入れ替え、自分で追加した薬は後ろに残す
+            let presetNames = Set(PedPresets.drugs.map(\.name))
+            let mine = list.filter { !presetNames.contains($0.name) && !PedPresets.oldNames.contains($0.name) }
+            list = PedPresets.drugs + mine
             d.set(PedPresets.version, forKey: versionKey)
         }
         drugs = list
