@@ -11,6 +11,7 @@ fun AboutScreen() = CalcPage {
     val ctx = LocalContext.current
     val info = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0) }.getOrNull()
     Section { LabeledRow("バージョン", "${info?.versionName ?: "-"}（${info?.longVersionCode ?: "-"}）") }
+    Section("クレジット") { LabeledRow("開発", "学術・社内広報室") }
     Section("ご注意") {
         Text("計算結果は業務の補助として使う目安です。投与量などは、添付文書・ガイドライン・医師の指示で必ず確認してください。計算の誤りによる結果について、作者は責任を負いません。")
     }

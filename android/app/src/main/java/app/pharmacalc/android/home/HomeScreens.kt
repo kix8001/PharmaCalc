@@ -53,8 +53,8 @@ import app.pharmacalc.android.ui.Section
 /** ホームに並べるタイル（端末に保存） */
 object HomeTiles {
     val items = mutableStateListOf<CalcItem>()
-    val defaults = listOf(CalcItem.BARCODE, CalcItem.PILL_COUNT, CalcItem.RENAL, CalcItem.END_DATE,
-        CalcItem.REMAINING, CalcItem.SHEET, CalcItem.POWDER)
+    val defaults = listOf(CalcItem.BARCODE, CalcItem.PILL_COUNT, CalcItem.REMAINDER, CalcItem.END_DATE,
+        CalcItem.REMAINING, CalcItem.RENAL, CalcItem.NEXT_VISIT)
     private var prefs: SharedPreferences? = null
 
     fun init(ctx: Context) {

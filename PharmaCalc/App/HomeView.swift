@@ -265,7 +265,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
 /// ホームに並べるタイルの設定（端末に保存）
 enum HomeTiles {
     static let key = "homeTiles"
-    static let defaults: [CalcItem] = [.barcode, .pillCount, .renal, .endDate, .remaining, .sheet, .powder]
+    static let defaults: [CalcItem] = [.barcode, .pillCount, .remainder, .endDate, .remaining, .renal, .nextVisit]
 
     static func decode(_ raw: String) -> [CalcItem] {
         raw.split(separator: ",").compactMap { CalcItem(rawValue: String($0)) }
