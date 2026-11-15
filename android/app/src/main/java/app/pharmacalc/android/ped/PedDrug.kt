@@ -3,6 +3,7 @@ package app.pharmacalc.android.ped
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateListOf
+import app.pharmacalc.android.core.ageText
 import app.pharmacalc.android.core.fmtTrim
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,7 +13,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** 年齢別・体重別の用量（〜未満なら 1日 min〜max）。min・max とも0なら「この範囲は用量の記載なし」 */
-data class AgeBand(val below: Double, val min: Double, val max: Double, val times: Int? = null, val perKg: Boolean = false) {
+data class AgeBand(val below: Double, val min: Double, val max: Double, val times: Int? = null, val perKg: Boolean = false,
+                   /** true なら min・max は1回量（false なら1日量） */
+                   val perDose: Boolean = false) {
     val notIndicated get() = min <= 0 && max <= 0
 }
 
@@ -53,7 +56,9 @@ data class PedDrug(
     val hasProduct get() = conc > 0
 
     class Result(val dailyLo: Double, val dailyHi: Double, val doseLo: Double, val doseHi: Double,
-                 val times: Int, val capped: Boolean)
+                 val times: Int, val capped: Boolean,
+                 /** 年齢別・体重別で、どの区切りの用量を使ったか（例：「1歳未満」） */
+                 val bandLabel: String? = null)
 
     /** 年齢（歳）と体重（kg）から用量を出す。出せないときは理由（MEMO のときは空文字） */
     fun compute(age: Double?, weight: Double?): Pair<Result?, String?> {
@@ -88,7 +93,10 @@ data class PedDrug(
                     if (weight == null || weight <= 0) return null to "体重を入れてください"
                     weight
                 }
-                val b = bands.sortedBy { it.below }.firstOrNull { key < it.below } ?: return null to "登録した範囲の外です"
+                val sorted = bands.sortedBy { it.below }
+                val i = sorted.indexOfFirst { key < it.below }
+                if (i < 0) return null to "登録した範囲の外です"
+                val b = sorted[i]
                 if (b.notIndicated) return null to "この年齢・体重では用量の記載がありません"
                 val bt = max(1, b.times ?: t)
                 var lo = b.min
@@ -97,7 +105,34 @@ data class PedDrug(
                     if (weight == null || weight <= 0) return null to "体重を入れてください"
                     lo *= weight; hi *= weight
                 }
-                Result(lo, hi, lo / bt, hi / bt, bt, false) to null
+                // 上限（登録してあれば年齢別・体重別にも使う）
+                var capped = false
+                var dLo: Double
+                var dHi: Double
+                if (b.perDose) {
+                    maxDoseMg?.let { if (hi > it) { hi = it; capped = true } }
+                    lo = min(lo, hi)
+                    dLo = lo * bt; dHi = hi * bt
+                } else {
+                    dLo = lo; dHi = hi
+                }
+                if (weight != null) maxDailyPerKg?.let { if (dHi > it * weight) { dHi = it * weight; capped = true } }
+                maxDailyMg?.let { if (dHi > it) { dHi = it; capped = true } }
+                dLo = min(dLo, dHi)
+                var oLo = dLo / bt
+                var oHi = dHi / bt
+                if (!b.perDose) maxDoseMg?.let {
+                    if (oHi > it) { oHi = it; oLo = min(oLo, it); dHi = it * bt; dLo = min(dLo, dHi); capped = true }
+                }
+                val f: (Double) -> String = if (basis == DoseBasis.AGE) ::ageText else { w -> "${fmtTrim(w, 1)}kg" }
+                val lower = if (i > 0) sorted[i - 1].below else null
+                val label = when {
+                    sorted.size <= 1 -> null
+                    lower == null -> "${f(b.below)}未満"
+                    b.below >= 100 -> "${f(lower)}以上"
+                    else -> "${f(lower)}〜${f(b.below)}未満"
+                }
+                Result(dLo, dHi, oLo, oHi, bt, capped, label) to null
             }
         }
     }
@@ -180,7 +215,8 @@ object PedDrugStore {
             maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
             bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
                 val b = bands.getJSONObject(j)
-                AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false))
+                AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false),
+                    b.optBoolean("perDose", false))
             },
             note = o.optString("note"), category = o.optStringOrNull("category"),
             formUnit = if (form == "other") o.optStringOrNull("unit") ?: "" else null,
@@ -206,6 +242,7 @@ object PedDrugStore {
                     d.bands.forEach { b ->
                         put(JSONObject().apply {
                             put("below", b.below); put("min", b.min); put("max", b.max); b.times?.let { put("times", it) }; if (b.perKg) put("perKg", true)
+                            if (b.perDose) put("perDose", true)
                         })
                     }
                 })
@@ -228,7 +265,8 @@ object PedDrugStore {
                 maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
                 bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
                     val b = bands.getJSONObject(j)
-                    AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false))
+                    AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"), b.optBoolean("perKg", false),
+                    b.optBoolean("perDose", false))
                 },
                 note = o.optString("note"), category = o.optStringOrNull("category"),
                 formUnit = o.optStringOrNull("formUnit"), amountUnit = o.optStringOrNull("amountUnit"),

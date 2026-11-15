@@ -10,6 +10,8 @@ struct AgeBand: Codable, Hashable, Identifiable {
     var times: Int?
     /// true なら min・max は体重1kgあたり
     var perKg: Bool?
+    /// true なら min・max は1回量（false・nil なら1日量）
+    var perDose: Bool?
 
     var notIndicated: Bool { min <= 0 && max <= 0 }
 }
@@ -76,6 +78,16 @@ struct PedDoseResult {
     var doseHi: Double
     var times: Int
     var capped: Bool
+    /// 年齢別・体重別で、どの区切りの用量を使ったか（例：「1歳未満」）
+    var bandLabel: String? = nil
+}
+
+/// 年齢（歳、小数）を「1歳6か月」「6か月」のように書く
+func ageText(_ y: Double) -> String {
+    let total = Int((y * 12).rounded())
+    let yy = total / 12, mm = total % 12
+    if yy == 0 { return "\(mm)か月" }
+    return mm == 0 ? "\(yy)歳" : "\(yy)歳\(mm)か月"
 }
 
 enum PedDoseError: Error {
@@ -127,9 +139,11 @@ extension PedDrug {
                 guard let w = weight, w > 0 else { return .failure(.needWeight) }
                 key = w
             }
-            guard let b = bands.sorted(by: { $0.below < $1.below }).first(where: { key < $0.below }) else {
+            let sorted = bands.sorted(by: { $0.below < $1.below })
+            guard let i = sorted.firstIndex(where: { key < $0.below }) else {
                 return .failure(.outOfRange)
             }
+            let b = sorted[i]
             if b.notIndicated { return .failure(.notIndicated) }
             let bt = Swift.max(1, b.times ?? t)
             var lo = b.min, hi = b.max
@@ -138,8 +152,33 @@ extension PedDrug {
                 lo *= w
                 hi *= w
             }
-            return .success(PedDoseResult(dailyLo: lo, dailyHi: hi, doseLo: lo / Double(bt), doseHi: hi / Double(bt),
-                                          times: bt, capped: false))
+            // 上限（登録してあれば年齢別・体重別にも使う）
+            var capped = false
+            var dLo: Double, dHi: Double
+            if b.perDose == true {
+                if let m = maxDoseMg, hi > m { hi = m; capped = true }
+                lo = Swift.min(lo, hi)
+                dLo = lo * Double(bt); dHi = hi * Double(bt)
+            } else {
+                dLo = lo; dHi = hi
+            }
+            if let m = maxDailyPerKg, let w = weight, dHi > m * w { dHi = m * w; capped = true }
+            if let m = maxDailyMg, dHi > m { dHi = m; capped = true }
+            dLo = Swift.min(dLo, dHi)
+            var oLo = dLo / Double(bt), oHi = dHi / Double(bt)
+            if b.perDose != true, let m = maxDoseMg, oHi > m {
+                oHi = m; oLo = Swift.min(oLo, m); dHi = m * Double(bt); dLo = Swift.min(dLo, dHi); capped = true
+            }
+            let f: (Double) -> String = basis == .age ? ageText : { "\(fmtTrim($0, 1))kg" }
+            let lower = i > 0 ? sorted[i - 1].below : nil
+            let label: String
+            if let l = lower {
+                label = b.below >= 100 ? "\(f(l))以上" : "\(f(l))〜\(f(b.below))未満"
+            } else {
+                label = "\(f(b.below))未満"
+            }
+            return .success(PedDoseResult(dailyLo: dLo, dailyHi: dHi, doseLo: oLo, doseHi: oHi,
+                                          times: bt, capped: capped, bandLabel: sorted.count > 1 ? label : nil))
         }
     }
 }
@@ -161,6 +200,7 @@ private struct PresetBand: Decodable {
     var max: Double
     var times: Int?
     var perKg: Bool?
+    var perDose: Bool?
 }
 
 private struct PresetDrug: Decodable {
@@ -186,7 +226,7 @@ private struct PresetDrug: Decodable {
         PedDrug(name: name, ingredient: ingredient, isSyrup: form == "syrup", conc: conc,
                 basis: DoseBasis(rawValue: basis) ?? .memo, minPerKg: minPerKg ?? 0, maxPerKg: maxPerKg ?? minPerKg ?? 0,
                 times: times ?? 3, maxDoseMg: maxDoseMg, maxDailyMg: maxDailyMg, maxDailyPerKg: maxDailyPerKg,
-                bands: (bands ?? []).map { AgeBand(below: $0.below, min: $0.min, max: $0.max, times: $0.times, perKg: $0.perKg) },
+                bands: (bands ?? []).map { AgeBand(below: $0.below, min: $0.min, max: $0.max, times: $0.times, perKg: $0.perKg, perDose: $0.perDose) },
                 note: note ?? "", category: category,
                 formUnit: form == "other" ? (unit ?? "") : nil, amountUnit: amountUnit, pmda: pmda)
     }

@@ -3,12 +3,14 @@
 # 変更したら `python3 tools/make_ped_presets.py` を実行して data/ped_presets.json を作り直す（iOS・Android 共通）。
 import json, os
 
-V = 3  # 初期登録の版。増やすと、既存ユーザーにも足りない薬が名前で追加される
+V = 4  # 初期登録の版。増やすと、既存ユーザーにも足りない薬が名前で追加される
 
-def B(below, mn, mx=None, times=None, perKg=False):
+def B(below, mn, mx=None, times=None, perKg=False, perDose=False):
+    """below 歳（体重別なら kg）未満の用量。perKg=体重1kgあたり、perDose=1回量（既定は1日量）。1歳未満は小数（6か月=0.5）"""
     d = {"below": below, "min": mn, "max": mx if mx is not None else mn}
     if times: d["times"] = times
     if perKg: d["perKg"] = True
+    if perDose: d["perDose"] = True
     return d
 
 def drug(cat, name, ing, form, conc, basis, **kw):
@@ -33,11 +35,12 @@ KETO = dict(minPerKg=0.06, maxPerKg=0.06, times=2, note="朝食後と就寝前�
 MEQ = dict(minPerKg=0.06, maxPerKg=0.06, times=2, note="アレルギー性鼻炎・じん麻疹・皮膚のかゆみ：1回0.06mg/kgを1日2回。気管支喘息は1回0.12mg/kg")
 HYDROXYZINE = dict(minPerKg=1, maxPerKg=2, times=3, note="ヒドロキシジンパモ酸塩として。1日2〜3回")
 TULO = dict(minPerKg=0.04, maxPerKg=0.04, times=2, note="1日2回。標準1日量：0.5〜3歳未満0.25〜0.5mg、3〜9歳未満0.5〜1mg、9〜15歳1〜2mg")
-PROCA = dict(amountUnit="μg", minPerKg=1.25, maxPerKg=1.25, times=2, maxDoseMg=25,
-             note="6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回")
+PROCA = dict(amountUnit="μg", bands=[B(6, 1.25, times=2, perKg=True, perDose=True), B(200, 25, times=2, perDose=True)],
+             times=2, maxDoseMg=25, note="6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回")
 TRANILAST = dict(minPerKg=5, maxPerKg=5, times=3)
 PEMI = [B(1, 0), B(5, 5), B(11, 10), B(200, 20)]
-THEO = dict(minPerKg=8, maxPerKg=10, times=2, note="1回4〜5mg/kgを1日2回（6か月以上）。血中濃度に注意")
+THEO = dict(bands=[B(6, 0), B(16, 4, 5, times=2, perKg=True, perDose=True)], times=2, maxDoseMg=200,
+            note="添付文書：小児1回100〜200mgを1日2回。6〜15歳は1回4〜5mg/kgを1日2回で開始（添付文書が参考に挙げるガイドライン）。6歳未満はガイドラインで確認。血中濃度に注意")
 
 presets = [
     # ---- 抗菌薬 ----
@@ -86,8 +89,9 @@ presets = [
          maxDoseMg=800, note="水痘：1回20mg/kgを1日4回（1回800mgまで）。単純疱疹は1回200mgまで"),
     drug(AV, "バルトレックス顆粒50%", "バラシクロビル", "powder", 500, "dose", minPerKg=25, maxPerKg=25, times=3,
          maxDoseMg=1000, note="水痘・帯状疱疹：1回25mg/kgを1日3回（1回1000mgまで）。単純疱疹は1日2回・1回500mgまで"),
-    drug(AV, "タミフルドライシロップ3%", "オセルタミビル", "powder", 30, "dose", minPerKg=2, maxPerKg=2, times=2,
-         maxDoseMg=75, note="治療は1日2回5日間、予防は1日1回10日間。新生児・乳児（治療）は1回3mg/kg"),
+    drug(AV, "タミフルドライシロップ3%", "オセルタミビル", "powder", 30, "age",
+         bands=[B(1, 3, times=2, perKg=True, perDose=True), B(200, 2, times=2, perKg=True, perDose=True)], times=2,
+         maxDoseMg=75, note="治療：1日2回5日間。新生児・乳児（1歳未満）は1回3mg/kg、幼小児は1回2mg/kg（1回75mgまで）。予防（幼小児）：1回2mg/kgを1日1回10日間"),
     drug(AV, "イナビル吸入粉末剤20mg", "ラニナミビル", "other", 20, "age", unit="容器",
          bands=[B(10, 20, times=1), B(200, 40, times=1)], times=1, note="単回吸入。10歳未満20mg（1容器）、10歳以上40mg（2容器）"),
     drug(AV, "リレンザ", "ザナミビル", "other", 5, "age", unit="ブリスター", bands=[B(200, 20, times=2)], times=2,
@@ -147,7 +151,9 @@ presets = [
     drug(CO, "アストミン散10%", "ジメモルファン", "powder", 100, "age", bands=[B(8, 0), B(15, 30)], times=3, note="8〜14歳：1回10mgを1日3回"),
     drug(CO, "アストミンシロップ0.25%", "ジメモルファン", "syrup", 2.5, "age", bands=[B(2, 7.5, 11.25), B(4, 12.5, 20), B(7, 20, 27.5), B(15, 30, 35)], times=3, note="1日量を3回に分ける"),
     drug(CO, "メジコン散10%", "デキストロメトルファン", "powder", 100, "memo", note=MEMO),
-    drug(CO, "メジコン配合シロップ", "デキストロメトルファン配合", "syrup", 0, "memo", note=MEMO),
+    drug(CO, "メジコン配合シロップ", "デキストロメトルファン配合", "syrup", 0, "age", amountUnit="mL",
+         bands=[B(0.25, 0), B(8, 3, 8), B(15, 9, 16), B(200, 18, 24)], times=3,
+         note="製剤量（mL）。3か月〜7歳 1日3〜8mL、8〜14歳 1日9〜16mL を3〜4回に分ける"),
     drug(CO, "フスコデ配合シロップ", "ジヒドロコデイン配合", "syrup", 0, "memo", note="12歳未満は禁忌。12歳以上15歳未満は成人量（1日10mLを3回）の2/3"),
     drug(CO, "ムコダイン細粒DS50%", "カルボシステイン", "powder", 500, "day", minPerKg=30, maxPerKg=30, times=3,
          note="1回10mg/kgを1日3回"),
@@ -158,21 +164,22 @@ presets = [
          minPerKg=0.9, maxPerKg=0.9, times=3),
     drug(CO, "レフトーゼシロップ0.5%", "リゾチーム", "syrup", 5, "memo", note=MEMO + "（PMDAで添付文書が見つからない。販売終了の可能性）"),
     # ---- 気管支拡張 ----
-    drug(BR, "テオドールドライシロップ20%", "テオフィリン", "powder", 200, "day", **THEO),
-    drug(BR, "テオドールシロップ2%", "テオフィリン", "syrup", 20, "day", **THEO),
+    drug(BR, "テオドールドライシロップ20%", "テオフィリン", "powder", 200, "age", **THEO),
+    drug(BR, "テオドールシロップ2%", "テオフィリン", "syrup", 20, "age", **THEO),
     drug(BR, "ベラチンドライシロップ小児用0.1%", "ツロブテロール", "powder", 1, "day", **TULO),
     drug(BR, "ホクナリンドライシロップ0.1%小児用", "ツロブテロール", "powder", 1, "day", **TULO),
-    drug(BR, "メプチン顆粒0.01%", "プロカテロール", "powder", 100, "dose", **PROCA),
-    drug(BR, "メプチンドライシロップ0.005%", "プロカテロール", "powder", 50, "dose", **PROCA),
-    drug(BR, "メプチンシロップ5μg/mL", "プロカテロール", "syrup", 5, "dose", **PROCA),
+    drug(BR, "メプチン顆粒0.01%", "プロカテロール", "powder", 100, "age", **PROCA),
+    drug(BR, "メプチンドライシロップ0.005%", "プロカテロール", "powder", 50, "age", **PROCA),
+    drug(BR, "メプチンシロップ5μg/mL", "プロカテロール", "syrup", 5, "age", **PROCA),
     drug(BR, "ベネトリンシロップ0.04%", "サルブタモール", "syrup", 0.4, "day", minPerKg=0.3, maxPerKg=0.3, times=3),
     drug(BR, "ベロテックシロップ0.05%", "フェノテロール", "syrup", 0.5, "day", minPerKg=0.375, maxPerKg=0.375, times=3),
     # ---- 消化器 ----
-    drug(GI, "ナウゼリンドライシロップ1%", "ドンペリドン", "powder", 10, "day", minPerKg=1, maxPerKg=2, times=3, maxDailyMg=30,
-         note="食前。1日30mgを超えない。6歳以上は1日最高1mg/kg"),
+    drug(GI, "ナウゼリンドライシロップ1%", "ドンペリドン", "powder", 10, "age",
+         bands=[B(6, 1, 2, perKg=True), B(200, 1, perKg=True)], times=3, maxDailyMg=30,
+         note="1日1〜2mg/kgを3回、食前。1日30mgを超えない。6歳以上は1日最高1mg/kg"),
     drug(GI, "プリンペランシロップ0.1%", "メトクロプラミド", "syrup", 1, "day", minPerKg=0.38, maxPerKg=0.53, times=2,
          note="1日2〜3回、食前。錐体外路症状に注意"),
-    drug(GI, "ロペラミド塩酸塩細粒小児用0.05%", "ロペラミド", "powder", 0.5, "day", minPerKg=0.02, maxPerKg=0.04, times=2,
+    drug(GI, "ロペラミド塩酸塩細粒小児用0.05%", "ロペラミド", "powder", 0.5, "age", bands=[B(0.5, 0), B(200, 0.02, 0.04, perKg=True)], times=2,
          note="1日2〜3回。6か月未満は禁忌、2歳未満は原則使わない"),
     drug(GI, "酸化マグネシウム原末", "酸化マグネシウム", "powder", 1000, "memo", note=ADULT + "緩下剤として成人1日2gを3回または就寝前1回"),
     drug(GI, "モビコール配合内用剤LD", "マクロゴール4000配合", "other", 0, "memo",
@@ -208,11 +215,13 @@ presets = [
     drug(OT, "コンバントリンドライシロップ100", "ピランテル", "powder", 100, "dose", minPerKg=10, maxPerKg=10, times=1,
          note="蟯虫：1回10mg/kgを1回だけ"),
     drug(OT, "チラーヂンS散0.01%", "レボチロキシン", "powder", 100, "dose", amountUnit="μg", minPerKg=10, maxPerKg=10, times=1, note="乳幼児：1回10μg/kgを1日1回。未熟児は1回5μg/kgから始め8日目から10μg/kg"),
-    drug(OT, "イーケプラドライシロップ50%", "レベチラセタム", "powder", 500, "day", minPerKg=20, maxPerKg=60, times=2,
-         maxDailyMg=3000, note="部分発作（6か月以上）：1日20mg/kgから、最高60mg/kg。1〜6か月未満は14〜42mg/kg。体重50kg以上は成人量"),
+    drug(OT, "イーケプラドライシロップ50%", "レベチラセタム", "powder", 500, "age",
+         bands=[B(round(1 / 12, 4), 0), B(0.5, 14, 42, perKg=True), B(200, 20, 60, perKg=True)], times=2,
+         maxDailyMg=3000, note="部分発作：1〜6か月未満は1日14mg/kgから最高42mg/kg、6か月以上は1日20mg/kgから最高60mg/kg（1日2回）。強直間代発作は4歳以上。体重50kg以上は成人量（1日1000〜3000mg）"),
     drug(OT, "メラトベル顆粒小児用0.2%", "メラトニン", "powder", 2, "age", bands=[B(6, 0), B(16, 1, 4, times=1)], times=1,
          note="6〜15歳：1日1回1mgを就寝前から開始、最高4mg"),
-    drug(OT, "ガバペンシロップ5%", "ガバペンチン", "syrup", 50, "day", minPerKg=25, maxPerKg=35, times=3, maxDailyPerKg=50,
+    drug(OT, "ガバペンシロップ5%", "ガバペンチン", "syrup", 50, "age",
+         bands=[B(3, 0), B(5, 40, perKg=True), B(13, 25, 35, perKg=True)], times=3, maxDailyPerKg=50,
          note="3〜12歳。1日目10mg/kg・2日目20mg/kgで増量。維持量は3〜4歳40mg/kg/日、5〜12歳25〜35mg/kg/日"),
     drug(OT, "ケイツーシロップ0.2%", "メナテトレノン", "syrup", 2, "memo", note="予防：出生後（哺乳確立後）・生後1週間（または退院時）・生後1か月に各1mL。治療：1日1回1mL（3mLまで）"),
     drug(OT, "セルシンシロップ0.1%", "ジアゼパム", "syrup", 1, "age", bands=[B(4, 1, 5), B(13, 2, 10)], times=3,

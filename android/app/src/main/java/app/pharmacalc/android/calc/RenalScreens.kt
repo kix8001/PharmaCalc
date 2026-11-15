@@ -23,13 +23,14 @@ import app.pharmacalc.android.ui.Section
 import app.pharmacalc.android.ui.SwitchRow
 import app.pharmacalc.android.ui.WarningRow
 
-enum class PField { AGE, SEX, HEIGHT, WEIGHT, SCR, CYS }
+enum class PField { AGE, MONTHS, SEX, HEIGHT, WEIGHT, SCR, CYS }
 
 /** 患者情報の入力欄（必要な項目だけ） */
 @Composable
 fun PatientFields(fields: Set<PField>) {
     val p = Patient
     if (PField.AGE in fields) NumField("年齢", p.age, { p.age = it }, "歳")
+    if (PField.MONTHS in fields) NumField("＋か月（1歳未満など）", p.months, { p.months = it }, "か月")
     if (PField.SEX in fields) Choice(Sex.entries.map { it to it.label }, p.sex) { p.sex = it }
     if (PField.HEIGHT in fields) NumField("身長", p.height, { p.height = it }, "cm")
     if (PField.WEIGHT in fields) NumField("体重", p.weight, { p.weight = it }, "kg")
@@ -52,7 +53,7 @@ fun PatientScreen() = CalcPage {
 fun RenalScreen(openDrugs: () -> Unit = {}) = CalcPage {
     val p = Patient
     var roundUp by rememberSaveable { mutableStateOf(false) }
-    Section("患者情報（共通）") { PatientFields(PField.entries.toSet()) }
+    Section("患者情報（共通）") { PatientFields(PField.entries.toSet() - PField.MONTHS) }
     val age = p.ageV
     if (age != null && age < 18) {
         Section { WarningRow("18歳未満は成人の式の対象外です。小児用の式を使ってください。") }

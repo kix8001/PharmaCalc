@@ -49,8 +49,9 @@ import app.pharmacalc.android.ui.Section
 fun PedDoseScreen(edit: (String?) -> Unit) = CalcPage {
     val p = Patient
     var query by rememberSaveable { mutableStateOf("") }
-    Section("患者情報（共通）", footer = "年齢は小数でも入れられます（例：1歳6か月 → 1.5）。") {
+    Section("患者情報（共通）", footer = "1歳未満は「か月」だけ入れてください（例：6か月 → 年齢は空欄、か月に6）。1歳6か月なら 1歳＋6か月。") {
         NumField("年齢", p.age, { p.age = it }, "歳")
+        NumField("＋か月（1歳未満など）", p.months, { p.months = it }, "か月")
         NumField("体重", p.weight, { p.weight = it }, "kg")
     }
     OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("薬の名前・成分で絞り込む") },
@@ -87,6 +88,9 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
         }
         val (r, err) = d.compute(age, weight)
         if (r != null) {
+            r.bandLabel?.let {
+                Text("${it}の用量", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             val dg = if (d.isSyrup) 1 else 2
             val ad = if (d.amount == "μg") 1 else 2
             val a = d.amount
@@ -112,8 +116,10 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
     }
 }
 
-private class BandText(below: String = "", min: String = "", max: String = "", times: String = "", perKg: Boolean = false) {
+private class BandText(below: String = "", min: String = "", max: String = "", times: String = "", perKg: Boolean = false,
+                       perDose: Boolean = false) {
     var perKg by mutableStateOf(perKg)
+    var perDose by mutableStateOf(perDose)
     var below by mutableStateOf(below)
     var min by mutableStateOf(min)
     var max by mutableStateOf(max)
@@ -145,7 +151,7 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
     var note by remember { mutableStateOf(original?.note ?: "") }
     val bands = remember {
         mutableStateListOf<BandText>().apply {
-            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 1), fmtTrim(it.min, 2), fmtTrim(it.max, 2), it.times?.toString() ?: "", it.perKg)) }
+            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 3), fmtTrim(it.min, 2), fmtTrim(it.max, 2), it.times?.toString() ?: "", it.perKg, it.perDose)) }
             if (isEmpty()) add(BandText())
         }
     }
@@ -168,7 +174,7 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
                     if (bl == null || bl <= 0) null
                     else {
                         val lo = parseNum(b.min) ?: 0.0
-                        AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo), parseInt(b.times)?.takeIf { it > 0 }, b.perKg)
+                        AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo), parseInt(b.times)?.takeIf { it > 0 }, b.perKg, b.perDose)
                     }
                 }
                 if (list.isEmpty()) return null
@@ -213,14 +219,16 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
                         IconButton(onClick = { bands.removeAt(i) }) { Icon(Icons.Filled.RemoveCircle, "削除", tint = Color(0xFFE53935)) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (b.perKg) "${au}/kg/日　この範囲の1日の回数（任意）" else "${au}/日　この範囲の1日の回数（任意）",
+                        Text("${au}${if (b.perKg) "/kg" else ""}/${if (b.perDose) "回" else "日"}　この範囲の1日の回数（任意）",
                             style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                         SmallField(b.times, { b.times = it }, "回", Modifier.width(72.dp))
                     }
                     app.pharmacalc.android.ui.SwitchRow("体重1kgあたりの量", b.perKg) { b.perKg = it }
+                    app.pharmacalc.android.ui.SwitchRow("1回量で入れる（オフなら1日量）", b.perDose) { b.perDose = it }
                 }
                 TextButton(onClick = { bands.add(BandText()) }) { Text("区切りを追加") }
-                Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。",
+                Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。" +
+                    if (basis == DoseBasis.AGE) "1歳未満の区切りは小数で（6か月 → 0.5、3か月 → 0.25）。" else "",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DoseBasis.DAY, DoseBasis.DOSE -> {

@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 4,
  "drugs": [
   {
    "category": "抗菌薬",
@@ -391,12 +391,28 @@
    "ingredient": "オセルタミビル",
    "form": "powder",
    "conc": 30,
-   "basis": "dose",
-   "minPerKg": 2,
-   "maxPerKg": 2,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 3,
+     "max": 3,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    },
+    {
+     "below": 200,
+     "min": 2,
+     "max": 2,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    }
+   ],
    "times": 2,
    "maxDoseMg": 75,
-   "note": "治療は1日2回5日間、予防は1日1回10日間。新生児・乳児（治療）は1回3mg/kg",
+   "note": "治療：1日2回5日間。新生児・乳児（1歳未満）は1回3mg/kg、幼小児は1回2mg/kg（1回75mgまで）。予防（幼小児）：1回2mg/kgを1日1回10日間",
    "pmda": "6250021"
   },
   {
@@ -1191,8 +1207,32 @@
    "ingredient": "デキストロメトルファン配合",
    "form": "syrup",
    "conc": 0,
-   "basis": "memo",
-   "note": "添付文書で用量を確認して、編集から登録してください",
+   "basis": "age",
+   "amountUnit": "mL",
+   "bands": [
+    {
+     "below": 0.25,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 8,
+     "min": 3,
+     "max": 8
+    },
+    {
+     "below": 15,
+     "min": 9,
+     "max": 16
+    },
+    {
+     "below": 200,
+     "min": 18,
+     "max": 24
+    }
+   ],
+   "times": 3,
+   "note": "製剤量（mL）。3か月〜7歳 1日3〜8mL、8〜14歳 1日9〜16mL を3〜4回に分ける",
    "pmda": "2249106"
   },
   {
@@ -1270,11 +1310,25 @@
    "ingredient": "テオフィリン",
    "form": "powder",
    "conc": 200,
-   "basis": "day",
-   "minPerKg": 8,
-   "maxPerKg": 10,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 6,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 16,
+     "min": 4,
+     "max": 5,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    }
+   ],
    "times": 2,
-   "note": "1回4〜5mg/kgを1日2回（6か月以上）。血中濃度に注意",
+   "maxDoseMg": 200,
+   "note": "添付文書：小児1回100〜200mgを1日2回。6〜15歳は1回4〜5mg/kgを1日2回で開始（添付文書が参考に挙げるガイドライン）。6歳未満はガイドラインで確認。血中濃度に注意",
    "pmda": "2251001"
   },
   {
@@ -1283,11 +1337,25 @@
    "ingredient": "テオフィリン",
    "form": "syrup",
    "conc": 20,
-   "basis": "day",
-   "minPerKg": 8,
-   "maxPerKg": 10,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 6,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 16,
+     "min": 4,
+     "max": 5,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    }
+   ],
    "times": 2,
-   "note": "1回4〜5mg/kgを1日2回（6か月以上）。血中濃度に注意",
+   "maxDoseMg": 200,
+   "note": "添付文書：小児1回100〜200mgを1日2回。6〜15歳は1回4〜5mg/kgを1日2回で開始（添付文書が参考に挙げるガイドライン）。6歳未満はガイドラインで確認。血中濃度に注意",
    "pmda": "2251001"
   },
   {
@@ -1321,10 +1389,25 @@
    "ingredient": "プロカテロール",
    "form": "powder",
    "conc": 100,
-   "basis": "dose",
+   "basis": "age",
    "amountUnit": "μg",
-   "minPerKg": 1.25,
-   "maxPerKg": 1.25,
+   "bands": [
+    {
+     "below": 6,
+     "min": 1.25,
+     "max": 1.25,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    },
+    {
+     "below": 200,
+     "min": 25,
+     "max": 25,
+     "times": 2,
+     "perDose": true
+    }
+   ],
    "times": 2,
    "maxDoseMg": 25,
    "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回",
@@ -1336,10 +1419,25 @@
    "ingredient": "プロカテロール",
    "form": "powder",
    "conc": 50,
-   "basis": "dose",
+   "basis": "age",
    "amountUnit": "μg",
-   "minPerKg": 1.25,
-   "maxPerKg": 1.25,
+   "bands": [
+    {
+     "below": 6,
+     "min": 1.25,
+     "max": 1.25,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    },
+    {
+     "below": 200,
+     "min": 25,
+     "max": 25,
+     "times": 2,
+     "perDose": true
+    }
+   ],
    "times": 2,
    "maxDoseMg": 25,
    "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回",
@@ -1351,10 +1449,25 @@
    "ingredient": "プロカテロール",
    "form": "syrup",
    "conc": 5,
-   "basis": "dose",
+   "basis": "age",
    "amountUnit": "μg",
-   "minPerKg": 1.25,
-   "maxPerKg": 1.25,
+   "bands": [
+    {
+     "below": 6,
+     "min": 1.25,
+     "max": 1.25,
+     "times": 2,
+     "perKg": true,
+     "perDose": true
+    },
+    {
+     "below": 200,
+     "min": 25,
+     "max": 25,
+     "times": 2,
+     "perDose": true
+    }
+   ],
    "times": 2,
    "maxDoseMg": 25,
    "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回",
@@ -1389,12 +1502,24 @@
    "ingredient": "ドンペリドン",
    "form": "powder",
    "conc": 10,
-   "basis": "day",
-   "minPerKg": 1,
-   "maxPerKg": 2,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 6,
+     "min": 1,
+     "max": 2,
+     "perKg": true
+    },
+    {
+     "below": 200,
+     "min": 1,
+     "max": 1,
+     "perKg": true
+    }
+   ],
    "times": 3,
    "maxDailyMg": 30,
-   "note": "食前。1日30mgを超えない。6歳以上は1日最高1mg/kg",
+   "note": "1日1〜2mg/kgを3回、食前。1日30mgを超えない。6歳以上は1日最高1mg/kg",
    "pmda": "2399005"
   },
   {
@@ -1416,9 +1541,20 @@
    "ingredient": "ロペラミド",
    "form": "powder",
    "conc": 0.5,
-   "basis": "day",
-   "minPerKg": 0.02,
-   "maxPerKg": 0.04,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.5,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 200,
+     "min": 0.02,
+     "max": 0.04,
+     "perKg": true
+    }
+   ],
    "times": 2,
    "note": "1日2〜3回。6か月未満は禁忌、2歳未満は原則使わない",
    "pmda": "2319001"
@@ -1763,12 +1899,29 @@
    "ingredient": "レベチラセタム",
    "form": "powder",
    "conc": 500,
-   "basis": "day",
-   "minPerKg": 20,
-   "maxPerKg": 60,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.0833,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 0.5,
+     "min": 14,
+     "max": 42,
+     "perKg": true
+    },
+    {
+     "below": 200,
+     "min": 20,
+     "max": 60,
+     "perKg": true
+    }
+   ],
    "times": 2,
    "maxDailyMg": 3000,
-   "note": "部分発作（6か月以上）：1日20mg/kgから、最高60mg/kg。1〜6か月未満は14〜42mg/kg。体重50kg以上は成人量",
+   "note": "部分発作：1〜6か月未満は1日14mg/kgから最高42mg/kg、6か月以上は1日20mg/kgから最高60mg/kg（1日2回）。強直間代発作は4歳以上。体重50kg以上は成人量（1日1000〜3000mg）",
    "pmda": "1139010"
   },
   {
@@ -1801,9 +1954,26 @@
    "ingredient": "ガバペンチン",
    "form": "syrup",
    "conc": 50,
-   "basis": "day",
-   "minPerKg": 25,
-   "maxPerKg": 35,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 3,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 5,
+     "min": 40,
+     "max": 40,
+     "perKg": true
+    },
+    {
+     "below": 13,
+     "min": 25,
+     "max": 35,
+     "perKg": true
+    }
+   ],
    "times": 3,
    "maxDailyPerKg": 50,
    "note": "3〜12歳。1日目10mg/kg・2日目20mg/kgで増量。維持量は3〜4歳40mg/kg/日、5〜12歳25〜35mg/kg/日",

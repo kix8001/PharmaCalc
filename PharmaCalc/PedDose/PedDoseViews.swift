@@ -20,11 +20,12 @@ struct PedDoseView: View {
         Form {
             Section {
                 NumField(title: "年齢", text: $p.age, unit: "歳")
+                NumField(title: "＋か月（1歳未満など）", text: $p.months, unit: "か月")
                 NumField(title: "体重", text: $p.weight, unit: "kg")
             } header: {
                 Text("患者情報（共通）")
             } footer: {
-                Text("年齢は小数でも入れられます（例：1歳6か月 → 1.5）。")
+                Text("1歳未満は「か月」だけ入れてください（例：6か月 → 年齢は空欄、か月に6）。1歳6か月なら 1歳＋6か月。")
             }
             Section {
                 TextField("薬の名前・成分で絞り込む", text: $query)
@@ -107,6 +108,9 @@ struct PedDrugRow: View {
             }
             switch drug.compute(age: age, weight: weight) {
             case .success(let r):
+                if let l = r.bandLabel {
+                    Text("\(l)の用量").font(.caption.bold()).foregroundStyle(.secondary)
+                }
                 let a = drug.amount, u = drug.unit, d = drug.isSyrup ? 1 : 2
                 let ad = a == "μg" ? 1 : 2
                 if drug.hasProduct {
@@ -176,6 +180,7 @@ struct PedDrugEditView: View {
         var max = ""
         var times = ""
         var perKg = false
+        var perDose = false
     }
 
     private var amountUnit: String { microgram ? "μg" : "mg" }
@@ -197,7 +202,8 @@ struct PedDrugEditView: View {
                 guard let bl = parseNum(b.below), bl > 0 else { return nil }
                 let lo = parseNum(b.min) ?? 0
                 return AgeBand(below: bl, min: lo, max: max(lo, parseNum(b.max) ?? lo),
-                               times: parseInt(b.times).flatMap { $0 > 0 ? $0 : nil }, perKg: b.perKg ? true : nil)
+                               times: parseInt(b.times).flatMap { $0 > 0 ? $0 : nil }, perKg: b.perKg ? true : nil,
+                               perDose: b.perDose ? true : nil)
             }
             guard !list.isEmpty else { return nil }
             d.bands = list
@@ -253,9 +259,10 @@ struct PedDrugEditView: View {
                                 TextField("最小", text: $b.min).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
                                 Text("〜")
                                 TextField("最大", text: $b.max).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                                Text(b.perKg ? "\(amountUnit)/kg/日" : "\(amountUnit)/日").font(.caption)
+                                Text("\(amountUnit)\(b.perKg ? "/kg" : "")/\(b.perDose ? "回" : "日")").font(.caption)
                             }
                             Toggle("体重1kgあたりの量", isOn: $b.perKg).font(.caption)
+                            Toggle("1回量で入れる（オフなら1日量）", isOn: $b.perDose).font(.caption)
                             HStack {
                                 Text("この範囲の1日の回数（任意）").font(.caption).foregroundStyle(.secondary)
                                 TextField("回", text: $b.times).keyboardType(.numberPad).multilineTextAlignment(.trailing)
@@ -264,7 +271,7 @@ struct PedDrugEditView: View {
                     }
                     .onDelete { bands.remove(atOffsets: $0) }
                     Button("区切りを追加") { bands.append(BandText()) }
-                    Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。").font(.caption).foregroundStyle(.secondary)
+                    Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。\(basis == .age ? "1歳未満の区切りは小数で（6か月 → 0.5、3か月 → 0.25）。" : "")").font(.caption).foregroundStyle(.secondary)
                 case .day, .dose:
                     let u = basis == .day ? "\(amountUnit)/kg/日" : "\(amountUnit)/kg/回"
                     NumField(title: "最小", text: $minPerKg, unit: u)
@@ -352,8 +359,8 @@ struct PedDrugEditView: View {
         maxDaily = d.maxDailyMg.map { fmtTrim($0, 2) } ?? ""
         maxDailyPerKg = d.maxDailyPerKg.map { fmtTrim($0, 2) } ?? ""
         bands = d.bands.map {
-            BandText(below: fmtTrim($0.below, 1), min: fmtTrim($0.min, 2), max: fmtTrim($0.max, 2),
-                     times: $0.times.map { "\($0)" } ?? "", perKg: $0.perKg == true)
+            BandText(below: fmtTrim($0.below, 3), min: fmtTrim($0.min, 2), max: fmtTrim($0.max, 2),
+                     times: $0.times.map { "\($0)" } ?? "", perKg: $0.perKg == true, perDose: $0.perDose == true)
         }
         if bands.isEmpty { bands = [BandText()] }
         note = d.note

@@ -75,8 +75,9 @@ fun PediatricScreen() = CalcPage {
     val p = Patient
     var adult by rememberSaveable { mutableStateOf("") }
     var unit by rememberSaveable { mutableStateOf("mg") }
-    Section(footer = "年齢は小数でも入れられます（例：1歳6か月 → 1.5）。年齢は患者情報と共通です。") {
+    Section(footer = "1歳未満は「か月」に入れてください（1歳6か月なら 1歳＋6か月）。年齢は患者情報と共通です。") {
         NumField("年齢", p.age, { p.age = it }, "歳")
+        NumField("＋か月（1歳未満など）", p.months, { p.months = it }, "か月")
         NumField("成人量", adult, { adult = it }, unit)
         Choice(listOf("mg" to "mg", "g" to "g", "mL" to "mL", "錠" to "錠"), unit) { unit = it }
     }

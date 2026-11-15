@@ -12,24 +12,32 @@ enum class Sex(val label: String) { MALE("男性"), FEMALE("女性") }
  */
 object Patient {
     var age by mutableStateOf("")
+    /** 1歳未満などのための「か月」（年齢に足す） */
+    var months by mutableStateOf("")
     var sex by mutableStateOf(Sex.MALE)
     var weight by mutableStateOf("")
     var height by mutableStateOf("")
     var scr by mutableStateOf("")
     var cys by mutableStateOf("")
 
-    val ageV get() = parseNum(age)
+    /** 年齢（歳）。か月が入っていれば足す（例：1歳＋6か月 → 1.5） */
+    val ageV: Double?
+        get() {
+            val y = parseNum(age); val m = parseNum(months)
+            if (y == null && m == null) return null
+            return (y ?: 0.0) + (m ?: 0.0) / 12
+        }
     val weightV get() = parseNum(weight)
     val heightV get() = parseNum(height)
     val scrV get() = parseNum(scr)
     val cysV get() = parseNum(cys)
 
-    val isEmpty get() = listOf(age, weight, height, scr, cys).all { it.isBlank() }
+    val isEmpty get() = listOf(age, months, weight, height, scr, cys).all { it.isBlank() }
 
     val summary: String
         get() {
             val parts = mutableListOf<String>()
-            ageV?.let { parts += "${fmt(it, 0)}歳" }
+            ageV?.let { parts += if (parseNum(months) == null) "${fmt(it, 0)}歳" else ageText(it) }
             parts += sex.label
             heightV?.let { parts += "${fmt(it, 1)}cm" }
             weightV?.let { parts += "${fmt(it, 1)}kg" }
@@ -39,6 +47,13 @@ object Patient {
         }
 
     fun clear() {
-        age = ""; sex = Sex.MALE; weight = ""; height = ""; scr = ""; cys = ""
+        age = ""; months = ""; sex = Sex.MALE; weight = ""; height = ""; scr = ""; cys = ""
     }
+}
+
+/** 年齢（歳、小数）を「1歳6か月」「6か月」のように書く */
+fun ageText(y: Double): String {
+    val total = Math.round(y * 12).toInt()
+    val yy = total / 12; val mm = total % 12
+    return if (yy == 0) "${mm}か月" else if (mm == 0) "${yy}歳" else "${yy}歳${mm}か月"
 }

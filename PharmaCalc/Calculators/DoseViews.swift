@@ -86,6 +86,7 @@ struct PediatricView: View {
         Form {
             Section {
                 NumField(title: "年齢", text: $p.age, unit: "歳")
+                NumField(title: "＋か月（1歳未満など）", text: $p.months, unit: "か月")
                 HStack {
                     NumField(title: "成人量", text: $adult)
                     TextField("単位", text: $unit)
@@ -93,7 +94,7 @@ struct PediatricView: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("年齢は小数でも入れられます（例：1歳6か月 → 1.5）。年齢は患者情報と共通です。")
+                Text("1歳未満は「か月」に入れてください（1歳6か月なら 1歳＋6か月）。年齢は患者情報と共通です。")
             }
             if let age = p.ageV, age >= 0, let a = parseNum(adult), a > 0 {
                 Section {
