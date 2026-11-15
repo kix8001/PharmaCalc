@@ -86,12 +86,10 @@ fun SheetScreen() = CalcPage {
     } else parseNum(total)
     if (t != null && t > 0 && s > 0) {
         val (sheets, rest) = sheetBreakdown(t, s)
-        val up = ceil(t / s - 1e-9).toInt()
         Section("結果") {
             ResultRow("総数", fmtTrim(t), "錠")
             ResultRow("シート", "$sheets", "シート", color = Orange)
             ResultRow("バラ", fmtTrim(rest), "錠")
-            ResultRow("シートで揃えるなら", "$up", "シート", note = "${up * s}錠（端数を切り上げ）", big = false)
         }
     }
 }

@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
         HomeTiles.init(applicationContext)
         app.pharmacalc.android.ped.PedDrugStore.init(applicationContext)
         app.pharmacalc.android.renal.RenalDrugData.init(applicationContext)
+        app.pharmacalc.android.renal.RenalFavorites.init(applicationContext)
         setContent { PharmaTheme { App() } }
     }
 }

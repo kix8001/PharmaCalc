@@ -97,8 +97,6 @@ struct SheetView: View {
                     ResultRow(title: "総数", value: fmtTrim(t), unit: "錠")
                     ResultRow(title: "シート", value: "\(b.sheets)", unit: "シート", color: .orange)
                     ResultRow(title: "バラ", value: fmtTrim(b.rest), unit: "錠")
-                    ResultRow(title: "シートで揃えるなら", value: "\(Int((t / Double(s) - 1e-9).rounded(.up)))", unit: "シート",
-                              note: "\(Int((t / Double(s) - 1e-9).rounded(.up)) * s)錠（端数を切り上げ）", big: false)
                 }
             }
         }

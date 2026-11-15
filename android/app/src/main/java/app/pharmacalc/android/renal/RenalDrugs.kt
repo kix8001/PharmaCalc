@@ -80,6 +80,24 @@ object RenalDrugData {
     val categories get() = drugs.map { it.category }.distinct()
 }
 
+/** よく使う薬（端末に保存） */
+object RenalFavorites {
+    val ids = androidx.compose.runtime.mutableStateListOf<String>()
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun init(ctx: Context) {
+        if (prefs != null) return
+        prefs = ctx.getSharedPreferences("pharmacalc", Context.MODE_PRIVATE)
+        ids.clear()
+        ids.addAll(prefs?.getString("renalFavorites", "")?.split("\n")?.filter { it.isNotEmpty() } ?: emptyList())
+    }
+
+    fun toggle(id: String) {
+        if (id in ids) ids.remove(id) else ids.add(id)
+        prefs?.edit()?.putString("renalFavorites", ids.joinToString("\n"))?.apply()
+    }
+}
+
 /** 患者情報から出した腎機能 */
 @Composable
 fun PatientRenalSummary() {
@@ -134,6 +152,14 @@ fun RenalDrugsScreen(open: (String) -> Unit) {
         }
         item { Choice(listOf(0 to "すべて", 1 to "禁忌・警告あり", 2 to "数値の基準あり"), filter) { filter = it } }
         item { Text("${list.size}件", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        val favs = list.filter { it.id in RenalFavorites.ids }
+        if (favs.isNotEmpty()) {
+            item(key = "h_fav") {
+                Text("よく使う薬", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, start = 4.dp))
+            }
+            favs.forEach { d -> item(key = "fav_" + d.id) { DrugRow(d) { open(d.id) } } }
+        }
         var last: String? = null
         list.forEach { d ->
             if (d.category != last) {
@@ -158,7 +184,11 @@ private fun DrugRow(d: RenalDrug, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.weight(1f))
+                FavStar(d.id)
+            }
             Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             d.excerpts.filter { it.first == "禁忌" }.forEach { (_, t) ->
                 Text("禁忌：" + t.replace("\n", " "), style = MaterialTheme.typography.bodySmall, color = Color(0xFFD32F2F),
@@ -184,11 +214,27 @@ private fun DrugRow(d: RenalDrug, onClick: () -> Unit) {
     }
 }
 
+/** ☆（よく使う薬の登録・解除） */
+@Composable
+private fun FavStar(id: String) {
+    val fav = id in RenalFavorites.ids
+    androidx.compose.material3.IconButton(onClick = { RenalFavorites.toggle(id) }) {
+        Icon(if (fav) androidx.compose.material.icons.Icons.Filled.Star else androidx.compose.material.icons.Icons.Filled.StarBorder,
+            if (fav) "よく使う薬から外す" else "よく使う薬に登録",
+            tint = if (fav) Color(0xFFF5B400) else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 @Composable
 fun RenalDrugDetailScreen(name: String) = CalcPage {
     val ctx = LocalContext.current
     val d = RenalDrugData.drugs.firstOrNull { it.id == name || it.name == name } ?: return@CalcPage
     Section {
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text(if (d.id in RenalFavorites.ids) "よく使う薬に登録済み" else "よく使う薬に登録",
+                style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            FavStar(d.id)
+        }
         Text(d.products)
         Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

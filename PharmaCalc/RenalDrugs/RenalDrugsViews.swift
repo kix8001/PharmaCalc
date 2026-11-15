@@ -80,13 +80,46 @@ struct RenalDrugsView: View {
     @State private var query = ""
     @State private var category: String?
     @State private var filter = 0  // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
+    @AppStorage(RenalFavorites.key) private var favRaw = ""
+
+    private var favorites: Set<String> { RenalFavorites.decode(favRaw) }
+
+    private func matches(_ d: RenalDrug) -> Bool {
+        (query.isEmpty || RenalDrugData.key(d).contains(searchKey(query))) &&
+        (filter != 1 || d.excerpts.contains { $0.section == "禁忌" || $0.section == "警告" }) &&
+        (filter != 2 || d.noNumbers != true)
+    }
 
     private func list(_ c: String) -> [RenalDrug] {
-        RenalDrugData.drugs.filter { d in
-            d.category == c &&
-            (query.isEmpty || RenalDrugData.key(d).contains(searchKey(query))) &&
-            (filter != 1 || d.excerpts.contains { $0.section == "禁忌" || $0.section == "警告" }) &&
-            (filter != 2 || d.noNumbers != true)
+        RenalDrugData.drugs.filter { $0.category == c && matches($0) }
+    }
+
+    private func row(_ d: RenalDrug) -> some View {
+        let fav = favorites.contains(d.id)
+        return HStack {
+            NavigationLink {
+                RenalDrugDetailView(drug: d)
+            } label: {
+                RenalDrugLabel(drug: d)
+            }
+            // NavigationLink の外に置いて、☆だけを押せるようにする
+            Button {
+                favRaw = RenalFavorites.toggle(d.id, in: favRaw)
+            } label: {
+                Image(systemName: fav ? "star.fill" : "star")
+                    .foregroundStyle(fav ? Color.yellow : Color.secondary)
+                    .font(.title3)
+                    .frame(width: 36, height: 44)
+            }
+            .buttonStyle(.borderless)
+        }
+        .swipeActions(edge: .trailing) {
+            Button {
+                favRaw = RenalFavorites.toggle(d.id, in: favRaw)
+            } label: {
+                Label(fav ? "外す" : "よく使う", systemImage: fav ? "star.slash" : "star")
+            }
+            .tint(.yellow)
         }
     }
 
@@ -111,42 +144,17 @@ struct RenalDrugsView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            let favs = RenalDrugData.drugs.filter { favorites.contains($0.id) && matches($0) }
+            if !favs.isEmpty {
+                Section("よく使う薬") {
+                    ForEach(favs) { d in row(d) }
+                }
+            }
             ForEach(RenalDrugData.categories.filter { category == nil || $0 == category }, id: \.self) { c in
                 let l = list(c)
                 if !l.isEmpty {
                     Section(c) {
-                        ForEach(l) { d in
-                            NavigationLink {
-                                RenalDrugDetailView(drug: d)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(d.name).font(.headline)
-                                    Text(d.generic).font(.caption).foregroundStyle(.secondary)
-                                    ForEach(d.excerpts.filter { $0.section == "禁忌" }, id: \.self) { e in
-                                        Text("禁忌：" + e.text.replacingOccurrences(of: "\n", with: " "))
-                                            .font(.caption)
-                                            .foregroundStyle(.red)
-                                            .lineLimit(2)
-                                    }
-                                    HStack(spacing: 6) {
-                                        if d.noNumbers == true {
-                                            Text("数値の基準なし")
-                                                .font(.caption2.bold())
-                                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                                .background(Capsule().fill(Color.gray.opacity(0.15)))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        ForEach(Array(Set(d.excerpts.map(\.section))).sorted(), id: \.self) { s in
-                                            Text(badge(s))
-                                                .font(.caption2.bold())
-                                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                                .background(Capsule().fill(s == "禁忌" || s == "警告" ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.12)))
-                                                .foregroundStyle(s == "禁忌" || s == "警告" ? Color.red : Color.accentColor)
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        ForEach(l) { d in row(d) }
                     }
                 }
             }
@@ -180,9 +188,68 @@ struct RenalDrugsView: View {
     }
 }
 
+/// よく使う薬（端末に保存。成分ごとの ID を改行で区切る）
+enum RenalFavorites {
+    static let key = "renalFavorites"
+    static func decode(_ raw: String) -> Set<String> { Set(raw.split(separator: "\n").map(String.init)) }
+    static func toggle(_ id: String, in raw: String) -> String {
+        var s = decode(raw)
+        if s.contains(id) { s.remove(id) } else { s.insert(id) }
+        return s.sorted().joined(separator: "\n")
+    }
+}
+
+struct RenalDrugLabel: View {
+    let drug: RenalDrug
+
+    var body: some View {
+        let d = drug
+        VStack(alignment: .leading, spacing: 3) {
+            Text(d.name).font(.headline)
+            Text(d.generic).font(.caption).foregroundStyle(.secondary)
+            ForEach(d.excerpts.filter { $0.section == "禁忌" }, id: \.self) { e in
+                Text("禁忌：" + e.text.replacingOccurrences(of: "\n", with: " "))
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+            HStack(spacing: 6) {
+                if d.noNumbers == true {
+                    Text("数値の基準なし")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.gray.opacity(0.15)))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(Array(Set(d.excerpts.map(\.section))).sorted(), id: \.self) { s in
+                    Text(RenalDrugLabel.badge(s))
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Capsule().fill(s == "禁忌" || s == "警告" ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.12)))
+                        .foregroundStyle(s == "禁忌" || s == "警告" ? Color.red : Color.accentColor)
+                }
+            }
+        }
+    }
+
+    static func badge(_ s: String) -> String {
+        switch s {
+        case "禁忌": return "禁忌"
+        case "用法及び用量": return "用量"
+        case "用法及び用量に関連する注意": return "用量の注意"
+        case "効能又は効果に関連する注意": return "効能の注意"
+        case "重要な基本的注意": return "重要な注意"
+        case "9.2 腎機能障害患者": return "腎機能障害"
+        case "警告": return "警告"
+        default: return "薬物動態（参考）"
+        }
+    }
+}
+
 struct RenalDrugDetailView: View {
     let drug: RenalDrug
     @State private var web: WebPage?
+    @AppStorage(RenalFavorites.key) private var favRaw = ""
 
     var body: some View {
         Form {
@@ -215,6 +282,17 @@ struct RenalDrugDetailView: View {
         }
         .navigationTitle(drug.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                let fav = RenalFavorites.decode(favRaw).contains(drug.id)
+                Button {
+                    favRaw = RenalFavorites.toggle(drug.id, in: favRaw)
+                } label: {
+                    Image(systemName: fav ? "star.fill" : "star")
+                        .foregroundStyle(fav ? Color.yellow : Color.accentColor)
+                }
+            }
+        }
         .sheet(item: $web) { page in
             SafariView(url: page.url).ignoresSafeArea()
         }
