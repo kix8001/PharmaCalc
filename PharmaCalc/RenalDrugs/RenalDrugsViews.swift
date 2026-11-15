@@ -37,6 +37,15 @@ enum RenalDrugData {
     }()
 
     static var drugs: [RenalDrug] { file?.drugs ?? [] }
+
+    /// 検索用の文字列（1,000件以上あるので最初に1回だけ作っておく）
+    private static let keys: [String: String] = {
+        var k: [String: String] = [:]
+        for d in drugs { k[d.id] = searchKey(d.name + d.products + d.generic + (d.aliases ?? "")) }
+        return k
+    }()
+
+    static func key(_ d: RenalDrug) -> String { keys[d.id] ?? "" }
     static var source: String { file?.source ?? "" }
     static var categories: [String] {
         var seen: [String] = []
@@ -75,7 +84,7 @@ struct RenalDrugsView: View {
     private func list(_ c: String) -> [RenalDrug] {
         RenalDrugData.drugs.filter { d in
             d.category == c &&
-            (query.isEmpty || (d.name + d.products + d.generic + (d.aliases ?? "")).localizedCaseInsensitiveContains(query)) &&
+            (query.isEmpty || RenalDrugData.key(d).contains(searchKey(query))) &&
             (filter != 1 || d.excerpts.contains { $0.section == "禁忌" || $0.section == "警告" }) &&
             (filter != 2 || d.noNumbers != true)
         }

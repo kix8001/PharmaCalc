@@ -136,7 +136,7 @@ struct HistoryScreen: View {
 
     private var filtered: [ScanRecord] {
         guard !query.isEmpty else { return history.items }
-        return history.items.filter { $0.memo.localizedCaseInsensitiveContains(query) || $0.gtin.contains(query) }
+        return history.items.filter { matchesSearch($0.memo + " " + $0.gtin, query) }
     }
 
     var body: some View {

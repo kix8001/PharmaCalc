@@ -79,5 +79,5 @@ enum class CalcItem(
     DILUTION("消毒液の希釈", "消毒液", "次亜塩素酸ナトリウムなどの作り方", "消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅", Icons.Filled.Sanitizer, CalcGroup.HOME_CARE),
     FEE("薬剤料・窓口負担", "負担金", "薬価から点数（五捨五超入）と窓口負担", "点数 薬価 負担 窓口 お金 五捨五超入 保険", Icons.Filled.CurrencyYen, CalcGroup.INSURANCE);
 
-    fun matches(q: String): Boolean = (title + subtitle + keywords).lowercase().contains(q.lowercase())
+    fun matches(q: String): Boolean = app.pharmacalc.android.core.matchesSearch(title + subtitle + keywords + shortTitle, q)
 }

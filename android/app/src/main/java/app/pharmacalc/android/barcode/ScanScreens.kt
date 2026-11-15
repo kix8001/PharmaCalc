@@ -246,7 +246,7 @@ fun HistoryScreen(onOpen: (String) -> Unit) {
     val ctx = LocalContext.current
     var query by rememberSaveable { mutableStateOf("") }
     val list = ScanHistory.items.filter {
-        query.isEmpty() || it.memo.contains(query, ignoreCase = true) || it.gtin.contains(query)
+        app.pharmacalc.android.core.matchesSearch(it.memo + " " + it.gtin, query)
     }
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("薬品名・GTINで探す") },

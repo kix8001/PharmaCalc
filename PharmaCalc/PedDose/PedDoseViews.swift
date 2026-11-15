@@ -12,7 +12,7 @@ struct PedDoseView: View {
     private func filtered(_ c: String) -> [PedDrug] {
         store.drugs.filter { d in
             (d.category ?? "自分で追加") == c &&
-            (query.isEmpty || (d.name + d.ingredient).localizedCaseInsensitiveContains(query))
+            matchesSearch(d.name + d.ingredient, query)
         }
     }
 

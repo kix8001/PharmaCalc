@@ -296,9 +296,8 @@ struct HomeView: View {
     private var tiles: [CalcItem] { HomeTiles.decode(tilesRaw) }
 
     private var filtered: [CalcItem] {
-        let q = query.lowercased()
-        return CalcItem.allCases.filter {
-            ($0.title + $0.subtitle + $0.keywords).lowercased().contains(q)
+        CalcItem.allCases.filter {
+            matchesSearch($0.title + $0.subtitle + $0.keywords + $0.shortTitle, query)
         }
     }
 

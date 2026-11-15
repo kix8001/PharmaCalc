@@ -90,7 +90,8 @@ fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: Str
         OutlinedTextField(
             value = value, onValueChange = onChange, singleLine = true,
             placeholder = { Text("—", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End) },
-            keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal),
+            keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Next),
             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.End),
             modifier = Modifier.width(120.dp)
         )

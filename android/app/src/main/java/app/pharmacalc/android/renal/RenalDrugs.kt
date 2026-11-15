@@ -49,6 +49,9 @@ data class RenalDrug(
     /** 同じ成分のほかの先発品の販売名（検索用） */
     val aliases: String = "",
 ) {
+    /** 検索用の文字列（1,000件以上あるので最初に1回だけ作る） */
+    val searchKey by lazy { app.pharmacalc.android.core.searchKey(name + products + generic + aliases) }
+
     /** 一覧と詳細をつなぐ ID（成分ごとに一意） */
     val id get() = (pmda ?: "") + "|" + name
 }
@@ -110,7 +113,7 @@ fun RenalDrugsScreen(open: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(0) }  // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
     val list = RenalDrugData.drugs.filter { d ->
         (category == null || d.category == category) &&
-            (query.isEmpty() || (d.name + d.products + d.generic + d.aliases).contains(query, ignoreCase = true)) &&
+            (query.isEmpty() || d.searchKey.contains(app.pharmacalc.android.core.searchKey(query.trim()))) &&
             (filter != 1 || d.excerpts.any { it.first == "禁忌" || it.first == "警告" }) &&
             (filter != 2 || !d.noNumbers)
     }

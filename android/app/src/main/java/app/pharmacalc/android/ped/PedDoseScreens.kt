@@ -59,7 +59,7 @@ fun PedDoseScreen(edit: (String?) -> Unit) = CalcPage {
     Choice(listOf<Pair<String?, String>>(null to "すべて") + PedDrugStore.categories.map { it to it }, category) { category = it }
     PedDrugStore.categories.filter { category == null || it == category }.forEach { c ->
         val list = PedDrugStore.drugs.filter {
-            (it.category ?: "自分で追加") == c && (query.isEmpty() || (it.name + it.ingredient).contains(query, ignoreCase = true))
+            (it.category ?: "自分で追加") == c && app.pharmacalc.android.core.matchesSearch(it.name + it.ingredient, query)
         }
         if (list.isNotEmpty()) Section(c) {
             list.forEachIndexed { i, d ->
