@@ -191,6 +191,8 @@ func range(_ a: Double, _ b: Double, _ digits: Int) -> String {
 
 private struct PresetFile: Decodable {
     var version: Int
+    /// 名前を変えた・適応症ごとに分けた初期登録の薬の旧名
+    var replaced: [String]?
     var drugs: [PresetDrug]
 }
 
@@ -233,14 +235,15 @@ private struct PresetDrug: Decodable {
 }
 
 enum PedPresets {
-    private static let loaded: (Int, [PedDrug]) = {
+    private static let loaded: (Int, [PedDrug], Set<String>) = {
         guard let url = Bundle.main.url(forResource: "ped_presets", withExtension: "json"),
               let data = try? Data(contentsOf: url),
-              let file = try? JSONDecoder().decode(PresetFile.self, from: data) else { return (0, []) }
-        return (file.version, file.drugs.map(\.drug))
+              let file = try? JSONDecoder().decode(PresetFile.self, from: data) else { return (0, [], []) }
+        return (file.version, file.drugs.map(\.drug), Set(file.replaced ?? []))
     }()
     static var version: Int { loaded.0 }
     static var drugs: [PedDrug] { loaded.1 }
+    static var replaced: Set<String> { loaded.2 }
 
     /// 0.5.0 の初期登録の名前（0.6.0 で名前を変えたので入れ替える）
     static let oldNames: Set<String> = [
@@ -271,7 +274,8 @@ final class PedDrugStore: ObservableObject {
         if saved < PedPresets.version {
             // 初期登録の薬は新しい版（添付文書と照合して直した値）に入れ替え、自分で追加した薬は後ろに残す
             let presetNames = Set(PedPresets.drugs.map(\.name))
-            let mine = list.filter { !presetNames.contains($0.name) && !PedPresets.oldNames.contains($0.name) }
+            let mine = list.filter { !presetNames.contains($0.name) && !PedPresets.oldNames.contains($0.name)
+                && !PedPresets.replaced.contains($0.name) }
             list = PedPresets.drugs + mine
             d.set(PedPresets.version, forKey: versionKey)
         }

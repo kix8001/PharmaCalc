@@ -3,7 +3,7 @@
 # 変更したら `python3 tools/make_ped_presets.py` を実行して data/ped_presets.json を作り直す（iOS・Android 共通）。
 import json, os
 
-V = 4  # 初期登録の版。増やすと、既存ユーザーにも足りない薬が名前で追加される
+V = 5  # 初期登録の版。増やすと、既存ユーザーにも足りない薬が名前で追加される
 
 def B(below, mn, mx=None, times=None, perKg=False, perDose=False):
     """below 歳（体重別なら kg）未満の用量。perKg=体重1kgあたり、perDose=1回量（既定は1日量）。1歳未満は小数（6か月=0.5）"""
@@ -438,11 +438,91 @@ PMDA = {
  "モイゼルト軟膏0.3%": "2699715",
  "オゼックス錠小児用60mg": "6241010"
 }
-for d in presets:
-    if d["name"] in PMDA:
-        d["pmda"] = PMDA[d["name"]]
+# ---- 適応症で小児用量が違う薬は、適応症ごとに別の行にする（2026年11月 PMDA の電子添文と照合） ----
+ACV_HI = dict(basis="dose", minPerKg=20, maxPerKg=20, times=4, maxDoseMg=800)
+ACV_LO = dict(basis="dose", minPerKg=20, maxPerKg=20, times=4, maxDoseMg=200)
+VACV_HSV = dict(basis="weight", bands=[B(10, 25, times=3, perKg=True, perDose=True), B(500, 25, times=2, perKg=True, perDose=True)],
+                times=2, maxDoseMg=500)
+PEMI_RHINITIS = [B(1, 0), B(5, 2.5), B(11, 5), B(200, 10)]
+CAM_GEN = dict(basis="day", minPerKg=10, maxPerKg=15, times=2, maxDailyMg=400)
+SPLIT = {
+    "ゾビラックス顆粒40%": [
+        ("水痘・帯状疱疹", ACV_HI, "1回20mg/kgを1日4回（1回800mgまで）。水痘は皮疹出現後3日以内、帯状疱疹は5日以内に開始"),
+        ("単純疱疹・性器ヘルペス再発抑制", ACV_LO, "1回20mg/kgを1日4回（1回200mgまで）。造血幹細胞移植時の単純疱疹の発症抑制も同じ"),
+    ],
+    "アシクロビルドライシロップ80%": [
+        ("帯状疱疹", ACV_HI, "1回20mg/kgを1日4回（1回800mgまで）。この製剤の効能に水痘は無い（水痘はゾビラックス顆粒など）"),
+        ("単純疱疹・性器ヘルペス再発抑制", ACV_LO, "1回20mg/kgを1日4回（1回200mgまで）。造血幹細胞移植時の単純疱疹の発症抑制も同じ"),
+    ],
+    "バルトレックス顆粒50%": [
+        ("水痘・帯状疱疹", dict(basis="dose", minPerKg=25, maxPerKg=25, times=3, maxDoseMg=1000), "1回25mg/kgを1日3回（1回1000mgまで）"),
+        ("単純疱疹", VACV_HSV, "1回25mg/kgを、体重10kg未満は1日3回、10kg以上は1日2回（1回500mgまで）。造血幹細胞移植時の発症抑制も同じ"),
+        ("性器ヘルペス再発抑制", dict(basis="weight", bands=[B(40, 0), B(500, 500, times=1, perDose=True)], times=1),
+         "体重40kg以上の小児：1回500mgを1日1回（HIV感染症の患者は1日2回）"),
+    ],
+    "タミフルドライシロップ3%": [
+        ("治療", None, "1日2回5日間。新生児・乳児（1歳未満）は1回3mg/kg、幼小児は1回2mg/kg（1回75mgまで）"),
+        ("予防", dict(basis="age", bands=[B(1, 0), B(200, 2, times=1, perKg=True, perDose=True)], times=1, maxDoseMg=75),
+         "幼小児：1回2mg/kgを1日1回10日間（1回75mgまで）。接触後2日以内に開始。1歳未満の予防の用量は記載なし"),
+    ],
+    "リレンザ": [
+        ("治療", dict(basis="age", bands=[B(200, 20, times=2)], times=2), "1回10mg（2ブリスター）を1日2回、5日間吸入"),
+        ("予防", dict(basis="age", bands=[B(200, 10, times=1)], times=1), "1回10mg（2ブリスター）を1日1回、10日間吸入"),
+    ],
+    "アレギサールドライシロップ0.5%": [
+        ("気管支喘息", dict(basis="age", bands=PEMI, times=2),
+         "1回0.2mg/kgを1日2回。標準：1〜5歳未満 1回2.5mg、5〜11歳未満 1回5mg、11歳以上 1回10mg"),
+        ("アレルギー性鼻炎", dict(basis="age", bands=PEMI_RHINITIS, times=2),
+         "1回0.1mg/kgを1日2回。標準：1〜5歳未満 1回1.25mg、5〜11歳未満 1回2.5mg、11歳以上 1回5mg"),
+    ],
+    "ゼスラン小児用細粒0.6%（ニポラジン小児用細粒0.6%）": [
+        ("気管支喘息", dict(basis="dose", minPerKg=0.12, maxPerKg=0.12, times=2), "1回0.12mg/kgを1日2回"),
+        ("鼻炎・じん麻疹・皮膚のかゆみ", dict(basis="dose", minPerKg=0.06, maxPerKg=0.06, times=2), "1回0.06mg/kgを1日2回"),
+    ],
+    "クラリスドライシロップ10%": [
+        ("一般感染症", CAM_GEN, "1日10〜15mg/kgを2〜3回に分ける。小児の1日量は成人量（400mg）まで"),
+        ("レジオネラ肺炎", dict(CAM_GEN, minPerKg=15), "1日15mg/kgを2〜3回に分ける"),
+        ("MAC症（エイズに伴う）", dict(basis="day", minPerKg=15, maxPerKg=15, times=2), "1日15mg/kgを2回に分ける"),
+    ],
+    "メイアクトMS小児用細粒10%": [
+        ("肺炎・中耳炎・副鼻腔炎", dict(basis="dose", minPerKg=3, maxPerKg=6, times=3, maxDoseMg=200),
+         "1回3mg/kgを1日3回食後。必要に応じて1回6mg/kgまで（1回200mg・1日600mgまで）"),
+        ("上記以外", dict(basis="dose", minPerKg=3, maxPerKg=3, times=3, maxDoseMg=200), "1回3mg/kgを1日3回食後（1回200mgまで）"),
+    ],
+    "イーケプラドライシロップ50%": [
+        ("部分発作", None, "1〜6か月未満は1日14mg/kgから最高42mg/kg、6か月以上は1日20mg/kgから最高60mg/kg（1日2回）。増量は2週間以上あける。体重50kg以上は成人量（1日1000〜3000mg）"),
+        ("強直間代発作", dict(basis="age", bands=[B(4, 0), B(200, 20, 60, perKg=True)], times=2, maxDailyMg=3000),
+         "4歳以上：1日20mg/kgから最高60mg/kg（1日2回）。他の抗てんかん薬と併用。体重50kg以上は成人量"),
+    ],
+}
+SPLIT["ペミラストンドライシロップ0.5%"] = SPLIT["アレギサールドライシロップ0.5%"]
+SPLIT["ゼスランシロップ0.03%（ニポラジンシロップ0.03%）"] = SPLIT["ゼスラン小児用細粒0.6%（ニポラジン小児用細粒0.6%）"]
+SPLIT["クラリシッドドライシロップ10%"] = SPLIT["クラリスドライシロップ10%"]
+DOSE_KEYS = ("basis", "minPerKg", "maxPerKg", "times", "maxDoseMg", "maxDailyMg", "maxDailyPerKg", "bands", "note")
 
-out = {"version": V, "drugs": presets}
+expanded = []
+for d in presets:
+    if d["name"] not in SPLIT:
+        expanded.append(d)
+        continue
+    for label, dose, note in SPLIT[d["name"]]:
+        e = dict(d)
+        if dose is not None:
+            for k in DOSE_KEYS:
+                e.pop(k, None)
+            e.update(dose)
+        e["name"] = "%s【%s】" % (d["name"], label)
+        e["note"] = note
+        expanded.append(e)
+presets = expanded
+
+for d in presets:
+    base = d["name"].split("【")[0]
+    if base in PMDA:
+        d["pmda"] = PMDA[base]
+
+# 名前を変えた・分けた初期登録の薬（アプリは保存データからこの名前の薬を消して、新しい初期登録に入れ替える）
+out = {"version": V, "replaced": sorted(SPLIT), "drugs": presets}
 here = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(here, "..", "data", "ped_presets.json"), "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, indent=1)

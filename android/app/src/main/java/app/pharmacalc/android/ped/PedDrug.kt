@@ -153,6 +153,8 @@ object PedDrugStore {
     private const val VERSION_KEY = "pedPresetVersion"
     private var presetVersion = 0
     private var presets: List<PedDrug> = emptyList()
+    /** 名前を変えた・適応症ごとに分けた初期登録の薬の旧名 */
+    private var replaced: Set<String> = emptySet()
 
     /** 0.3.0 の初期登録の名前（0.4.0 で名前を変えたので入れ替える） */
     private val oldNames = setOf(
@@ -170,6 +172,7 @@ object PedDrugStore {
             presetVersion = o.getInt("version")
             val arr = o.getJSONArray("drugs")
             presets = (0 until arr.length()).map { presetFrom(arr.getJSONObject(it)) }
+            o.optJSONArray("replaced")?.let { r -> replaced = (0 until r.length()).map { r.getString(it) }.toSet() }
         }
         val saved = prefs?.getString(KEY, null)?.let { runCatching { decode(it) }.getOrNull() }
         drugs.clear()
@@ -181,7 +184,7 @@ object PedDrugStore {
             if (v < presetVersion) {
                 // 初期登録の薬は新しい版（添付文書と照合して直した値）に入れ替え、自分で追加した薬は後ろに残す
                 val presetNames = presets.map { it.name }.toSet()
-                list = presets + list.filter { it.name !in presetNames && it.name !in oldNames }
+                list = presets + list.filter { it.name !in presetNames && it.name !in oldNames && it.name !in replaced }
             }
             drugs.addAll(list)
         }
