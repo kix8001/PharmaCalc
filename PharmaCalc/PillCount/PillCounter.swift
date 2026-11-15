@@ -100,17 +100,43 @@ enum PillCounter {
             }
         }
 
-        // 半径
-        let R = estimateRadius(rgb)
+        // 通常の輪郭と、薄い輪郭の両方で数える。
+        // 白い錠剤が白っぽい背景にあると外周の輪郭が薄く、通常の輪郭では刻印の文字やマークだけが拾われて
+        // 1錠を何個にも数えてしまう。薄い輪郭のほうでもっと大きい円が見つかり、通常の検出の多くが
+        // その円の内側にあるなら、通常の検出は刻印なので、大きい円（錠剤の外周）を採る
+        var (pts, R) = detect(rgb, w: w, h: h, edgeFrac: 0.25, sensitivity: sensitivity)
+        let (pb, Rb) = detect(rgb, w: w, h: h, edgeFrac: 0.10, sensitivity: sensitivity)
+        if !pb.isEmpty && Rb >= 1.4 * R {
+            let inside = pts.filter { a in
+                pb.contains { b in
+                    let dx = Float(a % w - b % w), dy = Float(a / w - b / w)
+                    return dx * dx + dy * dy < Rb * Rb
+                }
+            }.count
+            if pts.isEmpty || Float(inside) >= 0.6 * Float(pts.count) { pts = pb; R = Rb }
+        }
         guard R >= 3 else { return empty }
 
+        let markers = pts.map { i in
+            PillMarker(x: CGFloat(x0 + i % w), y: CGFloat(y0 + i / w), count: 1)
+        }
+        return PillCountResult(markers: markers, unitRadius: CGFloat(R))
+    }
+
+    /// 輪郭のしきい値（上位1%の強さに対する割合）を決めて、錠剤の中心（ROI内の画素番号）と半径を出す
+    private static func detect(_ rgb: [Plane], w: Int, h: Int, edgeFrac: Float,
+                               sensitivity: Double) -> (pts: [Int], R: Float) {
+        // 半径
+        let R = estimateRadius(rgb, edgeFrac: edgeFrac)
+        guard R >= 3 else { return ([], 0) }
+
         // 半径 R±15% で投票
-        let e = edges(rgb, blur: max(1, Int(R / 8)))
-        guard e.xs.count > 20 else { return empty }
+        let e = edges(rgb, blur: max(1, Int(R / 8)), frac: edgeFrac)
+        guard e.xs.count > 20 else { return ([], R) }
         let radii = Array(Set((0..<7).map { Int((R * (0.85 + 0.05 * Float($0))).rounded()) })).filter { $0 > 0 }
         let acc = box3(vote(e, radii))
         var peaks = localMaxima(acc, minValue: 1)
-        guard !peaks.isEmpty else { return empty }
+        guard !peaks.isEmpty else { return ([], R) }
         peaks.sort { $0.v > $1.v }
         let topN = max(5, peaks.count / 20)
         let top = peaks.prefix(topN).map { $0.v }.sorted()
@@ -145,20 +171,17 @@ enum PillCounter {
             if accepted.count >= 3000 { break }
         }
 
-        let markers = accepted.map { i in
-            PillMarker(x: CGFloat(x0 + i % w), y: CGFloat(y0 + i / w), count: 1)
-        }
-        return PillCountResult(markers: markers, unitRadius: CGFloat(R))
+        return (accepted, R)
     }
 
     // MARK: - 半径の推定
 
-    private static func estimateRadius(_ rgb: [Plane]) -> Float {
+    private static func estimateRadius(_ rgb: [Plane], edgeFrac: Float) -> Float {
         let w = rgb[0].w, h = rgb[0].h
         // 縮小画像で、半径ごとに円の数を数える
         let k = max(1, Int((Double(max(w, h)) / 480).rounded(.up)))
         let small = k > 1 ? rgb.map { downscale($0, k) } : rgb
-        let es = edges(small, blur: 1)
+        let es = edges(small, blur: 1, frac: edgeFrac)
         var counts: [(r: Int, c: Int)] = []
         for r in 4...59 {
             counts.append((r, circleCount(es, Float(r), lo: 0.75, hi: 1.25)))
@@ -170,7 +193,7 @@ enum PillCounter {
         let rough = Float(rc) / 1.3 * Float(k)
 
         // 原寸で細かく合わせる（狭い幅で円周を確かめ、ほぼ最多の中で一番大きい半径）
-        let ef = edges(rgb, blur: max(1, Int(rough / 8)))
+        let ef = edges(rgb, blur: max(1, Int(rough / 8)), frac: edgeFrac)
         var fine: [(r: Float, c: Int)] = []
         var f: Float = 0.65
         while f <= 1.201 {
@@ -245,8 +268,8 @@ enum PillCounter {
         return Plane(w: w, h: h, v: o)
     }
 
-    /// RGB それぞれをぼかして Sobel をかけ、いちばん強い勾配を採用。上位1%の強さの25%以上を輪郭とする
-    private static func edges(_ rgb: [Plane], blur: Int) -> Edges {
+    /// RGB それぞれをぼかして Sobel をかけ、いちばん強い勾配を採用。上位1%の強さの frac（通常25%、薄い輪郭用は10%）以上を輪郭とする
+    private static func edges(_ rgb: [Plane], blur: Int, frac: Float) -> Edges {
         let w = rgb[0].w, h = rgb[0].h, n = w * h
         var bgx = [Float](repeating: 0, count: n)
         var bgy = [Float](repeating: 0, count: n)
@@ -268,7 +291,7 @@ enum PillCounter {
                 }
             }
         }
-        let T = max(1, 0.25 * percentile(bm, 0.99))
+        let T = max(1, frac * percentile(bm, 0.99))
         var e = Edges(w: w, h: h, isEdge: [Bool](repeating: false, count: n),
                       ux: [Float](repeating: 0, count: n), uy: [Float](repeating: 0, count: n))
         for i in 0..<n where bm[i] > T {

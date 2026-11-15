@@ -54,15 +54,36 @@ object PillCounter {
             rgb[2].v[i] = (c and 0xFF).toFloat()
         }
 
-        val R = estimateRadius(rgb)
+        // 通常の輪郭と、薄い輪郭の両方で数える。
+        // 白い錠剤が白っぽい背景にあると外周の輪郭が薄く、通常の輪郭では刻印の文字やマークだけが拾われて
+        // 1錠を何個にも数えてしまう。薄い輪郭のほうでもっと大きい円が見つかり、通常の検出の多くが
+        // その円の内側にあるなら、通常の検出は刻印なので、大きい円（錠剤の外周）を採る
+        var (pts, R) = detect(rgb, w, 0.25f, sensitivity)
+        val (pb, rb) = detect(rgb, w, 0.10f, sensitivity)
+        if (pb.isNotEmpty() && rb >= 1.4f * R) {
+            val inside = pts.count { a ->
+                pb.any { b ->
+                    val dx = (a % w - b % w).toFloat(); val dy = (a / w - b / w).toFloat()
+                    dx * dx + dy * dy < rb * rb
+                }
+            }
+            if (pts.isEmpty() || inside.toFloat() >= 0.6f * pts.size) { pts = pb; R = rb }
+        }
         if (R < 3) return empty
+        return PillCountResult(pts.map { PillMarker((r0.left + it % w).toFloat(), (r0.top + it / w).toFloat()) }, R)
+    }
 
-        val e = edges(rgb, max(1, (R / 8).toInt()))
-        if (e.xs.size <= 20) return empty
+    /** 輪郭のしきい値（上位1%の強さに対する割合）を決めて、錠剤の中心（ROI内の画素番号）と半径を出す */
+    private fun detect(rgb: Array<Plane>, w: Int, edgeFrac: Float, sensitivity: Double): Pair<List<Int>, Float> {
+        val R = estimateRadius(rgb, edgeFrac)
+        if (R < 3) return emptyList<Int>() to 0f
+
+        val e = edges(rgb, max(1, (R / 8).toInt()), edgeFrac)
+        if (e.xs.size <= 20) return emptyList<Int>() to R
         val radii = (0 until 7).map { (R * (0.85f + 0.05f * it)).roundToInt() }.filter { it > 0 }.distinct()
         val acc = box3(vote(e, radii))
         val peaks = localMaxima(acc, 1f).sortedByDescending { it.first }
-        if (peaks.isEmpty()) return empty
+        if (peaks.isEmpty()) return emptyList<Int>() to R
         val topN = max(5, peaks.size / 20)
         val top = peaks.take(topN).map { it.first }.sorted()
         val ref = top[top.size / 2]
@@ -93,18 +114,18 @@ object PillCounter {
             grid.getOrPut(key(gx, gy)) { ArrayList() }.add(i)
             if (accepted.size >= 3000) break
         }
-        return PillCountResult(accepted.map { PillMarker((r0.left + it % w).toFloat(), (r0.top + it / w).toFloat()) }, R)
+        return accepted to R
     }
 
     private fun key(x: Int, y: Int) = x.toLong() * 100_000L + y
 
     // ---- 半径の推定 ----
 
-    private fun estimateRadius(rgb: Array<Plane>): Float {
+    private fun estimateRadius(rgb: Array<Plane>, edgeFrac: Float): Float {
         val w = rgb[0].w; val h = rgb[0].h
         val k = max(1, ceil(max(w, h) / 480.0).toInt())
         val small = if (k > 1) Array(3) { downscale(rgb[it], k) } else rgb
-        val es = edges(small, 1)
+        val es = edges(small, 1, edgeFrac)
         val counts = (4..59).map { it to circleCount(es, it.toFloat(), 0.75f, 1.25f) }
         val m = counts.maxOf { it.second }
         if (m <= 0) return 0f
@@ -114,7 +135,7 @@ object PillCounter {
         val rough = rc / 1.3f * k
 
         // 原寸で細かく合わせる（狭い幅で円周を確かめ、ほぼ最多の中で一番大きい半径）
-        val ef = edges(rgb, max(1, (rough / 8).toInt()))
+        val ef = edges(rgb, max(1, (rough / 8).toInt()), edgeFrac)
         val fine = ArrayList<Pair<Float, Int>>()
         var f = 0.65f
         while (f <= 1.201f) {
@@ -185,8 +206,8 @@ object PillCounter {
         return Plane(w, h, o)
     }
 
-    /** RGB それぞれをぼかして Sobel をかけ、いちばん強い勾配を採用。上位1%の強さの25%以上を輪郭とする */
-    private fun edges(rgb: Array<Plane>, blur: Int): Edges {
+    /** RGB それぞれをぼかして Sobel をかけ、いちばん強い勾配を採用。上位1%の強さの frac（通常25%、薄い輪郭用は10%）以上を輪郭とする */
+    private fun edges(rgb: Array<Plane>, blur: Int, frac: Float): Edges {
         val w = rgb[0].w; val h = rgb[0].h; val n = w * h
         val bgx = FloatArray(n); val bgy = FloatArray(n); val bm = FloatArray(n)
         for (ch in rgb) {
@@ -205,7 +226,7 @@ object PillCounter {
                 if (m > bm[i]) { bm[i] = m; bgx[i] = gx; bgy[i] = gy }
             }
         }
-        val t = max(1f, 0.25f * percentile(bm, 0.99f))
+        val t = max(1f, frac * percentile(bm, 0.99f))
         val isEdge = BooleanArray(n); val ux = FloatArray(n); val uy = FloatArray(n)
         var cnt = 0
         for (i in 0 until n) if (bm[i] > t) cnt++
