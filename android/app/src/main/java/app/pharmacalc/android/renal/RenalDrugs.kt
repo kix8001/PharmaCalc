@@ -46,7 +46,10 @@ data class RenalDrug(
     val excerpts: List<Pair<String, String>>,
     /** 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ） */
     val noNumbers: Boolean = false,
-)
+) {
+    /** 一覧と詳細をつなぐ ID（成分ごとに一意） */
+    val id get() = (pmda ?: "") + "|" + name
+}
 
 object RenalDrugData {
     var drugs: List<RenalDrug> = emptyList(); private set
@@ -99,56 +102,87 @@ private fun badge(s: String) = when (s) {
 }
 
 @Composable
-fun RenalDrugsScreen(open: (String) -> Unit) = CalcPage {
+fun RenalDrugsScreen(open: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
-    Section("この患者の腎機能") { PatientRenalSummary() }
-    OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("薬の名前・成分で探す") },
-        leadingIcon = { Icon(Icons.Filled.Search, null) }, modifier = Modifier.fillMaxWidth())
-    Choice(listOf<Pair<String?, String>>(null to "すべて") + RenalDrugData.categories.map { it to it }, category) { category = it }
-    RenalDrugData.categories.filter { category == null || it == category }.forEach { c ->
-        val list = RenalDrugData.drugs.filter {
-            it.category == c && (query.isEmpty() || (it.name + it.products + it.generic).contains(query, ignoreCase = true))
+    var filter by rememberSaveable { mutableStateOf(0) }  // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
+    val list = RenalDrugData.drugs.filter { d ->
+        (category == null || d.category == category) &&
+            (query.isEmpty() || (d.name + d.products + d.generic).contains(query, ignoreCase = true)) &&
+            (filter != 1 || d.excerpts.any { it.first == "禁忌" || it.first == "警告" }) &&
+            (filter != 2 || !d.noNumbers)
+    }
+    // 件数が多いので、画面に見える行だけ作る LazyColumn にする
+    androidx.compose.foundation.lazy.LazyColumn(
+        Modifier.fillMaxWidth(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item { Section("この患者の腎機能") { PatientRenalSummary() } }
+        item {
+            OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("薬の名前・成分で探す") },
+                leadingIcon = { Icon(Icons.Filled.Search, null) }, modifier = Modifier.fillMaxWidth())
         }
-        if (list.isNotEmpty()) Section(c) {
-            list.forEachIndexed { i, d ->
-                if (i > 0) Divider()
-                Column(Modifier.fillMaxWidth().clickable { open(d.name) }.padding(vertical = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    d.excerpts.filter { it.first == "禁忌" }.forEach { (_, t) ->
-                        Text("禁忌：" + t.replace("\n", " "), style = MaterialTheme.typography.bodySmall, color = Color(0xFFD32F2F),
-                            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (d.noNumbers) {
-                            Text("数値の基準なし", style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.background(Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(50))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                        d.excerpts.map { it.first }.distinct().sorted().forEach { s ->
-                            val red = s == "禁忌" || s == "警告"
-                            Text(badge(s), style = MaterialTheme.typography.labelSmall,
-                                color = if (red) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.background(
-                                    (if (red) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
-                                    RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                    }
+        item {
+            app.pharmacalc.android.ui.DropdownRow("薬効分類",
+                listOf<Pair<String?, String>>(null to "すべて") + RenalDrugData.categories.map { it to it }, category) { category = it }
+        }
+        item { Choice(listOf(0 to "すべて", 1 to "禁忌・警告あり", 2 to "数値の基準あり"), filter) { filter = it } }
+        item { Text("${list.size}件", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        var last: String? = null
+        list.forEach { d ->
+            if (d.category != last) {
+                last = d.category
+                item(key = "h_" + d.category) {
+                    Text(d.category, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp, start = 4.dp))
+                }
+            }
+            item(key = d.id) { DrugRow(d) { open(d.id) } }
+        }
+        item {
+            Text("${RenalDrugData.source}の「警告」「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」のうち腎機能（CCr・eGFR・クレアチニン・腎・透析）に触れた項目と「9.2 腎機能障害患者」の全文を、文言を変えずに載せています。「16.6 薬物動態」は腎機能の数値があるものだけ参考として載せています。",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun DrugRow(d: RenalDrug, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(d.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            d.excerpts.filter { it.first == "禁忌" }.forEach { (_, t) ->
+                Text("禁忌：" + t.replace("\n", " "), style = MaterialTheme.typography.bodySmall, color = Color(0xFFD32F2F),
+                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (d.noNumbers) {
+                    Text("数値の基準なし", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.background(Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(50))
+                            .padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+                d.excerpts.map { it.first }.distinct().sorted().forEach { s ->
+                    val red = s == "禁忌" || s == "警告"
+                    Text(badge(s), style = MaterialTheme.typography.labelSmall,
+                        color = if (red) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.background(
+                            (if (red) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
+                            RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 2.dp))
                 }
             }
         }
     }
-    Text("${RenalDrugData.source}の「警告」「禁忌」「効能又は効果に関連する注意」「用法及び用量」「用法及び用量に関連する注意」「重要な基本的注意」のうち腎機能（CCr・eGFR・クレアチニン・腎・透析）に触れた項目と「9.2 腎機能障害患者」の全文を、文言を変えずに載せています。「16.6 薬物動態」は腎機能の数値があるものだけ参考として載せています。同じ成分でも製品によって記載が違うことがあるので、処方された製品の添付文書で確認してください。",
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
 fun RenalDrugDetailScreen(name: String) = CalcPage {
     val ctx = LocalContext.current
-    val d = RenalDrugData.drugs.firstOrNull { it.name == name } ?: return@CalcPage
+    val d = RenalDrugData.drugs.firstOrNull { it.id == name || it.name == name } ?: return@CalcPage
     Section {
         Text(d.products)
         Text(d.generic, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -15,7 +15,8 @@ struct RenalDrug: Decodable, Identifiable, Hashable {
     /// 添付文書に腎機能の数値の基準が無い（腎機能に触れた記載だけ）
     var noNumbers: Bool?
 
-    var id: String { name }
+    /// 成分（YJコード先頭7桁）ごとに一意
+    var id: String { (pmda ?? "") + "|" + name }
     var pmdaURL: URL? {
         pmda.flatMap { URL(string: "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/\($0)") }
     }
@@ -67,10 +68,14 @@ struct PatientRenalSummary: View {
 struct RenalDrugsView: View {
     @State private var query = ""
     @State private var category: String?
+    @State private var filter = 0  // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
 
     private func list(_ c: String) -> [RenalDrug] {
-        RenalDrugData.drugs.filter {
-            $0.category == c && (query.isEmpty || ($0.name + $0.products + $0.generic).localizedCaseInsensitiveContains(query))
+        RenalDrugData.drugs.filter { d in
+            d.category == c &&
+            (query.isEmpty || (d.name + d.products + d.generic).localizedCaseInsensitiveContains(query)) &&
+            (filter != 1 || d.excerpts.contains { $0.section == "禁忌" || $0.section == "警告" }) &&
+            (filter != 2 || d.noNumbers != true)
         }
     }
 
@@ -81,14 +86,19 @@ struct RenalDrugsView: View {
             }
             Section {
                 TextField("薬の名前・成分で探す", text: $query)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        chip("すべて", selected: category == nil) { category = nil }
-                        ForEach(RenalDrugData.categories, id: \.self) { c in
-                            chip(c, selected: category == c) { category = c }
-                        }
+                Picker("薬効分類", selection: $category) {
+                    Text("すべて").tag(String?.none)
+                    ForEach(RenalDrugData.categories, id: \.self) { c in
+                        Text(c).tag(String?.some(c))
                     }
                 }
+                .pickerStyle(.menu)
+                Picker("絞り込み", selection: $filter) {
+                    Text("すべて").tag(0)
+                    Text("禁忌・警告あり").tag(1)
+                    Text("数値の基準あり").tag(2)
+                }
+                .pickerStyle(.segmented)
             }
             ForEach(RenalDrugData.categories.filter { category == nil || $0 == category }, id: \.self) { c in
                 let l = list(c)

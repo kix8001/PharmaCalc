@@ -61,7 +61,7 @@ sealed interface Screen {
     data object Patient : Screen { override val title = "患者情報" }
     data object EditTiles : Screen { override val title = "ホームの編集" }
     data class HistoryDetail(val id: String) : Screen { override val title get() = "履歴の詳細" }
-    data class RenalDrugDetail(val name: String) : Screen { override val title get() = name }
+    data class RenalDrugDetail(val name: String) : Screen { override val title get() = name.substringAfter("|") }
     data class PedDrugEdit(val id: String?) : Screen { override val title get() = if (id == null) "薬を追加" else "薬を編集" }
 }
 
