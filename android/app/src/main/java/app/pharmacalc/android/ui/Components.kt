@@ -91,6 +91,15 @@ fun Divider() = HorizontalDivider(color = MaterialTheme.colorScheme.outlineVaria
 fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: String = "", integer: Boolean = false) {
     val focus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    // クリアボタン（入力があるときだけ）
+    val clear: (@Composable () -> Unit)? = if (value.isEmpty()) null else {
+        {
+            androidx.compose.material3.IconButton(onClick = { onChange(""); focus.requestFocus() }) {
+                Icon(androidx.compose.material.icons.Icons.Filled.Cancel, "${title}を消す",
+                    tint = MaterialTheme.colorScheme.outline)
+            }
+        }
+    }
     // 行のどこをタップしても入力できるように
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(
@@ -103,13 +112,7 @@ fun NumField(title: String, value: String, onChange: (String) -> Unit, unit: Str
             keyboardOptions = KeyboardOptions(keyboardType = if (integer) KeyboardType.Number else KeyboardType.Decimal,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Next),
             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.End),
-            // クリアボタン（入力があるときだけ）
-            leadingIcon = if (value.isEmpty()) null else @Composable {
-                androidx.compose.material3.IconButton(onClick = { onChange(""); focus.requestFocus() }) {
-                    Icon(androidx.compose.material.icons.Icons.Filled.Cancel, "${title}を消す",
-                        tint = MaterialTheme.colorScheme.outline)
-                }
-            },
+            leadingIcon = clear,
             modifier = Modifier.width(160.dp).focusRequester(focus)
         )
         if (unit.isNotEmpty()) {
