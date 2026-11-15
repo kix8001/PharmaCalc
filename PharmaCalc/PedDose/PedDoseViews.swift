@@ -5,11 +5,14 @@ struct PedDoseView: View {
     @EnvironmentObject var p: PatientStore
     @EnvironmentObject var store: PedDrugStore
     @State private var query = ""
+    @State private var category: String?
     @State private var adding = false
 
-    private var list: [PedDrug] {
-        guard !query.isEmpty else { return store.drugs }
-        return store.drugs.filter { ($0.name + $0.ingredient).localizedCaseInsensitiveContains(query) }
+    private func filtered(_ c: String) -> [PedDrug] {
+        store.drugs.filter { d in
+            (d.category ?? "自分で追加") == c &&
+            (query.isEmpty || (d.name + d.ingredient).localizedCaseInsensitiveContains(query))
+        }
     }
 
     var body: some View {
@@ -24,31 +27,38 @@ struct PedDoseView: View {
             }
             Section {
                 TextField("薬の名前・成分で絞り込む", text: $query)
-            }
-            Section {
-                ForEach(list) { d in
-                    NavigationLink {
-                        PedDrugEditView(original: d)
-                    } label: {
-                        PedDrugRow(drug: d, age: p.ageV, weight: p.weightV)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        chip("すべて", selected: category == nil) { category = nil }
+                        ForEach(store.categories, id: \.self) { c in
+                            chip(c, selected: category == c) { category = c }
+                        }
                     }
                 }
-                .onDelete { idx in
-                    let ids = idx.map { list[$0].id }
-                    store.drugs.removeAll { ids.contains($0.id) }
+            }
+            ForEach(store.categories.filter { category == nil || $0 == category }, id: \.self) { c in
+                let list = filtered(c)
+                if !list.isEmpty {
+                    Section(c) {
+                        ForEach(list) { d in
+                            NavigationLink {
+                                PedDrugEditView(original: d)
+                            } label: {
+                                PedDrugRow(drug: d, age: p.ageV, weight: p.weightV)
+                            }
+                        }
+                    }
                 }
+            }
+            Section {
                 Button {
                     adding = true
                 } label: {
                     Label("薬を追加", systemImage: "plus.circle")
                 }
-            } header: {
-                Text("薬（タップで編集、左にスワイプで削除）")
-            } footer: {
-                Text("初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。")
-            }
-            Section {
                 Button("初期の薬に戻す", role: .destructive) { store.resetToPresets() }
+            } footer: {
+                Text("初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。「用量未登録」の薬は、タップして用量を入れられます。")
             }
         }
         .calcForm("小児用量（薬剤別）")
@@ -59,6 +69,13 @@ struct PedDoseView: View {
             .environmentObject(store)
             .environmentObject(p)
         }
+    }
+
+    private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(.caption)
+            .buttonStyle(.bordered)
+            .tint(selected ? .accentColor : .gray)
     }
 }
 
@@ -77,17 +94,32 @@ struct PedDrugRow: View {
             }
             switch drug.compute(age: age, weight: weight) {
             case .success(let r):
-                let u = drug.unit, d = drug.isSyrup ? 1 : 2
-                Text("1日 \(range(r.dailyLo, r.dailyHi, 1))mg → \(range(r.dailyLo / drug.conc, r.dailyHi / drug.conc, d))\(u)")
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.tint)
-                Text("1回 \(range(r.doseLo, r.doseHi, 1))mg → \(range(r.doseLo / drug.conc, r.doseHi / drug.conc, d))\(u)（1日\(r.times)回）")
-                    .font(.callout.monospacedDigit())
+                let a = drug.amount, u = drug.unit, d = drug.isSyrup ? 1 : 2
+                let ad = a == "μg" ? 1 : 2
+                if drug.hasProduct {
+                    Text("1日 \(range(r.dailyLo, r.dailyHi, ad))\(a) → \(range(r.dailyLo / drug.conc, r.dailyHi / drug.conc, d))\(u)")
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.tint)
+                    Text("1回 \(range(r.doseLo, r.doseHi, ad))\(a) → \(range(r.doseLo / drug.conc, r.doseHi / drug.conc, d))\(u)（1日\(r.times)回）")
+                        .font(.callout.monospacedDigit())
+                } else {
+                    Text("1日 \(range(r.dailyLo, r.dailyHi, ad))\(a)")
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.tint)
+                    Text("1回 \(range(r.doseLo, r.doseHi, ad))\(a)（1日\(r.times)回）")
+                        .font(.callout.monospacedDigit())
+                }
                 if r.capped {
                     Text("上限で頭打ちにしています").font(.caption).foregroundStyle(.orange)
                 }
             case .failure(let e):
-                Text(e.message).font(.callout).foregroundStyle(.secondary)
+                if e == .memo {
+                    if drug.note.contains("添付文書で用量を確認") {
+                        Text("用量未登録").font(.caption.bold()).foregroundStyle(.orange)
+                    }
+                } else {
+                    Text(e.message).font(.callout).foregroundStyle(.secondary)
+                }
             }
             if !drug.note.isEmpty {
                 Text(drug.note).font(.caption).foregroundStyle(.secondary)
@@ -103,10 +135,15 @@ struct PedDrugEditView: View {
     @Environment(\.dismiss) private var dismiss
     let original: PedDrug?
 
+    enum Form3: Hashable { case powder, syrup, other }
+
     @State private var name = ""
     @State private var ingredient = ""
-    @State private var isSyrup = false
+    @State private var category = ""
+    @State private var form = Form3.powder
+    @State private var formUnit = "錠"
     @State private var conc = ""
+    @State private var microgram = false
     @State private var basis = DoseBasis.day
     @State private var minPerKg = ""
     @State private var maxPerKg = ""
@@ -123,25 +160,34 @@ struct PedDrugEditView: View {
         var below = ""
         var min = ""
         var max = ""
+        var times = ""
     }
 
+    private var amountUnit: String { microgram ? "μg" : "mg" }
+
     private var built: PedDrug? {
-        guard !name.trimmingCharacters(in: .whitespaces).isEmpty, let c = parseNum(conc), c > 0,
-              let t = parseInt(times), t > 0 else { return nil }
-        var d = PedDrug(id: original?.id ?? UUID(), name: name, ingredient: ingredient, isSyrup: isSyrup, conc: c,
-                        basis: basis, times: t, note: note)
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty, let t = parseInt(times), t > 0 else { return nil }
+        let c = parseNum(conc) ?? 0
+        var d = PedDrug(id: original?.id ?? UUID(), name: name, ingredient: ingredient, isSyrup: form == .syrup, conc: max(0, c),
+                        basis: basis, times: t, note: note,
+                        category: category.trimmingCharacters(in: .whitespaces).isEmpty ? nil : category,
+                        formUnit: form == .other ? formUnit : nil, amountUnit: microgram ? "μg" : nil)
         switch basis {
         case .day, .dose:
             guard let lo = parseNum(minPerKg), lo > 0 else { return nil }
             d.minPerKg = lo
             d.maxPerKg = max(lo, parseNum(maxPerKg) ?? lo)
-        case .age:
+        case .age, .weight:
             let list = bands.compactMap { b -> AgeBand? in
-                guard let bl = parseNum(b.below), let lo = parseNum(b.min), bl > 0, lo > 0 else { return nil }
-                return AgeBand(below: bl, min: lo, max: max(lo, parseNum(b.max) ?? lo))
+                guard let bl = parseNum(b.below), bl > 0 else { return nil }
+                let lo = parseNum(b.min) ?? 0
+                return AgeBand(below: bl, min: lo, max: max(lo, parseNum(b.max) ?? lo),
+                               times: parseInt(b.times).flatMap { $0 > 0 ? $0 : nil })
             }
             guard !list.isEmpty else { return nil }
             d.bands = list
+        case .memo:
+            break
         }
         d.maxDoseMg = parseNum(maxDose).flatMap { $0 > 0 ? $0 : nil }
         d.maxDailyMg = parseNum(maxDaily).flatMap { $0 > 0 ? $0 : nil }
@@ -154,43 +200,70 @@ struct PedDrugEditView: View {
             Section {
                 TextField("薬の名前（例：ムコダインDS50%）", text: $name)
                 TextField("成分名（任意）", text: $ingredient)
-                Picker("剤形", selection: $isSyrup) {
-                    Text("散・DS（g）").tag(false)
-                    Text("シロップ（mL）").tag(true)
+                TextField("分類（任意、例：抗菌薬）", text: $category)
+            }
+            Section {
+                Picker("剤形", selection: $form) {
+                    Text("散・DS（g）").tag(Form3.powder)
+                    Text("シロップ（mL）").tag(Form3.syrup)
+                    Text("その他").tag(Form3.other)
                 }
                 .pickerStyle(.segmented)
-                NumField(title: isSyrup ? "1mLあたりの成分量" : "1gあたりの成分量", text: $conc, unit: "mg")
+                if form == .other {
+                    TextField("単位（錠・包・個・枚など）", text: $formUnit)
+                }
+                Picker("成分量の単位", selection: $microgram) {
+                    Text("mg").tag(false)
+                    Text("μg").tag(true)
+                }
+                .pickerStyle(.segmented)
+                NumField(title: "1\(form == .other ? formUnit : (form == .syrup ? "mL" : "g"))あたりの成分量", text: $conc, unit: amountUnit)
+            } header: {
+                Text("剤形")
             } footer: {
-                Text("例：50%散 → 500mg、10%DS → 100mg、5%シロップ → 50mg（1mLあたり）")
+                Text("例：50%散 → 500mg、10%DS → 100mg、5%シロップ → 50mg（1mLあたり）。0や空欄なら製剤量は出さず、成分量だけ出します。")
             }
             Section("用量") {
                 Picker("決め方", selection: $basis) {
                     ForEach(DoseBasis.allCases) { Text($0.label).tag($0) }
                 }
-                .pickerStyle(.segmented)
-                if basis == .age {
+                switch basis {
+                case .age, .weight:
+                    let k = basis == .age ? "歳" : "kg"
                     ForEach($bands) { $b in
-                        HStack {
-                            TextField("歳", text: $b.below).keyboardType(.decimalPad).frame(width: 44)
-                            Text("歳未満").font(.caption)
-                            TextField("最小", text: $b.min).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                            Text("〜")
-                            TextField("最大", text: $b.max).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                            Text("mg/日").font(.caption)
+                        VStack(alignment: .leading) {
+                            HStack {
+                                TextField(k, text: $b.below).keyboardType(.decimalPad).frame(width: 48)
+                                Text("\(k)未満").font(.caption)
+                                TextField("最小", text: $b.min).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                                Text("〜")
+                                TextField("最大", text: $b.max).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                                Text("\(amountUnit)/日").font(.caption)
+                            }
+                            HStack {
+                                Text("この範囲の1日の回数（任意）").font(.caption).foregroundStyle(.secondary)
+                                TextField("回", text: $b.times).keyboardType(.numberPad).multilineTextAlignment(.trailing)
+                            }
                         }
                     }
                     .onDelete { bands.remove(atOffsets: $0) }
-                    Button("年齢の区切りを追加") { bands.append(BandText()) }
-                } else {
-                    NumField(title: "最小", text: $minPerKg, unit: basis == .day ? "mg/kg/日" : "mg/kg/回")
-                    NumField(title: "最大（任意）", text: $maxPerKg, unit: basis == .day ? "mg/kg/日" : "mg/kg/回")
+                    Button("区切りを追加") { bands.append(BandText()) }
+                    Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。").font(.caption).foregroundStyle(.secondary)
+                case .day, .dose:
+                    let u = basis == .day ? "\(amountUnit)/kg/日" : "\(amountUnit)/kg/回"
+                    NumField(title: "最小", text: $minPerKg, unit: u)
+                    NumField(title: "最大（任意）", text: $maxPerKg, unit: u)
+                case .memo:
+                    Text("用量は計算せず、メモだけ表示します。").font(.caption).foregroundStyle(.secondary)
                 }
                 NumField(title: "1日の回数", text: $times, unit: "回", integer: true)
             }
-            Section("上限（任意）") {
-                NumField(title: "1回の上限", text: $maxDose, unit: "mg")
-                NumField(title: "1日の上限", text: $maxDaily, unit: "mg")
-                NumField(title: "1日の上限（体重あたり）", text: $maxDailyPerKg, unit: "mg/kg")
+            if basis != .memo {
+                Section("上限（任意）") {
+                    NumField(title: "1回の上限", text: $maxDose, unit: amountUnit)
+                    NumField(title: "1日の上限", text: $maxDaily, unit: amountUnit)
+                    NumField(title: "1日の上限（体重あたり）", text: $maxDailyPerKg, unit: "\(amountUnit)/kg")
+                }
             }
             Section("メモ") {
                 TextField("用法の注意など", text: $note, axis: .vertical)
@@ -236,8 +309,11 @@ struct PedDrugEditView: View {
         }
         name = d.name
         ingredient = d.ingredient
-        isSyrup = d.isSyrup
-        conc = fmtTrim(d.conc, 3)
+        category = d.category ?? ""
+        form = d.formUnit != nil ? .other : (d.isSyrup ? .syrup : .powder)
+        formUnit = d.formUnit ?? "錠"
+        microgram = d.amountUnit == "μg"
+        conc = d.conc > 0 ? fmtTrim(d.conc, 3) : ""
         basis = d.basis
         minPerKg = d.minPerKg > 0 ? fmtTrim(d.minPerKg, 3) : ""
         maxPerKg = d.maxPerKg > 0 ? fmtTrim(d.maxPerKg, 3) : ""
@@ -245,7 +321,10 @@ struct PedDrugEditView: View {
         maxDose = d.maxDoseMg.map { fmtTrim($0, 2) } ?? ""
         maxDaily = d.maxDailyMg.map { fmtTrim($0, 2) } ?? ""
         maxDailyPerKg = d.maxDailyPerKg.map { fmtTrim($0, 2) } ?? ""
-        bands = d.bands.map { BandText(below: fmtTrim($0.below, 1), min: fmtTrim($0.min, 1), max: fmtTrim($0.max, 1)) }
+        bands = d.bands.map {
+            BandText(below: fmtTrim($0.below, 1), min: fmtTrim($0.min, 2), max: fmtTrim($0.max, 2),
+                     times: $0.times.map { "\($0)" } ?? "")
+        }
         if bands.isEmpty { bands = [BandText()] }
         note = d.note
     }

@@ -1,0 +1,2234 @@
+{
+ "version": 2,
+ "drugs": [
+  {
+   "category": "抗菌薬",
+   "name": "サワシリン細粒10%",
+   "ingredient": "アモキシシリン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 20,
+   "maxPerKg": 40,
+   "times": 3,
+   "maxDailyPerKg": 90,
+   "note": "1日3〜4回。1日最大90mg/kg"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ワイドシリン細粒10%",
+   "ingredient": "アモキシシリン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 20,
+   "maxPerKg": 40,
+   "times": 3,
+   "maxDailyPerKg": 90,
+   "note": "1日3〜4回。1日最大90mg/kg"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ワイドシリン細粒20%",
+   "ingredient": "アモキシシリン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 20,
+   "maxPerKg": 40,
+   "times": 3,
+   "maxDailyPerKg": 90,
+   "note": "1日3〜4回。1日最大90mg/kg"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "クラバモックス小児用配合ドライシロップ",
+   "ingredient": "アモキシシリン（＋クラブラン酸）",
+   "form": "powder",
+   "conc": 594.06,
+   "basis": "day",
+   "minPerKg": 90,
+   "maxPerKg": 90,
+   "times": 2,
+   "note": "アモキシシリンとして90mg/kg/日（クラブラン酸6.4mg/kg/日）を1日2回、12時間ごと食直前。製剤1.01gにアモキシシリン600mg"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "オラスポア小児用ドライシロップ10%",
+   "ingredient": "セフロキサジン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 30,
+   "maxPerKg": 30,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ケフラール細粒小児用100mg",
+   "ingredient": "セファクロル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 20,
+   "maxPerKg": 40,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ケフレックスシロップ用細粒100",
+   "ingredient": "セファレキシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 50,
+   "times": 4,
+   "note": "6時間ごと。重症では50〜100mg/kg/日"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ケフレックスシロップ用細粒200",
+   "ingredient": "セファレキシン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 50,
+   "times": 4,
+   "note": "6時間ごと。重症では50〜100mg/kg/日"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "セフゾン細粒小児用10%",
+   "ingredient": "セフジニル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 9,
+   "maxPerKg": 18,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "トミロン細粒小児用10%",
+   "ingredient": "セフテラム ピボキシル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 9,
+   "maxPerKg": 18,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "トミロン細粒小児用20%",
+   "ingredient": "セフテラム ピボキシル",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 9,
+   "maxPerKg": 18,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "バナンドライシロップ5%",
+   "ingredient": "セフポドキシム プロキセチル",
+   "form": "powder",
+   "conc": 50,
+   "basis": "dose",
+   "minPerKg": 3,
+   "maxPerKg": 3,
+   "times": 2,
+   "note": "1回3mg/kgを1日2〜3回。重症では1回4.5mg/kgを1日3回"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "フロモックス小児用細粒100mg",
+   "ingredient": "セフカペン ピボキシル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "minPerKg": 3,
+   "maxPerKg": 3,
+   "times": 3
+  },
+  {
+   "category": "抗菌薬",
+   "name": "メイアクトMS小児用細粒10%",
+   "ingredient": "セフジトレン ピボキシル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "minPerKg": 3,
+   "maxPerKg": 3,
+   "times": 3,
+   "maxDoseMg": 200,
+   "note": "必要に応じて1回6mg/kgまで（1回200mgまで）"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "エリスロシンW顆粒20%",
+   "ingredient": "エリスロマイシン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 50,
+   "times": 4,
+   "note": "力価。1日4〜6回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "エリスロシンドライシロップW20%",
+   "ingredient": "エリスロマイシン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 50,
+   "times": 4,
+   "note": "力価。1日4〜6回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "エリスロシンドライシロップ10%",
+   "ingredient": "エリスロマイシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 50,
+   "times": 4,
+   "note": "力価。1日4〜6回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "クラリシッドドライシロップ10%",
+   "ingredient": "クラリスロマイシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 2,
+   "note": "1日2〜3回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "クラリスドライシロップ10%",
+   "ingredient": "クラリスロマイシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 2,
+   "note": "1日2〜3回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ジスロマック細粒小児用10%",
+   "ingredient": "アジスロマイシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 10,
+   "maxPerKg": 10,
+   "times": 1,
+   "maxDailyMg": 500,
+   "note": "1日1回3日間"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ファロムドライシロップ小児用10%",
+   "ingredient": "ファロペネム",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "minPerKg": 5,
+   "maxPerKg": 5,
+   "times": 3,
+   "note": "必要に応じて1回10mg/kgまで"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "オラペネム小児用細粒10%",
+   "ingredient": "テビペネム ピボキシル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "minPerKg": 4,
+   "maxPerKg": 4,
+   "times": 2,
+   "note": "必要に応じて1回6mg/kgまで"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ホスミシンドライシロップ400",
+   "ingredient": "ホスホマイシン",
+   "form": "powder",
+   "conc": 400,
+   "basis": "day",
+   "minPerKg": 40,
+   "maxPerKg": 120,
+   "times": 3,
+   "note": "1日3〜4回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ホスミシンドライシロップ200",
+   "ingredient": "ホスホマイシン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 40,
+   "maxPerKg": 120,
+   "times": 3,
+   "note": "1日3〜4回に分ける"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "オゼックス細粒小児用15%",
+   "ingredient": "トスフロキサシン",
+   "form": "powder",
+   "conc": 150,
+   "basis": "dose",
+   "minPerKg": 6,
+   "maxPerKg": 6,
+   "times": 2,
+   "maxDoseMg": 180,
+   "maxDailyMg": 360,
+   "note": "1回180mg・1日360mgを超えない"
+  },
+  {
+   "category": "抗菌薬",
+   "name": "ミノマイシン顆粒2%",
+   "ingredient": "ミノサイクリン",
+   "form": "powder",
+   "conc": 20,
+   "basis": "day",
+   "minPerKg": 2,
+   "maxPerKg": 4,
+   "times": 2,
+   "note": "1日1〜2回。8歳未満は他剤を優先（歯の着色）"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "アシクロビルドライシロップ80%",
+   "ingredient": "アシクロビル",
+   "form": "powder",
+   "conc": 800,
+   "basis": "dose",
+   "minPerKg": 20,
+   "maxPerKg": 20,
+   "times": 4,
+   "maxDoseMg": 800,
+   "note": "水痘：1回20mg/kgを1日4回（1回800mgまで）。単純疱疹は1回200mgまで"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "ゾビラックス顆粒40%",
+   "ingredient": "アシクロビル",
+   "form": "powder",
+   "conc": 400,
+   "basis": "dose",
+   "minPerKg": 20,
+   "maxPerKg": 20,
+   "times": 4,
+   "maxDoseMg": 800,
+   "note": "水痘：1回20mg/kgを1日4回（1回800mgまで）。単純疱疹は1回200mgまで"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "バルトレックス顆粒50%",
+   "ingredient": "バラシクロビル",
+   "form": "powder",
+   "conc": 500,
+   "basis": "dose",
+   "minPerKg": 25,
+   "maxPerKg": 25,
+   "times": 3,
+   "maxDoseMg": 1000,
+   "note": "水痘・帯状疱疹：1回25mg/kgを1日3回（1回1000mgまで）。単純疱疹は1日2回・1回500mgまで"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "タミフルドライシロップ3%",
+   "ingredient": "オセルタミビル",
+   "form": "powder",
+   "conc": 30,
+   "basis": "dose",
+   "minPerKg": 2,
+   "maxPerKg": 2,
+   "times": 2,
+   "maxDoseMg": 75,
+   "note": "治療は1日2回5日間、予防は1日1回"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "イナビル吸入粉末剤20mg",
+   "ingredient": "ラニナミビル",
+   "form": "other",
+   "conc": 20,
+   "basis": "age",
+   "unit": "容器",
+   "bands": [
+    {
+     "below": 10,
+     "min": 20,
+     "max": 20,
+     "times": 1
+    },
+    {
+     "below": 200,
+     "min": 40,
+     "max": 40,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "単回吸入。10歳未満20mg（1容器）、10歳以上40mg（2容器）"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "リレンザ",
+   "ingredient": "ザナミビル",
+   "form": "other",
+   "conc": 5,
+   "basis": "age",
+   "unit": "ブリスター",
+   "bands": [
+    {
+     "below": 200,
+     "min": 20,
+     "max": 20,
+     "times": 2
+    }
+   ],
+   "times": 2,
+   "note": "1回10mg（2ブリスター）を1日2回、5日間吸入"
+  },
+  {
+   "category": "抗ウイルス薬",
+   "name": "ゾフルーザ（錠・顆粒）",
+   "ingredient": "バロキサビル マルボキシル",
+   "form": "other",
+   "conc": 0,
+   "basis": "weight",
+   "bands": [
+    {
+     "below": 10,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 20,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    },
+    {
+     "below": 40,
+     "min": 20,
+     "max": 20,
+     "times": 1
+    },
+    {
+     "below": 80,
+     "min": 40,
+     "max": 40,
+     "times": 1
+    },
+    {
+     "below": 500,
+     "min": 80,
+     "max": 80,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "単回。12歳未満は体重10kg以上で 10〜20kg 10mg、20〜40kg 20mg、40kg以上 40mg。12歳以上は40kg以上で40mg、80kg以上80mg。顆粒2%分包は1包0.5g＝10mg"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "アタラックスPドライシロップ2.5%",
+   "ingredient": "ヒドロキシジン",
+   "form": "powder",
+   "conc": 25,
+   "basis": "day",
+   "minPerKg": 1,
+   "maxPerKg": 2,
+   "times": 3,
+   "note": "ヒドロキシジンパモ酸塩として。1日2〜3回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "アタラックスP散10%",
+   "ingredient": "ヒドロキシジン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 1,
+   "maxPerKg": 2,
+   "times": 3,
+   "note": "ヒドロキシジンパモ酸塩として。1日2〜3回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "アタラックスPシロップ0.5%",
+   "ingredient": "ヒドロキシジン",
+   "form": "syrup",
+   "conc": 5,
+   "basis": "day",
+   "minPerKg": 1,
+   "maxPerKg": 2,
+   "times": 3,
+   "note": "ヒドロキシジンパモ酸塩として。1日2〜3回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "アレロック顆粒0.5%",
+   "ingredient": "オロパタジン",
+   "form": "powder",
+   "conc": 5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 2,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 7,
+     "min": 5,
+     "max": 5
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10
+    }
+   ],
+   "times": 2,
+   "note": "2〜7歳未満 1回2.5mg、7歳以上 1回5mg を1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "アレギサールドライシロップ0.5%",
+   "ingredient": "ペミロラスト",
+   "form": "powder",
+   "conc": 5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 5,
+     "min": 5,
+     "max": 5
+    },
+    {
+     "below": 11,
+     "min": 10,
+     "max": 10
+    },
+    {
+     "below": 200,
+     "min": 20,
+     "max": 20
+    }
+   ],
+   "times": 2,
+   "note": "1〜5歳未満 1回2.5mg、5〜11歳未満 1回5mg、11歳以上 1回10mg を1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ペミラストンドライシロップ0.5%",
+   "ingredient": "ペミロラスト",
+   "form": "powder",
+   "conc": 5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 5,
+     "min": 5,
+     "max": 5
+    },
+    {
+     "below": 11,
+     "min": 10,
+     "max": 10
+    },
+    {
+     "below": 200,
+     "min": 20,
+     "max": 20
+    }
+   ],
+   "times": 2,
+   "note": "1〜5歳未満 1回2.5mg、5〜11歳未満 1回5mg、11歳以上 1回10mg を1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "フェキソフェナジンドライシロップ6%",
+   "ingredient": "フェキソフェナジン",
+   "form": "powder",
+   "conc": 60,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.5,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 2,
+     "min": 30,
+     "max": 30
+    },
+    {
+     "below": 12,
+     "min": 60,
+     "max": 60
+    },
+    {
+     "below": 200,
+     "min": 120,
+     "max": 120
+    }
+   ],
+   "times": 2,
+   "note": "6か月〜2歳未満 1回15mg、2〜12歳未満 1回30mg、12歳以上 1回60mg を1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "クラリチンドライシロップ1%",
+   "ingredient": "ロラタジン",
+   "form": "powder",
+   "conc": 10,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 3,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 7,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "3〜7歳未満 5mg、7歳以上 10mg を1日1回食後"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "セチリジン塩酸塩DS1.25%",
+   "ingredient": "セチリジン",
+   "form": "powder",
+   "conc": 12.5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 2,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 7,
+     "min": 5,
+     "max": 5,
+     "times": 2
+    },
+    {
+     "below": 15,
+     "min": 10,
+     "max": 10,
+     "times": 2
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    }
+   ],
+   "times": 2,
+   "note": "2〜7歳未満 1回2.5mg、7〜15歳未満 1回5mg を1日2回。15歳以上は成人量"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "レボセチリジン塩酸塩ドライシロップ0.5%",
+   "ingredient": "レボセチリジン",
+   "form": "powder",
+   "conc": 5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.5,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 1,
+     "min": 1.25,
+     "max": 1.25,
+     "times": 1
+    },
+    {
+     "below": 7,
+     "min": 2.5,
+     "max": 2.5,
+     "times": 2
+    },
+    {
+     "below": 15,
+     "min": 5,
+     "max": 5,
+     "times": 2
+    },
+    {
+     "below": 200,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    }
+   ],
+   "times": 2,
+   "note": "6か月〜1歳未満 1回1.25mgを1日1回、1〜7歳未満 1回1.25mgを1日2回、7〜15歳未満 1回2.5mgを1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ザイザルシロップ0.05%",
+   "ingredient": "レボセチリジン",
+   "form": "syrup",
+   "conc": 0.5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.5,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 1,
+     "min": 1.25,
+     "max": 1.25,
+     "times": 1
+    },
+    {
+     "below": 7,
+     "min": 2.5,
+     "max": 2.5,
+     "times": 2
+    },
+    {
+     "below": 15,
+     "min": 5,
+     "max": 5,
+     "times": 2
+    },
+    {
+     "below": 200,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    }
+   ],
+   "times": 2,
+   "note": "6か月〜1歳未満 1回1.25mgを1日1回、1〜7歳未満 1回1.25mgを1日2回、7〜15歳未満 1回2.5mgを1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "キプレス細粒4mg",
+   "ingredient": "モンテルカスト",
+   "form": "other",
+   "conc": 4,
+   "basis": "age",
+   "unit": "包",
+   "bands": [
+    {
+     "below": 1,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 6,
+     "min": 4,
+     "max": 4,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "1〜6歳未満 4mgを1日1回就寝前。6歳以上はチュアブル錠5mg"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "オノンドライシロップ10%",
+   "ingredient": "プランルカスト",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 7,
+   "maxPerKg": 7,
+   "times": 2,
+   "maxDailyMg": 450,
+   "maxDailyPerKg": 10,
+   "note": "朝・夕食後。1日最高10mg/kg（成人量450mg/日を超えない）"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ケトチフェンドライシロップ0.1%",
+   "ingredient": "ケトチフェン",
+   "form": "powder",
+   "conc": 1,
+   "basis": "day",
+   "minPerKg": 0.06,
+   "maxPerKg": 0.06,
+   "times": 2,
+   "note": "朝食後と就寝前"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ザジテンシロップ0.02%（ジキリオンシロップ0.02%）",
+   "ingredient": "ケトチフェン",
+   "form": "syrup",
+   "conc": 0.2,
+   "basis": "day",
+   "minPerKg": 0.06,
+   "maxPerKg": 0.06,
+   "times": 2,
+   "note": "朝食後と就寝前"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ゼスラン小児用細粒0.6%（ニポラジン小児用細粒0.6%）",
+   "ingredient": "メキタジン",
+   "form": "powder",
+   "conc": 6,
+   "basis": "day",
+   "minPerKg": 0.06,
+   "maxPerKg": 0.06,
+   "times": 2,
+   "note": "1回0.06mg/kgを1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ゼスランシロップ0.03%（ニポラジンシロップ0.03%）",
+   "ingredient": "メキタジン",
+   "form": "syrup",
+   "conc": 0.3,
+   "basis": "day",
+   "minPerKg": 0.06,
+   "maxPerKg": 0.06,
+   "times": 2,
+   "note": "1回0.06mg/kgを1日2回"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "オキサトミドドライシロップ2%",
+   "ingredient": "オキサトミド",
+   "form": "powder",
+   "conc": 20,
+   "basis": "dose",
+   "minPerKg": 0.5,
+   "maxPerKg": 0.5,
+   "times": 2,
+   "note": "1回0.5mg/kgを1日2回。1回最高0.75mg/kg"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "クレマスチンドライシロップ0.1%",
+   "ingredient": "クレマスチン",
+   "form": "powder",
+   "conc": 1,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ペリアクチン散1%",
+   "ingredient": "シプロヘプタジン",
+   "form": "powder",
+   "conc": 10,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ペリアクチンシロップ0.04%",
+   "ingredient": "シプロヘプタジン",
+   "form": "syrup",
+   "conc": 0.4,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ポララミンドライシロップ0.2%",
+   "ingredient": "d-クロルフェニラミン",
+   "form": "powder",
+   "conc": 2,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "ポララミンシロップ0.04%",
+   "ingredient": "d-クロルフェニラミン",
+   "form": "syrup",
+   "conc": 0.4,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "リザベン細粒10%",
+   "ingredient": "トラニラスト",
+   "form": "powder",
+   "conc": 100,
+   "basis": "day",
+   "minPerKg": 5,
+   "maxPerKg": 5,
+   "times": 3
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "リザベンドライシロップ5%",
+   "ingredient": "トラニラスト",
+   "form": "powder",
+   "conc": 50,
+   "basis": "day",
+   "minPerKg": 5,
+   "maxPerKg": 5,
+   "times": 3
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "リンデロン散0.1%",
+   "ingredient": "ベタメタゾン",
+   "form": "powder",
+   "conc": 1,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "リンデロンシロップ0.01%",
+   "ingredient": "ベタメタゾン",
+   "form": "syrup",
+   "conc": 0.1,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "デカドロンエリキシル0.01%",
+   "ingredient": "デキサメタゾン",
+   "form": "syrup",
+   "conc": 0.1,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "抗アレルギー・抗ヒスタミン",
+   "name": "セレスタミン配合シロップ",
+   "ingredient": "ベタメタゾン・d-クロルフェニラミン",
+   "form": "syrup",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "アスベリンドライシロップ2%",
+   "ingredient": "チペピジンヒベンズ酸塩",
+   "form": "powder",
+   "conc": 20,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 5,
+     "max": 20
+    },
+    {
+     "below": 3,
+     "min": 10,
+     "max": 25
+    },
+    {
+     "below": 6,
+     "min": 15,
+     "max": 40
+    }
+   ],
+   "times": 3
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "アスベリン散10%",
+   "ingredient": "チペピジンヒベンズ酸塩",
+   "form": "powder",
+   "conc": 100,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 5,
+     "max": 20
+    },
+    {
+     "below": 3,
+     "min": 10,
+     "max": 25
+    },
+    {
+     "below": 6,
+     "min": 15,
+     "max": 40
+    }
+   ],
+   "times": 3
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "アスベリンシロップ0.5%",
+   "ingredient": "チペピジンヒベンズ酸塩",
+   "form": "syrup",
+   "conc": 5,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 1,
+     "min": 5,
+     "max": 20
+    },
+    {
+     "below": 3,
+     "min": 10,
+     "max": 25
+    },
+    {
+     "below": 6,
+     "min": 15,
+     "max": 40
+    }
+   ],
+   "times": 3
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "アストミン散10%",
+   "ingredient": "ジメモルファン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "アストミンシロップ0.25%",
+   "ingredient": "ジメモルファン",
+   "form": "syrup",
+   "conc": 2.5,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "メジコン散10%",
+   "ingredient": "デキストロメトルファン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "メジコン配合シロップ",
+   "ingredient": "デキストロメトルファン配合",
+   "form": "syrup",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "フスコデ配合シロップ",
+   "ingredient": "ジヒドロコデイン配合",
+   "form": "syrup",
+   "conc": 0,
+   "basis": "memo",
+   "note": "12歳未満には使わない（コデイン類）。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "ムコダイン細粒DS50%",
+   "ingredient": "カルボシステイン",
+   "form": "powder",
+   "conc": 500,
+   "basis": "day",
+   "minPerKg": 30,
+   "maxPerKg": 30,
+   "times": 3,
+   "note": "1回10mg/kgを1日3回"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "ムコダインシロップ5%（カルボシステインシロップ5%）",
+   "ingredient": "カルボシステイン",
+   "form": "syrup",
+   "conc": 50,
+   "basis": "day",
+   "minPerKg": 30,
+   "maxPerKg": 30,
+   "times": 3,
+   "note": "1回10mg/kgを1日3回"
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "ムコソルバンドライシロップ1.5%",
+   "ingredient": "アンブロキソール",
+   "form": "powder",
+   "conc": 15,
+   "basis": "day",
+   "minPerKg": 0.9,
+   "maxPerKg": 0.9,
+   "times": 3
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "ムコソルバンシロップ0.3%（プルスマリンAシロップ0.3%）",
+   "ingredient": "アンブロキソール",
+   "form": "syrup",
+   "conc": 3,
+   "basis": "day",
+   "minPerKg": 0.9,
+   "maxPerKg": 0.9,
+   "times": 3
+  },
+  {
+   "category": "鎮咳・去痰",
+   "name": "レフトーゼシロップ0.5%",
+   "ingredient": "リゾチーム",
+   "form": "syrup",
+   "conc": 5,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "テオドールドライシロップ20%",
+   "ingredient": "テオフィリン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "day",
+   "minPerKg": 8,
+   "maxPerKg": 10,
+   "times": 2,
+   "note": "1回4〜5mg/kgを1日2回（6か月以上）。血中濃度に注意"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "テオドールシロップ2%",
+   "ingredient": "テオフィリン",
+   "form": "syrup",
+   "conc": 20,
+   "basis": "day",
+   "minPerKg": 8,
+   "maxPerKg": 10,
+   "times": 2,
+   "note": "1回4〜5mg/kgを1日2回（6か月以上）。血中濃度に注意"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "ベラチンドライシロップ小児用0.1%",
+   "ingredient": "ツロブテロール",
+   "form": "powder",
+   "conc": 1,
+   "basis": "day",
+   "minPerKg": 0.04,
+   "maxPerKg": 0.04,
+   "times": 2,
+   "note": "1日2回"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "ホクナリンドライシロップ0.1%小児用",
+   "ingredient": "ツロブテロール",
+   "form": "powder",
+   "conc": 1,
+   "basis": "day",
+   "minPerKg": 0.04,
+   "maxPerKg": 0.04,
+   "times": 2,
+   "note": "1日2回"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "メプチン顆粒0.01%",
+   "ingredient": "プロカテロール",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "amountUnit": "μg",
+   "minPerKg": 1.25,
+   "maxPerKg": 1.25,
+   "times": 2,
+   "maxDoseMg": 25,
+   "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "メプチンドライシロップ0.005%",
+   "ingredient": "プロカテロール",
+   "form": "powder",
+   "conc": 50,
+   "basis": "dose",
+   "amountUnit": "μg",
+   "minPerKg": 1.25,
+   "maxPerKg": 1.25,
+   "times": 2,
+   "maxDoseMg": 25,
+   "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "メプチンシロップ5μg/mL",
+   "ingredient": "プロカテロール",
+   "form": "syrup",
+   "conc": 5,
+   "basis": "dose",
+   "amountUnit": "μg",
+   "minPerKg": 1.25,
+   "maxPerKg": 1.25,
+   "times": 2,
+   "maxDoseMg": 25,
+   "note": "6歳未満：1回1.25μg/kgを1日2〜3回。6歳以上：1回25μgを1日1〜2回"
+  },
+  {
+   "category": "気管支拡張",
+   "name": "ベネトリンシロップ0.04%",
+   "ingredient": "サルブタモール",
+   "form": "syrup",
+   "conc": 0.4,
+   "basis": "day",
+   "minPerKg": 0.3,
+   "maxPerKg": 0.3,
+   "times": 3
+  },
+  {
+   "category": "気管支拡張",
+   "name": "ベロテックシロップ0.05%",
+   "ingredient": "フェノテロール",
+   "form": "syrup",
+   "conc": 0.5,
+   "basis": "day",
+   "minPerKg": 0.375,
+   "maxPerKg": 0.375,
+   "times": 3
+  },
+  {
+   "category": "消化器",
+   "name": "ナウゼリンドライシロップ1%",
+   "ingredient": "ドンペリドン",
+   "form": "powder",
+   "conc": 10,
+   "basis": "day",
+   "minPerKg": 1,
+   "maxPerKg": 2,
+   "times": 3,
+   "maxDailyMg": 30,
+   "note": "食前。1日30mgを超えない。6歳以上は1日最高1mg/kg"
+  },
+  {
+   "category": "消化器",
+   "name": "プリンペランシロップ0.1%",
+   "ingredient": "メトクロプラミド",
+   "form": "syrup",
+   "conc": 1,
+   "basis": "day",
+   "minPerKg": 0.5,
+   "maxPerKg": 0.7,
+   "times": 2,
+   "note": "1日2〜3回。錐体外路症状に注意"
+  },
+  {
+   "category": "消化器",
+   "name": "ロペラミド塩酸塩細粒小児用0.05%",
+   "ingredient": "ロペラミド",
+   "form": "powder",
+   "conc": 0.5,
+   "basis": "day",
+   "minPerKg": 0.02,
+   "maxPerKg": 0.04,
+   "times": 2,
+   "note": "1日2〜3回。6か月未満は禁忌、2歳未満は原則使わない"
+  },
+  {
+   "category": "消化器",
+   "name": "酸化マグネシウム原末",
+   "ingredient": "酸化マグネシウム",
+   "form": "powder",
+   "conc": 1000,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "モビコール配合内用剤LD",
+   "ingredient": "マクロゴール4000配合",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "2歳以上。年齢で開始量が違う（2〜7歳未満は1回1包、7〜12歳未満は1回2包、12歳以上は1回2包から）。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "モビコール配合内用剤HD",
+   "ingredient": "マクロゴール4000配合",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "LDの4倍量の分包。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "セルベックス細粒10%",
+   "ingredient": "テプレノン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "タンニン酸アルブミン",
+   "ingredient": "タンニン酸アルブミン",
+   "form": "powder",
+   "conc": 1000,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ミルラクト細粒50%",
+   "ingredient": "β-ガラクトシダーゼ",
+   "form": "powder",
+   "conc": 500,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ラクスパン散1.8%",
+   "ingredient": "ラクトミン",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ラックビー微粒N",
+   "ingredient": "ビフィズス菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ラックビーR散",
+   "ingredient": "耐性乳酸菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ビオフェルミン散剤",
+   "ingredient": "ビフィズス菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ビオフェルミン配合散",
+   "ingredient": "ラクトミン・糖化菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ビオフェルミンR散",
+   "ingredient": "耐性乳酸菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "レベニンS散",
+   "ingredient": "ビフィズス菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "レベニン散",
+   "ingredient": "耐性乳酸菌",
+   "form": "powder",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "消化器",
+   "name": "ロートエキス散10%",
+   "ingredient": "ロートエキス",
+   "form": "powder",
+   "conc": 100,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "カロナール細粒20%",
+   "ingredient": "アセトアミノフェン",
+   "form": "powder",
+   "conc": 200,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 4,
+   "maxDoseMg": 1000,
+   "maxDailyMg": 4000,
+   "maxDailyPerKg": 60,
+   "note": "投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "カロナール細粒50%",
+   "ingredient": "アセトアミノフェン",
+   "form": "powder",
+   "conc": 500,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 4,
+   "maxDoseMg": 1000,
+   "maxDailyMg": 4000,
+   "maxDailyPerKg": 60,
+   "note": "投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "ピリナジン末・カロナール原末",
+   "ingredient": "アセトアミノフェン",
+   "form": "powder",
+   "conc": 1000,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 4,
+   "maxDoseMg": 1000,
+   "maxDailyMg": 4000,
+   "maxDailyPerKg": 60,
+   "note": "投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "カロナールシロップ2%",
+   "ingredient": "アセトアミノフェン",
+   "form": "syrup",
+   "conc": 20,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 4,
+   "maxDoseMg": 1000,
+   "maxDailyMg": 4000,
+   "maxDailyPerKg": 60,
+   "note": "投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "ポンタールシロップ3.25%",
+   "ingredient": "メフェナム酸",
+   "form": "syrup",
+   "conc": 32.5,
+   "basis": "dose",
+   "minPerKg": 6.5,
+   "maxPerKg": 6.5,
+   "times": 2,
+   "note": "解熱は1回6.5mg/kg、原則1日2回まで"
+  },
+  {
+   "category": "解熱鎮痛",
+   "name": "幼児用PL配合顆粒",
+   "ingredient": "サリチルアミド・アセトアミノフェン配合",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "トランサミン散50%",
+   "ingredient": "トラネキサム酸",
+   "form": "powder",
+   "conc": 500,
+   "basis": "memo",
+   "note": "シロップの年齢別用量を参考にする場合も、添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "トランサミンシロップ5%",
+   "ingredient": "トラネキサム酸",
+   "form": "syrup",
+   "conc": 50,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 2,
+     "min": 75,
+     "max": 200
+    },
+    {
+     "below": 4,
+     "min": 150,
+     "max": 350
+    },
+    {
+     "below": 7,
+     "min": 250,
+     "max": 650
+    },
+    {
+     "below": 15,
+     "min": 400,
+     "max": 1000
+    },
+    {
+     "below": 200,
+     "min": 750,
+     "max": 2000
+    }
+   ],
+   "times": 3,
+   "note": "1日量を3〜4回に分ける"
+  },
+  {
+   "category": "その他の内服",
+   "name": "コンバントリンドライシロップ100",
+   "ingredient": "ピランテル",
+   "form": "powder",
+   "conc": 100,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 10,
+   "times": 1,
+   "note": "蟯虫：1回10mg/kgを1回だけ"
+  },
+  {
+   "category": "その他の内服",
+   "name": "チラーヂンS散0.01%",
+   "ingredient": "レボチロキシン",
+   "form": "powder",
+   "conc": 100,
+   "basis": "memo",
+   "amountUnit": "μg",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "イーケプラドライシロップ50%",
+   "ingredient": "レベチラセタム",
+   "form": "powder",
+   "conc": 500,
+   "basis": "day",
+   "minPerKg": 20,
+   "maxPerKg": 60,
+   "times": 2,
+   "maxDailyMg": 3000,
+   "note": "1日20mg/kgから開始し最高60mg/kg。体重50kg以上は成人量"
+  },
+  {
+   "category": "その他の内服",
+   "name": "メラトベル顆粒小児用0.2%",
+   "ingredient": "メラトニン",
+   "form": "powder",
+   "conc": 2,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 6,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 16,
+     "min": 1,
+     "max": 4,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "6〜15歳：1日1回1mgを就寝前から開始、最高4mg"
+  },
+  {
+   "category": "その他の内服",
+   "name": "ガバペンシロップ5%",
+   "ingredient": "ガバペンチン",
+   "form": "syrup",
+   "conc": 50,
+   "basis": "day",
+   "minPerKg": 25,
+   "maxPerKg": 35,
+   "times": 3,
+   "maxDailyPerKg": 50,
+   "note": "3〜12歳。1日目10mg/kg・2日目20mg/kgで増量。維持量は3〜4歳40mg/kg/日、5〜12歳25〜35mg/kg/日"
+  },
+  {
+   "category": "その他の内服",
+   "name": "ケイツーシロップ0.2%",
+   "ingredient": "メナテトレノン",
+   "form": "syrup",
+   "conc": 2,
+   "basis": "memo",
+   "note": "新生児・乳児のビタミンK欠乏の予防。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "セルシンシロップ0.1%",
+   "ingredient": "ジアゼパム",
+   "form": "syrup",
+   "conc": 1,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 4,
+     "min": 1,
+     "max": 5
+    },
+    {
+     "below": 13,
+     "min": 2,
+     "max": 10
+    }
+   ],
+   "times": 3,
+   "note": "3歳以下 1日1〜5mg、4〜12歳 1日2〜10mg を1日1〜4回"
+  },
+  {
+   "category": "その他の内服",
+   "name": "デパケンシロップ5%",
+   "ingredient": "バルプロ酸ナトリウム",
+   "form": "syrup",
+   "conc": 50,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "ニフランシロップ",
+   "ingredient": "",
+   "form": "syrup",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "その他の内服",
+   "name": "ヘマンジオルシロップ0.375%",
+   "ingredient": "プロプラノロール",
+   "form": "syrup",
+   "conc": 3.75,
+   "basis": "day",
+   "minPerKg": 1,
+   "maxPerKg": 3,
+   "times": 2,
+   "note": "1日1mg/kgから開始し、2mg/kg→維持3mg/kgに増量。1日2回（9時間以上あける）"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "アンヒバ坐剤（アルピニー坐剤）",
+   "ingredient": "アセトアミノフェン",
+   "form": "other",
+   "conc": 0,
+   "basis": "dose",
+   "minPerKg": 10,
+   "maxPerKg": 15,
+   "times": 4,
+   "maxDailyPerKg": 60,
+   "note": "規格50・100・200mg。投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "ナウゼリン坐剤",
+   "ingredient": "ドンペリドン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 3,
+     "min": 20,
+     "max": 30
+    },
+    {
+     "below": 200,
+     "min": 60,
+     "max": 90
+    }
+   ],
+   "times": 2,
+   "note": "3歳未満 1回10mg、3歳以上 1回30mg を1日2〜3回"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "ダイアップ坐剤",
+   "ingredient": "ジアゼパム",
+   "form": "other",
+   "conc": 0,
+   "basis": "dose",
+   "minPerKg": 0.4,
+   "maxPerKg": 0.5,
+   "times": 2,
+   "maxDailyPerKg": 1,
+   "note": "1回0.4〜0.5mg/kgを1日1〜2回。1日1mg/kgを超えない。規格4・6・10mg"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "ボルタレンサポ",
+   "ingredient": "ジクロフェナク",
+   "form": "other",
+   "conc": 0,
+   "basis": "dose",
+   "minPerKg": 0.5,
+   "maxPerKg": 1,
+   "times": 2,
+   "note": "1回0.5〜1mg/kgを1日1〜2回。規格12.5・25・50mg。インフルエンザでは使わない"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "テレミンソフト坐剤",
+   "ingredient": "ビサコジル",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "乳幼児は2mg坐剤を1回1個、1日1〜2回。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "坐剤・貼付",
+   "name": "ホクナリンテープ",
+   "ingredient": "ツロブテロール",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 0.5,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 3,
+     "min": 0.5,
+     "max": 0.5,
+     "times": 1
+    },
+    {
+     "below": 9,
+     "min": 1,
+     "max": 1,
+     "times": 1
+    },
+    {
+     "below": 200,
+     "min": 2,
+     "max": 2,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "0.5〜3歳未満0.5mg、3〜9歳未満1mg、9歳以上2mg を1日1回貼付"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "ジルテック錠",
+   "ingredient": "セチリジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 7,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 15,
+     "min": 10,
+     "max": 10,
+     "times": 2
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    }
+   ],
+   "times": 2,
+   "note": "7〜15歳未満 1回5mgを1日2回。15歳以上は1回10mgを1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "アレグラ錠",
+   "ingredient": "フェキソフェナジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 7,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 12,
+     "min": 60,
+     "max": 60
+    },
+    {
+     "below": 200,
+     "min": 120,
+     "max": 120
+    }
+   ],
+   "times": 2,
+   "note": "7〜12歳未満 1回30mg、12歳以上 1回60mg を1日2回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "アレロック錠",
+   "ingredient": "オロパタジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 7,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10
+    }
+   ],
+   "times": 2,
+   "note": "7歳以上 1回5mgを1日2回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "クラリチン錠",
+   "ingredient": "ロラタジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 7,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "7歳以上 10mgを1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "デザレックス錠",
+   "ingredient": "デスロラタジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 12,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 200,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "12歳以上 5mgを1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "ルパフィン錠",
+   "ingredient": "ルパタジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 12,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 200,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "12歳以上 10mgを1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "ザイザル錠",
+   "ingredient": "レボセチリジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 7,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 15,
+     "min": 5,
+     "max": 5,
+     "times": 2
+    },
+    {
+     "below": 200,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    }
+   ],
+   "times": 2,
+   "note": "7〜15歳未満 1回2.5mgを1日2回。15歳以上は1回5mgを1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "エバステル錠",
+   "ingredient": "エバスチン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "アレジオン錠",
+   "ingredient": "エピナスチン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "オノンカプセル",
+   "ingredient": "プランルカスト",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "シングレアチュアブル錠5mg",
+   "ingredient": "モンテルカスト",
+   "form": "other",
+   "conc": 0,
+   "basis": "age",
+   "bands": [
+    {
+     "below": 6,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "below": 15,
+     "min": 5,
+     "max": 5,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "6歳以上 5mgを1日1回就寝前"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "ネキシウムカプセル",
+   "ingredient": "エソメプラゾール",
+   "form": "other",
+   "conc": 0,
+   "basis": "weight",
+   "bands": [
+    {
+     "below": 20,
+     "min": 10,
+     "max": 10,
+     "times": 1
+    },
+    {
+     "below": 500,
+     "min": 10,
+     "max": 20,
+     "times": 1
+    }
+   ],
+   "times": 1,
+   "note": "1歳以上。体重20kg未満 1回10mg、20kg以上 1回10〜20mg を1日1回"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "オゼックス錠小児用",
+   "ingredient": "トスフロキサシン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "錠剤・カプセル",
+   "name": "ゾコーバ錠",
+   "ingredient": "エンシトレルビル",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "12歳以上。1日目375mg、2〜5日目125mgを1日1回。添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "点鼻",
+   "name": "フルチカゾン点鼻液25μg小児用",
+   "ingredient": "フルチカゾン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回各鼻腔に1噴霧を1日2回"
+  },
+  {
+   "category": "点鼻",
+   "name": "アラミスト点鼻液",
+   "ingredient": "フルチカゾンフランカルボン酸エステル",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "小児：1回各鼻腔に1噴霧を1日1回"
+  },
+  {
+   "category": "点鼻",
+   "name": "ナゾネックス点鼻液",
+   "ingredient": "モメタゾン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "小児（3〜12歳未満）：1回各鼻腔に1噴霧を1日1回"
+  },
+  {
+   "category": "点鼻",
+   "name": "ザジテン点鼻液",
+   "ingredient": "ケトチフェン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回各鼻腔に1噴霧を1日4回"
+  },
+  {
+   "category": "点鼻",
+   "name": "インタール点鼻液",
+   "ingredient": "クロモグリク酸",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回各鼻腔に1噴霧を1日6回"
+  },
+  {
+   "category": "点鼻",
+   "name": "リノコートパウダースプレー",
+   "ingredient": "ベクロメタゾン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回各鼻腔に1噴霧を1日2回"
+  },
+  {
+   "category": "点鼻",
+   "name": "エリザス点鼻粉末",
+   "ingredient": "デキサメタゾンシペシル酸エステル",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "添付文書で用量を確認して、編集から登録してください"
+  },
+  {
+   "category": "点眼",
+   "name": "フルメトロン点眼液",
+   "ingredient": "フルオロメトロン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日2〜4回"
+  },
+  {
+   "category": "点眼",
+   "name": "レボカバスチン点眼液",
+   "ingredient": "レボカバスチン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日4回（一覧の「レボカルニチン」はこれと判断しました）"
+  },
+  {
+   "category": "点眼",
+   "name": "パタノール点眼液",
+   "ingredient": "オロパタジン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日4回"
+  },
+  {
+   "category": "点眼",
+   "name": "リザベン点眼液",
+   "ingredient": "トラニラスト",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日4回"
+  },
+  {
+   "category": "点眼",
+   "name": "インタール点眼液",
+   "ingredient": "クロモグリク酸",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日4回"
+  },
+  {
+   "category": "点眼",
+   "name": "アレジオン点眼液",
+   "ingredient": "エピナスチン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1滴を1日4回"
+  },
+  {
+   "category": "点眼",
+   "name": "アレジオンLX点眼液",
+   "ingredient": "エピナスチン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1滴を1日2回"
+  },
+  {
+   "category": "点眼",
+   "name": "ケタス点眼液",
+   "ingredient": "イブジラスト",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1〜2滴を1日4回"
+  },
+  {
+   "category": "点眼",
+   "name": "クラビット点眼液（タリビッド・オゼックス点眼液）",
+   "ingredient": "ニューキノロン系",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "1回1滴を1日3回"
+  },
+  {
+   "category": "点眼",
+   "name": "アジマイシン点眼液",
+   "ingredient": "アジスロマイシン",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "結膜炎：1回1滴を1日2回2日間、その後1日1回5日間"
+  },
+  {
+   "category": "外用",
+   "name": "プロトピック軟膏0.03%小児用",
+   "ingredient": "タクロリムス",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "2〜15歳。1日1〜2回。1回の塗布量の上限は体重で決まる（〜20kg 1g、20〜50kg 2〜4g、50kg以上 5g）"
+  },
+  {
+   "category": "外用",
+   "name": "コレクチム軟膏0.25%",
+   "ingredient": "デルゴシチニブ",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "小児：1日2回。1回5gまで（体格に応じて減らす）"
+  },
+  {
+   "category": "外用",
+   "name": "モイゼルト軟膏0.3%",
+   "ingredient": "ジファミラスト",
+   "form": "other",
+   "conc": 0,
+   "basis": "memo",
+   "note": "小児：1日2回適量。症状により1%を使う"
+  }
+ ]
+}

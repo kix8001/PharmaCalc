@@ -12,8 +12,8 @@ android {
         applicationId = "app.pharmacalc.android"
         minSdk = 29
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     signingConfigs {
@@ -47,6 +47,8 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets["main"].assets.srcDir("../../data")  // 小児用量の初期登録（iOS と共通の ped_presets.json）
+
     lint {
         abortOnError = false
         checkReleaseBuilds = false

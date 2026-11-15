@@ -16,7 +16,8 @@
 - `Core/`：`PatientStore`（患者情報。全電卓で共有、端末に保存しない）、計算式（`Renal`・`BodyCalc`）、共通部品（`NumField`・`ResultRow`・`calcForm`）、日付（`JPDate`）
 - `Calculators/`：各電卓の画面
 - `PillCount/`：錠剤カウント。`PillCounter` が画像処理（ぼかしで刻印を消す→RGBの勾配で両向きの円ハフ変換→半径は「円の数が急に減る手前」から推定→周囲16方向の輪郭と1.6Rの間隔で確認）を自前で行う。丸い錠剤向け。調整は実写真（袋入り45錠）と合成画像で行った。結果の印はタップで増減、範囲指定もできる
-- `PedDose/`：小児用量（薬剤別）。`PedDrug`（mg/kg/日・mg/kg/回・年齢別＋上限）と初期登録 `presets`（添付文書の小児用量の目安）、`PedDrugStore`（UserDefaults の `pedDrugs`）。Android 版は `ped/` に同じものがある
+- `PedDose/`：小児用量（薬剤別）。`PedDrug`（体重あたり1日・1回、年齢別、体重別、メモだけ。上限・範囲ごとの回数・μg・錠などの単位）、`PedDrugStore`（UserDefaults の `pedDrugs`）。Android 版は `ped/` に同じものがある
+- 小児用量の初期登録は iOS・Android 共通の `data/ped_presets.json`。`tools/make_ped_presets.py` を直して実行して作る（手で JSON を直さない）。数値に確信が持てない薬は basis=memo（用量未登録）にする。版（version）を上げると既存ユーザーにも足りない薬が名前で追加される
 - `Barcode/`：`ScanScreen`／`HistoryScreen` が本体（タブでは `ScanView`／`HistoryView` が NavigationStack で包む。ホームのタイルからは本体を直接開く）。AVFoundation でGS1データバー等を読む `Scanner`、`GS1` 解析、PMDA電子添文URL、読み取り履歴
 - 計算式は画面のフッターに必ず表示する。SwiftUI の `View.Body` と衝突するので型名に `Body` を使わない。
 

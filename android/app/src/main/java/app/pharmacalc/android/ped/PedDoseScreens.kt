@@ -55,13 +55,20 @@ fun PedDoseScreen(edit: (String?) -> Unit) = CalcPage {
     }
     OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("薬の名前・成分で絞り込む") },
         leadingIcon = { Icon(Icons.Filled.Search, null) }, modifier = Modifier.fillMaxWidth())
-    val list = PedDrugStore.drugs.filter { query.isEmpty() || (it.name + it.ingredient).contains(query, ignoreCase = true) }
-    Section("薬（タップで編集）",
-        footer = "初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。") {
-        list.forEachIndexed { i, d ->
-            if (i > 0) Divider()
-            PedDrugRow(d, p.ageV, p.weightV, Modifier.clickable { edit(d.id) })
+    var category by rememberSaveable { mutableStateOf<String?>(null) }
+    Choice(listOf<Pair<String?, String>>(null to "すべて") + PedDrugStore.categories.map { it to it }, category) { category = it }
+    PedDrugStore.categories.filter { category == null || it == category }.forEach { c ->
+        val list = PedDrugStore.drugs.filter {
+            (it.category ?: "自分で追加") == c && (query.isEmpty() || (it.name + it.ingredient).contains(query, ignoreCase = true))
         }
+        if (list.isNotEmpty()) Section(c) {
+            list.forEachIndexed { i, d ->
+                if (i > 0) Divider()
+                PedDrugRow(d, p.ageV, p.weightV, Modifier.clickable { edit(d.id) })
+            }
+        }
+    }
+    Section(footer = "初期登録は添付文書の小児用量をもとにした目安です。適応症・剤形で用量が違う場合があるので、必ず最新の添付文書で確認してください。「用量未登録」の薬は、タップして用量を入れられます。") {
         TextButton(onClick = { edit(null) }) {
             Icon(Icons.Filled.AddCircle, null); Text("  薬を追加")
         }
@@ -81,12 +88,23 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
         val (r, err) = d.compute(age, weight)
         if (r != null) {
             val dg = if (d.isSyrup) 1 else 2
-            Text("1日 ${range(r.dailyLo, r.dailyHi, 1)}mg → ${range(r.dailyLo / d.conc, r.dailyHi / d.conc, dg)}${d.unit}",
-                color = MaterialTheme.colorScheme.primary)
-            Text("1回 ${range(r.doseLo, r.doseHi, 1)}mg → ${range(r.doseLo / d.conc, r.doseHi / d.conc, dg)}${d.unit}（1日${r.times}回）")
+            val ad = if (d.amount == "μg") 1 else 2
+            val a = d.amount
+            if (d.hasProduct) {
+                Text("1日 ${range(r.dailyLo, r.dailyHi, ad)}$a → ${range(r.dailyLo / d.conc, r.dailyHi / d.conc, dg)}${d.unit}",
+                    color = MaterialTheme.colorScheme.primary)
+                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a → ${range(r.doseLo / d.conc, r.doseHi / d.conc, dg)}${d.unit}（1日${r.times}回）")
+            } else {
+                Text("1日 ${range(r.dailyLo, r.dailyHi, ad)}$a", color = MaterialTheme.colorScheme.primary)
+                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a（1日${r.times}回）")
+            }
             if (r.capped) Text("上限で頭打ちにしています", style = MaterialTheme.typography.bodySmall, color = Orange)
+        } else if (err.isNullOrEmpty()) {
+            if (d.note.contains("添付文書で用量を確認")) {
+                Text("用量未登録", style = MaterialTheme.typography.labelMedium, color = Orange)
+            }
         } else {
-            Text(err ?: "", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(err, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (d.note.isNotEmpty()) {
             Text(d.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -94,11 +112,14 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
     }
 }
 
-private class BandText(below: String = "", min: String = "", max: String = "") {
+private class BandText(below: String = "", min: String = "", max: String = "", times: String = "") {
     var below by mutableStateOf(below)
     var min by mutableStateOf(min)
     var max by mutableStateOf(max)
+    var times by mutableStateOf(times)
 }
+
+private enum class Form3 { POWDER, SYRUP, OTHER }
 
 /** 薬の追加・編集 */
 @Composable
@@ -106,8 +127,13 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
     val original = remember(id) { PedDrugStore.drugs.firstOrNull { it.id == id } }
     var name by remember { mutableStateOf(original?.name ?: "") }
     var ingredient by remember { mutableStateOf(original?.ingredient ?: "") }
-    var isSyrup by remember { mutableStateOf(original?.isSyrup ?: false) }
-    var conc by remember { mutableStateOf(original?.conc?.let { fmtTrim(it, 3) } ?: "") }
+    var category by remember { mutableStateOf(original?.category ?: "") }
+    var form by remember {
+        mutableStateOf(if (original?.formUnit != null) Form3.OTHER else if (original?.isSyrup == true) Form3.SYRUP else Form3.POWDER)
+    }
+    var formUnit by remember { mutableStateOf(original?.formUnit ?: "錠") }
+    var microgram by remember { mutableStateOf(original?.amountUnit == "μg") }
+    var conc by remember { mutableStateOf(original?.conc?.takeIf { it > 0 }?.let { fmtTrim(it, 3) } ?: "") }
     var basis by remember { mutableStateOf(original?.basis ?: DoseBasis.DAY) }
     var minPerKg by remember { mutableStateOf(original?.minPerKg?.takeIf { it > 0 }?.let { fmtTrim(it, 3) } ?: "") }
     var maxPerKg by remember { mutableStateOf(original?.maxPerKg?.takeIf { it > 0 }?.let { fmtTrim(it, 3) } ?: "") }
@@ -118,68 +144,96 @@ fun PedDrugEditScreen(id: String?, done: () -> Unit) = CalcPage {
     var note by remember { mutableStateOf(original?.note ?: "") }
     val bands = remember {
         mutableStateListOf<BandText>().apply {
-            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 1), fmtTrim(it.min, 1), fmtTrim(it.max, 1))) }
+            original?.bands?.forEach { add(BandText(fmtTrim(it.below, 1), fmtTrim(it.min, 2), fmtTrim(it.max, 2), it.times?.toString() ?: "")) }
             if (isEmpty()) add(BandText())
         }
     }
+    val au = if (microgram) "μg" else "mg"
 
     fun build(): PedDrug? {
         if (name.isBlank()) return null
-        val c = parseNum(conc) ?: return null
         val t = parseInt(times) ?: return null
-        if (c <= 0 || t <= 0) return null
+        if (t <= 0) return null
         var d = PedDrug(id = original?.id ?: java.util.UUID.randomUUID().toString(), name = name.trim(), ingredient = ingredient.trim(),
-            isSyrup = isSyrup, conc = c, basis = basis, times = t, note = note.trim(),
+            isSyrup = form == Form3.SYRUP, conc = maxOf(0.0, parseNum(conc) ?: 0.0), basis = basis, times = t, note = note.trim(),
             maxDoseMg = parseNum(maxDose)?.takeIf { it > 0 }, maxDailyMg = parseNum(maxDaily)?.takeIf { it > 0 },
-            maxDailyPerKg = parseNum(maxDailyPerKg)?.takeIf { it > 0 })
-        if (basis == DoseBasis.AGE) {
-            val list = bands.mapNotNull { b ->
-                val bl = parseNum(b.below); val lo = parseNum(b.min)
-                if (bl == null || lo == null || bl <= 0 || lo <= 0) null
-                else AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo))
+            maxDailyPerKg = parseNum(maxDailyPerKg)?.takeIf { it > 0 },
+            category = category.trim().ifEmpty { null }, formUnit = if (form == Form3.OTHER) formUnit.trim() else null,
+            amountUnit = if (microgram) "μg" else null)
+        when (basis) {
+            DoseBasis.AGE, DoseBasis.WEIGHT -> {
+                val list = bands.mapNotNull { b ->
+                    val bl = parseNum(b.below)
+                    if (bl == null || bl <= 0) null
+                    else {
+                        val lo = parseNum(b.min) ?: 0.0
+                        AgeBand(bl, lo, maxOf(lo, parseNum(b.max) ?: lo), parseInt(b.times)?.takeIf { it > 0 })
+                    }
+                }
+                if (list.isEmpty()) return null
+                d = d.copy(bands = list)
             }
-            if (list.isEmpty()) return null
-            d = d.copy(bands = list)
-        } else {
-            val lo = parseNum(minPerKg) ?: return null
-            if (lo <= 0) return null
-            d = d.copy(minPerKg = lo, maxPerKg = maxOf(lo, parseNum(maxPerKg) ?: lo))
+            DoseBasis.DAY, DoseBasis.DOSE -> {
+                val lo = parseNum(minPerKg) ?: return null
+                if (lo <= 0) return null
+                d = d.copy(minPerKg = lo, maxPerKg = maxOf(lo, parseNum(maxPerKg) ?: lo))
+            }
+            DoseBasis.MEMO -> {}
         }
         return d
     }
 
-    Section(footer = "例：50%散 → 500mg、10%DS → 100mg、5%シロップ → 50mg（1mLあたり）") {
+    Section {
         OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("薬の名前（例：ムコダインDS50%）") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(ingredient, { ingredient = it }, singleLine = true, label = { Text("成分名（任意）") }, modifier = Modifier.fillMaxWidth())
-        Choice(listOf(false to "散・DS（g）", true to "シロップ（mL）"), isSyrup) { isSyrup = it }
-        NumField(if (isSyrup) "1mLあたりの成分量" else "1gあたりの成分量", conc, { conc = it }, "mg")
+        OutlinedTextField(category, { category = it }, singleLine = true, label = { Text("分類（任意、例：抗菌薬）") }, modifier = Modifier.fillMaxWidth())
+    }
+    Section("剤形", footer = "例：50%散 → 500mg、10%DS → 100mg、5%シロップ → 50mg（1mLあたり）。0や空欄なら製剤量は出さず、成分量だけ出します。") {
+        Choice(listOf(Form3.POWDER to "散・DS（g）", Form3.SYRUP to "シロップ（mL）", Form3.OTHER to "その他"), form) { form = it }
+        if (form == Form3.OTHER) {
+            OutlinedTextField(formUnit, { formUnit = it }, singleLine = true, label = { Text("単位（錠・包・個・枚など）") }, modifier = Modifier.fillMaxWidth())
+        }
+        Choice(listOf(false to "mg", true to "μg"), microgram) { microgram = it }
+        val per = when (form) { Form3.POWDER -> "g"; Form3.SYRUP -> "mL"; Form3.OTHER -> formUnit }
+        NumField("1${per}あたりの成分量", conc, { conc = it }, au)
     }
     Section("用量") {
         Choice(DoseBasis.entries.map { it to it.label }, basis) { basis = it }
-        if (basis == DoseBasis.AGE) {
-            bands.toList().forEachIndexed { i, b ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SmallField(b.below, { b.below = it }, "歳", Modifier.width(64.dp))
-                    Text("歳未満 ", style = MaterialTheme.typography.bodySmall)
-                    SmallField(b.min, { b.min = it }, "最小", Modifier.weight(1f))
-                    Text("〜")
-                    SmallField(b.max, { b.max = it }, "最大", Modifier.weight(1f))
-                    Text("mg/日", style = MaterialTheme.typography.bodySmall)
-                    IconButton(onClick = { bands.removeAt(i) }) { Icon(Icons.Filled.RemoveCircle, "削除", tint = Color(0xFFE53935)) }
+        when (basis) {
+            DoseBasis.AGE, DoseBasis.WEIGHT -> {
+                val k = if (basis == DoseBasis.AGE) "歳" else "kg"
+                bands.toList().forEachIndexed { i, b ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SmallField(b.below, { b.below = it }, k, Modifier.width(64.dp))
+                        Text("${k}未満 ", style = MaterialTheme.typography.bodySmall)
+                        SmallField(b.min, { b.min = it }, "最小", Modifier.weight(1f))
+                        Text("〜")
+                        SmallField(b.max, { b.max = it }, "最大", Modifier.weight(1f))
+                        IconButton(onClick = { bands.removeAt(i) }) { Icon(Icons.Filled.RemoveCircle, "削除", tint = Color(0xFFE53935)) }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${au}/日　この範囲の1日の回数（任意）", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        SmallField(b.times, { b.times = it }, "回", Modifier.width(72.dp))
+                    }
                 }
+                TextButton(onClick = { bands.add(BandText()) }) { Text("区切りを追加") }
+                Text("最小・最大を0にすると「用量の記載なし」と表示します（対象年齢外など）。",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = { bands.add(BandText()) }) { Text("年齢の区切りを追加") }
-        } else {
-            val u = if (basis == DoseBasis.DAY) "mg/kg/日" else "mg/kg/回"
-            NumField("最小", minPerKg, { minPerKg = it }, u)
-            NumField("最大（任意）", maxPerKg, { maxPerKg = it }, u)
+            DoseBasis.DAY, DoseBasis.DOSE -> {
+                val u = if (basis == DoseBasis.DAY) "$au/kg/日" else "$au/kg/回"
+                NumField("最小", minPerKg, { minPerKg = it }, u)
+                NumField("最大（任意）", maxPerKg, { maxPerKg = it }, u)
+            }
+            DoseBasis.MEMO -> Text("用量は計算せず、メモだけ表示します。", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         NumField("1日の回数", times, { times = it }, "回", integer = true)
     }
-    Section("上限（任意）") {
-        NumField("1回の上限", maxDose, { maxDose = it }, "mg")
-        NumField("1日の上限", maxDaily, { maxDaily = it }, "mg")
-        NumField("1日の上限（体重あたり）", maxDailyPerKg, { maxDailyPerKg = it }, "mg/kg")
+    if (basis != DoseBasis.MEMO) Section("上限（任意）") {
+        NumField("1回の上限", maxDose, { maxDose = it }, au)
+        NumField("1日の上限", maxDaily, { maxDaily = it }, au)
+        NumField("1日の上限（体重あたり）", maxDailyPerKg, { maxDailyPerKg = it }, "$au/kg")
     }
     Section("メモ") {
         OutlinedTextField(note, { note = it }, label = { Text("用法の注意など") }, modifier = Modifier.fillMaxWidth())

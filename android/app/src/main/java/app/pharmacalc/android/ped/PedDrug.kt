@@ -11,20 +11,24 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/** 年齢別の用量（〜歳未満なら 1日 min〜max mg） */
-data class AgeBand(val below: Double, val min: Double, val max: Double)
+/** 年齢別・体重別の用量（〜未満なら 1日 min〜max）。min・max とも0なら「この範囲は用量の記載なし」 */
+data class AgeBand(val below: Double, val min: Double, val max: Double, val times: Int? = null) {
+    val notIndicated get() = min <= 0 && max <= 0
+}
 
 /** 用量の決め方 */
-enum class DoseBasis(val label: String) { DAY("mg/kg/日"), DOSE("mg/kg/回"), AGE("年齢別") }
+enum class DoseBasis(val label: String) {
+    DAY("体重あたり（1日）"), DOSE("体重あたり（1回）"), AGE("年齢別"), WEIGHT("体重別"), MEMO("メモだけ")
+}
 
 /** 小児用量を計算する薬（ユーザーが追加・編集できる）。iOS 版の PedDrug と同じ */
 data class PedDrug(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val ingredient: String = "",
-    /** true: シロップ（mL）、false: 散・DS（g） */
+    /** true: シロップ（mL）、false: 散・DS（g）。formUnit があればそちらを使う */
     val isSyrup: Boolean,
-    /** 製剤1g（または1mL）あたりの成分量 mg */
+    /** 製剤1g・1mL・1単位あたりの成分量。0なら製剤量は出さない */
     val conc: Double,
     val basis: DoseBasis,
     val minPerKg: Double = 0.0,
@@ -35,16 +39,24 @@ data class PedDrug(
     val maxDailyPerKg: Double? = null,
     val bands: List<AgeBand> = emptyList(),
     val note: String = "",
+    val category: String? = null,
+    /** 錠・包・個・枚など（散・シロップ以外） */
+    val formUnit: String? = null,
+    /** 成分量の単位（"mg" か "μg"） */
+    val amountUnit: String? = null,
 ) {
-    val unit get() = if (isSyrup) "mL" else "g"
+    val unit get() = formUnit ?: if (isSyrup) "mL" else "g"
+    val amount get() = amountUnit ?: "mg"
+    val hasProduct get() = conc > 0
 
     class Result(val dailyLo: Double, val dailyHi: Double, val doseLo: Double, val doseHi: Double,
                  val times: Int, val capped: Boolean)
 
-    /** 年齢（歳）と体重（kg）から用量を出す。必要な値が無ければ理由の文字列を返す */
+    /** 年齢（歳）と体重（kg）から用量を出す。出せないときは理由（MEMO のときは空文字） */
     fun compute(age: Double?, weight: Double?): Pair<Result?, String?> {
         val t = max(1, times)
         return when (basis) {
+            DoseBasis.MEMO -> null to ""
             DoseBasis.DAY -> {
                 if (weight == null || weight <= 0) return null to "体重を入れてください"
                 var hi = maxPerKg * weight
@@ -65,10 +77,18 @@ data class PedDrug(
                 maxDailyMg?.let { if (dHi > it) { dHi = it; capped = true } }
                 Result(min(lo * t, dHi), dHi, lo, hi, t, capped) to null
             }
-            DoseBasis.AGE -> {
-                if (age == null || age < 0) return null to "年齢を入れてください"
-                val b = bands.sortedBy { it.below }.firstOrNull { age < it.below } ?: return null to "登録した年齢の範囲外です"
-                Result(b.min, b.max, b.min / t, b.max / t, t, false) to null
+            DoseBasis.AGE, DoseBasis.WEIGHT -> {
+                val key = if (basis == DoseBasis.AGE) {
+                    if (age == null || age < 0) return null to "年齢を入れてください"
+                    age
+                } else {
+                    if (weight == null || weight <= 0) return null to "体重を入れてください"
+                    weight
+                }
+                val b = bands.sortedBy { it.below }.firstOrNull { key < it.below } ?: return null to "登録した範囲の外です"
+                if (b.notIndicated) return null to "この年齢・体重では用量の記載がありません"
+                val bt = max(1, b.times ?: t)
+                Result(b.min, b.max, b.min / bt, b.max / bt, bt, false) to null
             }
         }
     }
@@ -77,20 +97,57 @@ data class PedDrug(
 fun range(a: Double, b: Double, digits: Int): String =
     if (abs(a - b) < 1e-9) fmtTrim(a, digits) else "${fmtTrim(a, digits)}〜${fmtTrim(b, digits)}"
 
+private fun JSONObject.optDoubleOrNull(k: String): Double? = if (has(k) && !isNull(k)) getDouble(k) else null
+private fun JSONObject.optIntOrNull(k: String): Int? = if (has(k) && !isNull(k)) getInt(k) else null
+private fun JSONObject.optStringOrNull(k: String): String? = if (has(k) && !isNull(k)) getString(k) else null
+
 /** 小児用量の薬の一覧（端末に保存） */
 object PedDrugStore {
     val drugs = mutableStateListOf<PedDrug>()
     private var prefs: SharedPreferences? = null
     private const val KEY = "pedDrugs"
+    private const val VERSION_KEY = "pedPresetVersion"
+    private var presetVersion = 0
+    private var presets: List<PedDrug> = emptyList()
+
+    /** 0.3.0 の初期登録の名前（0.4.0 で名前を変えたので入れ替える） */
+    private val oldNames = setOf(
+        "ムコダインDS50%", "ムコダインシロップ5%", "ムコソルバンDS1.5%", "ムコソルバンシロップ0.3%", "トランサミンシロップ5%",
+        "アスベリン散10%", "アスベリンシロップ0.5%", "カロナール細粒20%", "カロナールシロップ2%", "ワイドシリン細粒20%",
+        "クラリスDS10%小児用", "メイアクトMS小児用細粒10%", "フロモックス小児用細粒100mg", "ジスロマック細粒小児用10%",
+        "タミフルDS3%", "オノンDS10%", "ザジテンDS0.1%",
+    )
 
     fun init(ctx: Context) {
         if (prefs != null) return
         prefs = ctx.getSharedPreferences("pharmacalc", Context.MODE_PRIVATE)
-        val json = prefs?.getString(KEY, null)
-        val list = json?.let { runCatching { decode(it) }.getOrNull() }
+        runCatching {
+            val o = JSONObject(ctx.assets.open("ped_presets.json").bufferedReader().readText())
+            presetVersion = o.getInt("version")
+            val arr = o.getJSONArray("drugs")
+            presets = (0 until arr.length()).map { presetFrom(arr.getJSONObject(it)) }
+        }
+        val saved = prefs?.getString(KEY, null)?.let { runCatching { decode(it) }.getOrNull() }
         drugs.clear()
-        drugs.addAll(list ?: presets)
+        if (saved == null) {
+            drugs.addAll(presets)
+        } else {
+            var list = saved
+            val v = prefs?.getInt(VERSION_KEY, 0) ?: 0
+            if (v < presetVersion) {
+                // 古い初期登録は入れ替え、自分で追加した薬は残す。足りない薬は名前で追加
+                if (v < 2) list = list.filter { it.name !in oldNames }
+                val names = list.map { it.name }.toSet()
+                list = list + presets.filter { it.name !in names }
+            }
+            drugs.addAll(list)
+        }
+        prefs?.edit()?.putInt(VERSION_KEY, presetVersion)?.apply()
+        save()
     }
+
+    /** 一覧に出てくる分類（初期登録の順） */
+    val categories: List<String> get() = drugs.map { it.category ?: "自分で追加" }.distinct()
 
     fun upsert(d: PedDrug) {
         val i = drugs.indexOfFirst { it.id == d.id }
@@ -102,6 +159,27 @@ object PedDrugStore {
 
     fun reset() { drugs.clear(); drugs.addAll(presets); save() }
 
+    private fun presetFrom(o: JSONObject): PedDrug {
+        val form = o.getString("form")
+        val bands = o.optJSONArray("bands")
+        val minK = o.optDoubleOrNull("minPerKg") ?: 0.0
+        return PedDrug(
+            name = o.getString("name"), ingredient = o.optString("ingredient"), isSyrup = form == "syrup",
+            conc = o.getDouble("conc"),
+            basis = DoseBasis.entries.firstOrNull { it.name.equals(o.getString("basis"), true) } ?: DoseBasis.MEMO,
+            minPerKg = minK, maxPerKg = o.optDoubleOrNull("maxPerKg") ?: minK, times = o.optIntOrNull("times") ?: 3,
+            maxDoseMg = o.optDoubleOrNull("maxDoseMg"), maxDailyMg = o.optDoubleOrNull("maxDailyMg"),
+            maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
+            bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
+                val b = bands.getJSONObject(j)
+                AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"))
+            },
+            note = o.optString("note"), category = o.optStringOrNull("category"),
+            formUnit = if (form == "other") o.optStringOrNull("unit") ?: "" else null,
+            amountUnit = o.optStringOrNull("amountUnit"),
+        )
+    }
+
     private fun save() {
         val arr = JSONArray()
         drugs.forEach { d ->
@@ -112,8 +190,15 @@ object PedDrugStore {
                 d.maxDoseMg?.let { put("maxDoseMg", it) }
                 d.maxDailyMg?.let { put("maxDailyMg", it) }
                 d.maxDailyPerKg?.let { put("maxDailyPerKg", it) }
+                d.category?.let { put("category", it) }
+                d.formUnit?.let { put("formUnit", it) }
+                d.amountUnit?.let { put("amountUnit", it) }
                 put("bands", JSONArray().apply {
-                    d.bands.forEach { b -> put(JSONObject().apply { put("below", b.below); put("min", b.min); put("max", b.max) }) }
+                    d.bands.forEach { b ->
+                        put(JSONObject().apply {
+                            put("below", b.below); put("min", b.min); put("max", b.max); b.times?.let { put("times", it) }
+                        })
+                    }
                 })
             })
         }
@@ -127,61 +212,18 @@ object PedDrugStore {
             val bands = o.optJSONArray("bands")
             PedDrug(
                 id = o.getString("id"), name = o.getString("name"), ingredient = o.optString("ingredient"),
-                isSyrup = o.getBoolean("isSyrup"), conc = o.getDouble("conc"), basis = DoseBasis.valueOf(o.getString("basis")),
+                isSyrup = o.getBoolean("isSyrup"), conc = o.getDouble("conc"),
+                basis = DoseBasis.entries.firstOrNull { it.name == o.getString("basis") } ?: DoseBasis.MEMO,
                 minPerKg = o.optDouble("minPerKg", 0.0), maxPerKg = o.optDouble("maxPerKg", 0.0), times = o.optInt("times", 3),
-                maxDoseMg = if (o.has("maxDoseMg")) o.getDouble("maxDoseMg") else null,
-                maxDailyMg = if (o.has("maxDailyMg")) o.getDouble("maxDailyMg") else null,
-                maxDailyPerKg = if (o.has("maxDailyPerKg")) o.getDouble("maxDailyPerKg") else null,
+                maxDoseMg = o.optDoubleOrNull("maxDoseMg"), maxDailyMg = o.optDoubleOrNull("maxDailyMg"),
+                maxDailyPerKg = o.optDoubleOrNull("maxDailyPerKg"),
                 bands = if (bands == null) emptyList() else (0 until bands.length()).map { j ->
-                    val b = bands.getJSONObject(j); AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"))
+                    val b = bands.getJSONObject(j)
+                    AgeBand(b.getDouble("below"), b.getDouble("min"), b.getDouble("max"), b.optIntOrNull("times"))
                 },
-                note = o.optString("note"),
+                note = o.optString("note"), category = o.optStringOrNull("category"),
+                formUnit = o.optStringOrNull("formUnit"), amountUnit = o.optStringOrNull("amountUnit"),
             )
         }
-    }
-
-    /** 初期登録（添付文書の小児用量をもとにした目安）。iOS 版と同じ */
-    val presets: List<PedDrug> by lazy {
-        val tranexamic = listOf(AgeBand(2.0, 75.0, 200.0), AgeBand(4.0, 150.0, 350.0), AgeBand(7.0, 250.0, 650.0),
-            AgeBand(15.0, 400.0, 1000.0), AgeBand(200.0, 750.0, 2000.0))
-        val tipepidine = listOf(AgeBand(1.0, 5.0, 20.0), AgeBand(3.0, 10.0, 25.0), AgeBand(6.0, 15.0, 40.0))
-        val acetaminophenNote = "投与間隔は4〜6時間以上。1日総量60mg/kgまで（成人量を超えない）"
-        listOf(
-            PedDrug(name = "ムコダインDS50%", ingredient = "カルボシステイン", isSyrup = false, conc = 500.0, basis = DoseBasis.DAY,
-                minPerKg = 30.0, maxPerKg = 30.0, times = 3, note = "1回10mg/kgを1日3回"),
-            PedDrug(name = "ムコダインシロップ5%", ingredient = "カルボシステイン", isSyrup = true, conc = 50.0, basis = DoseBasis.DAY,
-                minPerKg = 30.0, maxPerKg = 30.0, times = 3, note = "1回10mg/kgを1日3回"),
-            PedDrug(name = "ムコソルバンDS1.5%", ingredient = "アンブロキソール", isSyrup = false, conc = 15.0, basis = DoseBasis.DAY,
-                minPerKg = 0.9, maxPerKg = 0.9, times = 3),
-            PedDrug(name = "ムコソルバンシロップ0.3%", ingredient = "アンブロキソール", isSyrup = true, conc = 3.0, basis = DoseBasis.DAY,
-                minPerKg = 0.9, maxPerKg = 0.9, times = 3),
-            PedDrug(name = "トランサミンシロップ5%", ingredient = "トラネキサム酸", isSyrup = true, conc = 50.0, basis = DoseBasis.AGE,
-                times = 3, bands = tranexamic, note = "1日量を3〜4回に分ける"),
-            PedDrug(name = "アスベリン散10%", ingredient = "チペピジンヒベンズ酸塩", isSyrup = false, conc = 100.0, basis = DoseBasis.AGE,
-                times = 3, bands = tipepidine),
-            PedDrug(name = "アスベリンシロップ0.5%", ingredient = "チペピジンヒベンズ酸塩", isSyrup = true, conc = 5.0, basis = DoseBasis.AGE,
-                times = 3, bands = tipepidine),
-            PedDrug(name = "カロナール細粒20%", ingredient = "アセトアミノフェン", isSyrup = false, conc = 200.0, basis = DoseBasis.DOSE,
-                minPerKg = 10.0, maxPerKg = 15.0, times = 4, maxDoseMg = 1000.0, maxDailyMg = 4000.0, maxDailyPerKg = 60.0, note = acetaminophenNote),
-            PedDrug(name = "カロナールシロップ2%", ingredient = "アセトアミノフェン", isSyrup = true, conc = 20.0, basis = DoseBasis.DOSE,
-                minPerKg = 10.0, maxPerKg = 15.0, times = 4, maxDoseMg = 1000.0, maxDailyMg = 4000.0, maxDailyPerKg = 60.0, note = acetaminophenNote),
-            PedDrug(name = "ワイドシリン細粒20%", ingredient = "アモキシシリン", isSyrup = false, conc = 200.0, basis = DoseBasis.DAY,
-                minPerKg = 20.0, maxPerKg = 40.0, times = 3, maxDailyPerKg = 90.0, note = "1日3〜4回。1日最大90mg/kg"),
-            PedDrug(name = "クラリスDS10%小児用", ingredient = "クラリスロマイシン", isSyrup = false, conc = 100.0, basis = DoseBasis.DAY,
-                minPerKg = 10.0, maxPerKg = 15.0, times = 2, note = "1日2〜3回に分ける"),
-            PedDrug(name = "メイアクトMS小児用細粒10%", ingredient = "セフジトレン ピボキシル", isSyrup = false, conc = 100.0, basis = DoseBasis.DOSE,
-                minPerKg = 3.0, maxPerKg = 3.0, times = 3, maxDoseMg = 200.0, note = "必要に応じて1回6mg/kgまで（1回200mgまで）"),
-            PedDrug(name = "フロモックス小児用細粒100mg", ingredient = "セフカペン ピボキシル", isSyrup = false, conc = 100.0, basis = DoseBasis.DOSE,
-                minPerKg = 3.0, maxPerKg = 3.0, times = 3),
-            PedDrug(name = "ジスロマック細粒小児用10%", ingredient = "アジスロマイシン", isSyrup = false, conc = 100.0, basis = DoseBasis.DAY,
-                minPerKg = 10.0, maxPerKg = 10.0, times = 1, maxDailyMg = 500.0, note = "1日1回3日間"),
-            PedDrug(name = "タミフルDS3%", ingredient = "オセルタミビル", isSyrup = false, conc = 30.0, basis = DoseBasis.DOSE,
-                minPerKg = 2.0, maxPerKg = 2.0, times = 2, maxDoseMg = 75.0, note = "治療は1日2回5日間、予防は1日1回"),
-            PedDrug(name = "オノンDS10%", ingredient = "プランルカスト", isSyrup = false, conc = 100.0, basis = DoseBasis.DAY,
-                minPerKg = 7.0, maxPerKg = 7.0, times = 2, maxDailyMg = 450.0, maxDailyPerKg = 10.0,
-                note = "朝・夕食後。1日最高10mg/kg（成人量450mg/日を超えない）"),
-            PedDrug(name = "ザジテンDS0.1%", ingredient = "ケトチフェン", isSyrup = false, conc = 1.0, basis = DoseBasis.DAY,
-                minPerKg = 0.06, maxPerKg = 0.06, times = 2, note = "朝食後と就寝前"),
-        )
     }
 }
