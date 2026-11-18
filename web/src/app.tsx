@@ -1,6 +1,6 @@
 import type { VNode } from 'preact'
 import type { LucideIcon } from 'lucide-preact'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import {
   ArrowLeftRight,
   Baby,
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   CirclePlus,
+  Download,
   CircleMinus,
   ClipboardList,
   Clock,
@@ -141,6 +142,37 @@ function TileIcon({ c, size }: { c: CalcItem; size: number }) {
   )
 }
 
+const isAndroid = /Android/i.test(navigator.userAgent)
+
+/** サーバーに Android 版の APK（/pharmacalc/android.apk）が置いてあるか */
+function useApkAvailable() {
+  const [ok, setOk] = useState(false)
+  useEffect(() => {
+    if (!isAndroid) return
+    fetch('./android.apk', { method: 'HEAD', cache: 'no-store' })
+      .then((r) => setOk(r.ok))
+      .catch(() => setOk(false))
+  }, [])
+  return ok
+}
+
+/** Android の人に、アプリ版（APK）のダウンロードを案内する */
+function AndroidApk({ compact }: { compact?: boolean }) {
+  const ok = useApkAvailable()
+  if (!ok) return null
+  return (
+    <Section
+      header={compact ? undefined : 'Android アプリ版'}
+      footer={compact ? undefined : "ダウンロードしたら通知かファイルアプリから開き、「インストール」を押します。初めてのときは「この提供元のアプリを許可」をオンにしてください。「不明なアプリ」の警告が出たら「インストールする」を選びます。"}
+    >
+      <a class="row button-row" href="./android.apk" download="PharmaCalc.apk">
+        <Download size={20} />
+        <span>Android アプリ版をダウンロード（APK）</span>
+      </a>
+    </Section>
+  )
+}
+
 function HomePage() {
   const nav = useNav()
   const tiles = useStore(tilesStore).filter((id) => byId.has(id))
@@ -174,6 +206,7 @@ function HomePage() {
       </label>
       {query.trim() === '' ? (
         <>
+          <AndroidApk compact />
           <Section header="患者情報（全計算で共通）">
             <LinkRow onClick={() => nav.push(<PatientPage />)}>
               <PatientSummaryLabel />
@@ -302,6 +335,7 @@ function AboutPage() {
         </div>
         <ButtonRow onClick={() => openExternal(PMDA.searchURL)}>PMDA 医療用医薬品 情報検索</ButtonRow>
       </Section>
+      <AndroidApk />
       <Section header="ホーム画面に追加" footer="iPhone：Safari の共有ボタン →「ホーム画面に追加」。Android：Chrome のメニュー →「ホーム画面に追加」または「アプリをインストール」。追加するとアプリのように起動し、電波が無いところでも使えます。">
         <></>
       </Section>

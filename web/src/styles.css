@@ -254,3 +254,4 @@ textarea.text-input { resize: vertical; }
 .edit-row .home-toggle { width: 32px; }
 .move { width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
 .move:disabled { color: var(--fill2); }
+a.row { text-decoration: none; }

@@ -14,12 +14,13 @@ defined('C5_EXECUTE') or die('Access Denied.');
 /**
  * 薬剤師電卓（Web版）を /pharmacalc で配信するパッケージ。
  * サイトにログインしている人だけが開ける。app/ フォルダに Web 版のビルド一式（web/dist）が入る。
+ * apk/PharmaCalc.apk を置くと、Android 版のアプリを /pharmacalc/android.apk で配る。
  */
 class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.0.0';
+    protected $pkgVersion = '1.1.0';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
@@ -58,6 +59,9 @@ class Controller extends Package
 
     private function serve(string $file): Response
     {
+        if ($file === 'android.apk') {
+            return $this->serveApk();
+        }
         $root = realpath(__DIR__ . '/app');
         $path = $root === false ? false : realpath($root . '/' . $file);
         // app/ の外のファイルは出さない
@@ -88,6 +92,27 @@ class Controller extends Package
         return $res;
     }
 
+    /**
+     * Android 版のアプリ（apk/PharmaCalc.apk）を配る。ログインした人だけ。
+     * スマホがダウンロード後にそのままインストールできるよう、apk の種類（MIME）とファイル名をつけて送る
+     */
+    private function serveApk(): Response
+    {
+        $path = __DIR__ . '/apk/PharmaCalc.apk';
+        if (!is_file($path)) {
+            return new Response('', 404);
+        }
+        if (!$this->loggedIn()) {
+            return $this->toLogin('/pharmacalc/android.apk');
+        }
+        $res = new BinaryFileResponse($path);
+        $res->headers->set('Content-Type', 'application/vnd.android.package-archive');
+        $res->setContentDisposition('attachment', 'PharmaCalc.apk');
+        $res->headers->set('Cache-Control', 'no-cache');
+        $res->headers->set('X-Content-Type-Options', 'nosniff');
+        return $res;
+    }
+
     private function loggedIn(): bool
     {
         try {
@@ -99,10 +124,10 @@ class Controller extends Package
     }
 
     /** ログイン画面へ。ログインしたら電卓に戻ってくるようにする */
-    private function toLogin(): Response
+    private function toLogin(string $back = '/pharmacalc/index.html'): Response
     {
         try {
-            $this->app->make('Concrete\Core\User\PostLoginLocation')->setSessionPostLoginUrl((string) Url::to('/pharmacalc/index.html'));
+            $this->app->make('Concrete\Core\User\PostLoginLocation')->setSessionPostLoginUrl((string) Url::to($back));
         } catch (\Throwable $e) {
             // 戻り先を覚えられなくても、ログイン画面には進める
         }
