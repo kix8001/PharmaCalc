@@ -2,8 +2,8 @@
 
 ## 概要
 薬剤師向けの電卓アプリ「薬剤師電卓」。社内（ハローナビ https://helloph.co.jp の利用者）向け。
-- **いま作っているのは2つ**：iPhone 用の **Web 版**（`web/`、Concrete CMS のパッケージ `concrete/pharmacalc` で /pharmacalc に配信）と **Android 版**（`android/`、Kotlin + Jetpack Compose、minSdk 29、`app.pharmacalc.android`。APK をハローナビの /pharmacalc/android.apk で配る）。**機能はこの2つでそろえる**（直すときは両方とも直す）。
-- **iOS 版（`PharmaCalc/`、SwiftUI）は 2026年11月に中止**。コードは参考に残しているが、もう直さない・版も上げない（以下の iOS の説明は記録として残す）。錠剤カウントなどの手順の元はこのコード。
+- 版は3つ：**Web 版**（`web/`、iPhone の利用者はこれを使う。Concrete CMS のパッケージ `concrete/pharmacalc` でハローナビの /pharmacalc に配信）、**Android 版**（`android/`、Kotlin + Jetpack Compose、minSdk 29、`app.pharmacalc.android`。APK を /pharmacalc/android.apk で配る）、**iOS 版**（`PharmaCalc/`、SwiftUI、iOS 16 以上、`app.pharmacalc.ios`。社内配布には使っていないが、そのまま残して作り続けてよい）。
+- **機能は3つでそろえる。とくに Web 版は必ず並行して作る**（iOS・Android に機能を足したり直したりしたら、同じ変更を必ず Web 版にも入れる）。
 - ユーザーへの説明・UI文言・コードコメント・コミットメッセージは日本語。
 - 利用者向けマニュアル：https://claude.ai/artifact/4jcXo5xqVXBD46rbvqjzJq （機能を変えたら合わせて直す）
 
@@ -11,10 +11,9 @@
 - ローカルに Xcode は無い。プロジェクトは XcodeGen の `project.yml` から生成する（`.xcodeproj` はコミットしない）。
 - GitHub Actions（`.github/workflows/build.yml`、雛形は `ci/pharmacalc-ios.yml`）が macOS で `xcodegen generate` → `xcodebuild`（署名なし）→ `PharmaCalc.ipa` をアーティファクト `PharmaCalc-ipa` として上げる。
 - Claude の権限ではワークフローファイルを追加・変更できない。変更が必要なときは `ci/` の雛形を直し、ユーザーに GitHub 上で反映してもらう。
-- 修正したら push して Actions の結果まで確認する（Web は「Build PharmaCalc Web」、Android は「Build PharmaCalc Android」）。リリースのたびに Web は `web/package.json` の version（と `concrete/pharmacalc/controller.php` の pkgVersion）、Android は `versionCode` / `versionName` を上げる。コミットは「薬剤師電卓 Web 1.x.y / Android 0.x.y: 変更点…」。
-- （中止した iOS 版）`project.yml` の `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`。
+- 修正したら push して Actions の結果まで確認する（「Build PharmaCalc Web」「Build PharmaCalc Android」「Build PharmaCalc iOS」）。リリースのたびに Web は `web/package.json` の version（と `concrete/pharmacalc/controller.php` の pkgVersion）、Android は `versionCode` / `versionName`、iOS は `project.yml` の `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` を上げる。コミットは「薬剤師電卓 iOS 0.x.y / Android 0.x.y / Web 1.x.y: 変更点…」。
 
-## 構成（`PharmaCalc/`、中止した iOS 版。Web・Android の手順の元）
+## 構成（`PharmaCalc/`、iOS 版）
 - `App/`：起動・タブ（計算／バーコード／履歴／情報）・ホーム（`CalcItem` に電卓を登録。ユーザーが選んだ電卓をアイコンタイルで並べる `HomeTiles`／`TileGrid`／`TileEditView`。並びは UserDefaults の `homeTiles`）
 - `Core/`：`PatientStore`（患者情報。全電卓で共有、端末に保存しない）、計算式（`Renal`・`BodyCalc`）、共通部品（`NumField`・`ResultRow`・`calcForm`）、日付（`JPDate`）
 - `Calculators/`：各電卓の画面。`RemainderView`（余り電卓）は Form ではなく大きなキーの電卓画面。計算は `RemainderCalc`（Android も同名で同じ手順）。数値の入力欄 `NumField` は行全体タップで入力、×で消去
