@@ -3,3 +3,6 @@ build/
 Payload/
 *.ipa
 PharmaCalc/Info.plist
+web/node_modules/
+web/dist/
+out/

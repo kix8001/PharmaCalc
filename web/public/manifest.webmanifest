@@ -1,0 +1,17 @@
+{
+  "name": "薬剤師電卓",
+  "short_name": "薬剤師電卓",
+  "description": "腎機能・日数・余り・小児用量・錠剤カウント・バーコードから添付文書",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2f7",
+  "theme_color": "#0e7c86",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
