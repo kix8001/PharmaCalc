@@ -227,6 +227,16 @@ enum CalcItem: String, CaseIterable, Identifiable {
         }
     }
 
+    /// クリアボタンを出すか（入力の無い画面・自分のクリアがある画面は出さない）
+    var clearable: Bool {
+        ![.renalDrugs, .pillCount, .remainder, .barcode, .scanHistory].contains(self)
+    }
+
+    /// クリアで患者情報（共通）も消すか（患者情報を入れる画面）
+    var clearsPatient: Bool {
+        [.renal, .body, .pediatric, .pedDrugs, .weightDose, .gamma, .nutrition].contains(self)
+    }
+
     @ViewBuilder var destination: some View {
         switch self {
         case .renal: RenalView()
@@ -352,7 +362,13 @@ struct HomeView: View {
             }
             .navigationTitle("薬剤師電卓")
             .searchable(text: $query, prompt: "計算を探す")
-            .navigationDestination(for: CalcItem.self) { $0.destination }
+            .navigationDestination(for: CalcItem.self) { c in
+                if c.clearable {
+                    ResettableScreen(clearsPatient: c.clearsPatient) { c.destination }
+                } else {
+                    c.destination
+                }
+            }
             .sheet(isPresented: $editing) {
                 TileEditView(tilesRaw: $tilesRaw)
             }

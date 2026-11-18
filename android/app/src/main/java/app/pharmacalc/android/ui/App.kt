@@ -1,5 +1,11 @@
 package app.pharmacalc.android.ui
 
+import androidx.compose.ui.semantics.contentDescription
+
+import androidx.compose.ui.semantics.semantics
+
+import androidx.compose.runtime.mutableIntStateOf
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,6 +71,13 @@ sealed interface Screen {
     data class PedDrugEdit(val id: String?) : Screen { override val title get() = if (id == null) "薬を追加" else "薬を編集" }
 }
 
+/** クリアボタンを出さない電卓（入力の無い画面・自分のクリアがある画面） */
+private val noClear = setOf(CalcItem.RENAL_DRUGS, CalcItem.PILL_COUNT, CalcItem.REMAINDER, CalcItem.BARCODE, CalcItem.SCAN_HISTORY)
+
+/** クリアで患者情報（共通）も消す電卓（患者情報を入れる画面） */
+private val clearsPatient = setOf(CalcItem.RENAL, CalcItem.BODY, CalcItem.PEDIATRIC, CalcItem.PED_DRUGS,
+    CalcItem.WEIGHT_DOSE, CalcItem.GAMMA, CalcItem.NUTRITION)
+
 enum class Tab(val label: String, val title: String, val icon: ImageVector) {
     CALC("計算", "薬剤師電卓", Icons.Filled.Functions),
     SCAN("バーコード", "バーコード", Icons.Filled.QrCodeScanner),
@@ -117,6 +130,9 @@ fun App() {
     val pop: () -> Unit = { if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) }
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
     val top = stack.lastOrNull()
+    // クリアを押すたびに増やし、いまの画面を最初の状態から作り直す
+    var resetKey by remember { mutableIntStateOf(0) }
+    val clearable = top is Screen.Calc && top.item !in noClear
 
     Scaffold(
         topBar = {
@@ -125,6 +141,21 @@ fun App() {
                 navigationIcon = {
                     if (top != null) IconButton(onClick = pop) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る")
+                    }
+                },
+                actions = {
+                    if (clearable) {
+                        val ctx = androidx.compose.ui.platform.LocalContext.current
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                val withPatient = (top as Screen.Calc).item in clearsPatient
+                                if (withPatient) app.pharmacalc.android.core.Patient.clear()
+                                resetKey++
+                                android.widget.Toast.makeText(ctx, if (withPatient) "入力と患者情報をクリアしました" else "入力をクリアしました",
+                                    android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.semantics { contentDescription = "この画面の入力をすべてクリア" },
+                        ) { Text("クリア") }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -145,7 +176,7 @@ fun App() {
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            key(tab, stack.size) {
+            key(tab, stack.size, resetKey) {
                 when (top) {
                     null -> when (tab) {
                         Tab.CALC -> HomeScreen(

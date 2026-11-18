@@ -119,12 +119,14 @@ struct PedDrugRow: View {
                         .foregroundStyle(.tint)
                     Text("1回 \(range(r.doseLo, r.doseHi, ad))\(a) → \(range(r.doseLo / drug.conc, r.doseHi / drug.conc, d))\(u)（1日\(r.times)回）")
                         .font(.callout.monospacedDigit())
+                        .foregroundStyle(.orange)
                 } else {
                     Text("1日 \(range(r.dailyLo, r.dailyHi, ad))\(a)")
                         .font(.callout.monospacedDigit())
                         .foregroundStyle(.tint)
                     Text("1回 \(range(r.doseLo, r.doseHi, ad))\(a)（1日\(r.times)回）")
                         .font(.callout.monospacedDigit())
+                        .foregroundStyle(.orange)
                 }
                 if r.capped {
                     Text("上限で頭打ちにしています").font(.caption).foregroundStyle(.orange)
@@ -311,7 +313,7 @@ struct PedDrugEditView: View {
                 }
             }
         }
-        .calcForm(original == nil ? "薬を追加" : "薬を編集")
+        .calcForm(original == nil ? "薬を追加" : "薬を編集", clearable: false)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {

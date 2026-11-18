@@ -97,10 +97,10 @@ private fun PedDrugRow(d: PedDrug, age: Double?, weight: Double?, modifier: Modi
             if (d.hasProduct) {
                 Text("1日 ${range(r.dailyLo, r.dailyHi, ad)}$a → ${range(r.dailyLo / d.conc, r.dailyHi / d.conc, dg)}${d.unit}",
                     color = MaterialTheme.colorScheme.primary)
-                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a → ${range(r.doseLo / d.conc, r.doseHi / d.conc, dg)}${d.unit}（1日${r.times}回）")
+                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a → ${range(r.doseLo / d.conc, r.doseHi / d.conc, dg)}${d.unit}（1日${r.times}回）", color = Orange)
             } else {
                 Text("1日 ${range(r.dailyLo, r.dailyHi, ad)}$a", color = MaterialTheme.colorScheme.primary)
-                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a（1日${r.times}回）")
+                Text("1回 ${range(r.doseLo, r.doseHi, ad)}$a（1日${r.times}回）", color = Orange)
             }
             if (r.capped) Text("上限で頭打ちにしています", style = MaterialTheme.typography.bodySmall, color = Orange)
         } else if (err.isNullOrEmpty()) {

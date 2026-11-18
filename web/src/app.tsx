@@ -40,7 +40,8 @@ import {
   Utensils,
   Wind,
 } from 'lucide-preact'
-import { ButtonRow, LabeledRow, LinkRow, Page, Section, openExternal } from './ui/components'
+import { ButtonRow, ClearCtx, LabeledRow, LinkRow, Page, Section, openExternal, toast } from './ui/components'
+import { clearPatient } from './core/patient'
 import { Stack, useNav } from './ui/nav'
 import { matchesSearch } from './core/format'
 import { persistedStore, useStore } from './core/store'
@@ -84,6 +85,8 @@ interface CalcItem {
   icon: LucideIcon
   group: GroupId
   page: () => VNode
+  /** クリアボタン：'local' はその画面の入力だけ、'patient' は患者情報（共通）も消す。無ければボタンを出さない */
+  clear?: 'local' | 'patient'
 }
 
 /** 電卓の一覧（ホーム画面・検索・タイルで共通。iOS の CalcItem と同じ並び） */
@@ -128,6 +131,29 @@ const items: CalcItem[] = [
   { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
 ]
 const byId = new Map(items.map((c) => [c.id, c]))
+
+// 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
+const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory']
+for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
+
+/** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */
+function CalcScreen({ c }: { c: CalcItem }) {
+  const [k, setK] = useState(0)
+  const clear = () => {
+    if (c.clear === 'patient') clearPatient()
+    setK((x) => x + 1)
+    toast(c.clear === 'patient' ? '入力と患者情報をクリアしました' : '入力をクリアしました')
+  }
+  return (
+    <ClearCtx.Provider value={c.clear ? clear : null}>
+      <div key={k} style={{ display: 'contents' }}>
+        {c.page()}
+      </div>
+    </ClearCtx.Provider>
+  )
+}
+const open = (nav: { push: (n: VNode) => void }, c: CalcItem) => nav.push(<CalcScreen c={c} />)
 
 /** ホームに並べるタイル（このブラウザに保存） */
 const defaultTiles = ['barcode', 'pillCount', 'remainder', 'endDate', 'remaining', 'renal', 'nextVisit']
@@ -183,7 +209,7 @@ function HomePage() {
     const onHome = tiles.includes(c.id)
     return (
       <div class="row calc-row">
-        <button class="calc-main" onClick={() => nav.push(c.page())}>
+        <button class="calc-main" onClick={() => open(nav, c)}>
           <TileIcon c={c} size={30} />
           <span class="calc-text">
             <span>{c.title}</span>
@@ -234,7 +260,7 @@ function HomePage() {
                 {tiles.map((id) => {
                   const c = byId.get(id)!
                   return (
-                    <button class="tile" onClick={() => nav.push(c.page())}>
+                    <button class="tile" onClick={() => open(nav, c)}>
                       <TileIcon c={c} size={56} />
                       <span class="tile-label">{c.short}</span>
                     </button>

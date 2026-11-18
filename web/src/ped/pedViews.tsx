@@ -103,7 +103,7 @@ function PedDrugRow({ drug, age, weight, onOpen }: { drug: PedDrug; age: number 
                   {a} → {range(r.dailyLo / drug.conc, r.dailyHi / drug.conc, dg)}
                   {u}
                 </div>
-                <div class="num">
+                <div class="num" style={{ color: 'var(--orange)' }}>
                   1回 {range(r.doseLo, r.doseHi, ad)}
                   {a} → {range(r.doseLo / drug.conc, r.doseHi / drug.conc, dg)}
                   {u}（1日{r.times}回）
@@ -115,7 +115,7 @@ function PedDrugRow({ drug, age, weight, onOpen }: { drug: PedDrug; age: number 
                   1日 {range(r.dailyLo, r.dailyHi, ad)}
                   {a}
                 </div>
-                <div class="num">
+                <div class="num" style={{ color: 'var(--orange)' }}>
                   1回 {range(r.doseLo, r.doseHi, ad)}
                   {a}（1日{r.times}回）
                 </div>

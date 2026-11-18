@@ -224,14 +224,54 @@ struct WarningRow: View {
     }
 }
 
-extension View {
-    /// 電卓画面の共通設定（タイトル・キーボードを閉じるボタン）
-    func calcForm(_ title: String) -> some View {
-        self
+/// 入力画面の「クリア」（その画面の入力を最初の状態に戻す）。`ResettableScreen` が渡す
+private struct ClearActionKey: EnvironmentKey {
+    static let defaultValue: (() -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var clearAction: (() -> Void)? {
+        get { self[ClearActionKey.self] }
+        set { self[ClearActionKey.self] = newValue }
+    }
+}
+
+/// 電卓の画面を包み、クリアを押したら最初の状態から作り直す。clearsPatient なら患者情報（共通）も消す
+struct ResettableScreen<Content: View>: View {
+    let clearsPatient: Bool
+    @ViewBuilder let content: () -> Content
+    @EnvironmentObject private var patient: PatientStore
+    @State private var token = 0
+
+    var body: some View {
+        content()
+            .id(token)
+            .environment(\.clearAction, {
+                if clearsPatient { patient.clear() }
+                KeyboardNav.dismiss()
+                token += 1
+            })
+    }
+}
+
+/// 電卓画面の共通設定（タイトル・キーボードの前へ／次へ・入力のクリア）
+private struct CalcFormModifier: ViewModifier {
+    let title: String
+    let clearable: Bool
+    @Environment(\.clearAction) private var clearAction
+
+    func body(content: Content) -> some View {
+        content
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.interactively)
             .toolbar {
+                if clearable, let clear = clearAction {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("クリア", action: clear)
+                            .accessibilityLabel("この画面の入力をすべてクリア")
+                    }
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Button {
                         KeyboardNav.move(-1)
@@ -249,5 +289,12 @@ extension View {
                         .fontWeight(.semibold)
                 }
             }
+    }
+}
+
+extension View {
+    /// 電卓画面の共通設定。clearable = false の画面（薬の編集・薬の一覧など）にはクリアを出さない
+    func calcForm(_ title: String, clearable: Bool = true) -> some View {
+        modifier(CalcFormModifier(title: title, clearable: clearable))
     }
 }

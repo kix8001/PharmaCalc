@@ -100,7 +100,7 @@ struct PillCountView: View {
                 }
             }
         }
-        .calcForm("錠剤カウント")
+        .calcForm("錠剤カウント", clearable: false)
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { load($0) }
                 .ignoresSafeArea()

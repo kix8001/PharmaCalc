@@ -1,13 +1,17 @@
-import type { ComponentChildren, JSX } from 'preact'
-import { useRef, useState } from 'preact/hooks'
+import { createContext, type ComponentChildren, type JSX } from 'preact'
+import { useContext, useRef, useState } from 'preact/hooks'
 import { ChevronLeft, ChevronRight, CircleCheck, SquarePen, TriangleAlert, X } from 'lucide-preact'
 import { useNav } from './nav'
 import { fmtTrim } from '../core/format'
 import { JPDate } from '../core/jpdate'
 
 /** 1画面（上のバー＋スクロールする中身） */
+/** 入力画面の「クリア」（その画面の入力を最初の状態に戻す）。入力のある電卓の画面だけに渡す */
+export const ClearCtx = createContext<(() => void) | null>(null)
+
 export function Page(props: { title: string; right?: ComponentChildren; children: ComponentChildren; large?: boolean; bodyClass?: string }) {
   const nav = useNav()
+  const clear = useContext(ClearCtx)
   return (
     <div class="page">
       <header class="bar">
@@ -20,7 +24,14 @@ export function Page(props: { title: string; right?: ComponentChildren; children
           )}
         </div>
         <h1 class="bar-title">{props.title}</h1>
-        <div class="bar-side right">{props.right}</div>
+        <div class="bar-side right">
+          {clear && (
+            <button class="bar-btn" aria-label="この画面の入力をすべてクリア" onClick={clear}>
+              クリア
+            </button>
+          )}
+          {props.right}
+        </div>
       </header>
       <div class={'page-body ' + (props.bodyClass ?? '')} onKeyDown={nextOnEnter}>
         {props.children}
