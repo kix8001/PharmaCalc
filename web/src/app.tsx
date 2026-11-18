@@ -10,6 +10,7 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronUp,
+  BadgePercent,
   CirclePlus,
   Download,
   CircleMinus,
@@ -59,6 +60,7 @@ import { PedDosePage } from './ped/pedViews'
 import { RenalDrugsPage } from './renal/renalDrugs'
 import { HistoryPage, ScanPage } from './barcode/scan'
 import { PillCountPage } from './pill/pillView'
+import { OtcPage } from './otc/otcViews'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -126,6 +128,16 @@ const items: CalcItem[] = [
   { id: 'nutrition', title: '栄養・輸液（必要量・NPC/N）', short: '栄養・輸液', subtitle: '必要エネルギー・水分・たんぱく、輸液のカロリー', keywords: '栄養 カロリー 輸液 tpn 経腸 harris benedict 水分 npc 在宅', icon: Utensils, group: 'homeCare', page: () => <NutritionPage /> },
   { id: 'oxygen', title: '酸素ボンベの残り時間', short: '酸素ボンベ', subtitle: '在宅酸素の残量と使える時間', keywords: '酸素 ボンベ hot 在宅 同調器', icon: Wind, group: 'homeCare', page: () => <OxygenPage /> },
   { id: 'dilution', title: '消毒液の希釈', short: '消毒液', subtitle: '次亜塩素酸ナトリウムなどの作り方', keywords: '消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅', icon: FlaskConical, group: 'homeCare', page: () => <DilutionPage /> },
+  {
+    id: 'otc',
+    title: 'OTC類似薬チェック',
+    short: 'OTC類似薬',
+    subtitle: 'バーコードや名前で、薬剤費の4分の1の別途の負担の対象かを調べる',
+    keywords: 'otc 類似薬 一部保険外療養 特別の料金 4分の1 選定療養 バーコード 対象 判定',
+    icon: BadgePercent,
+    group: 'insurance',
+    page: () => <OtcPage />,
+  },
   { id: 'fee', title: '薬剤料・窓口負担', short: '負担金', subtitle: '薬価から点数（五捨五超入）と窓口負担', keywords: '点数 薬価 負担 窓口 お金 五捨五超入 保険', icon: JapaneseYen, group: 'insurance', page: () => <FeePage /> },
   { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
   { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
@@ -134,7 +146,7 @@ const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */

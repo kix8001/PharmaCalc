@@ -12,8 +12,8 @@ android {
         applicationId = "app.pharmacalc.android"
         minSdk = 29
         targetSdk = 34
-        versionCode = 19
-        versionName = "0.11.0"
+        versionCode = 20
+        versionName = "0.12.0"
     }
 
     signingConfigs {

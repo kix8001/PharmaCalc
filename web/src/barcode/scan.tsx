@@ -6,6 +6,7 @@ import { ButtonRow, LabeledRow, Page, Section, Toggle, WarningRow, openExternal 
 import { useNav, useVisible } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
+import { OtcBadge } from '../otc/otcViews'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, type GS1Result } from './gs1'
 
 // バーコードを読む部品（zxing-cpp の WebAssembly 版）は、このサイトに置いた物を使う（外部のサーバーから読まない）
@@ -27,7 +28,7 @@ export const autoOpenStore = persistedStore<boolean>('autoOpen', true)
 type CamState = 'starting' | 'running' | 'denied' | 'unsupported' | 'error'
 
 /** カメラの映像を少しずつ読み取る */
-function useScanner(onCode: (s: string) => void, paused: boolean, on: boolean) {
+export function useScanner(onCode: (s: string) => void, paused: boolean, on: boolean) {
   const video = useRef<HTMLVideoElement>(null)
   const [state, setState] = useState<CamState>('starting')
   const [torchOK, setTorchOK] = useState(false)
@@ -139,6 +140,36 @@ function useScanner(onCode: (s: string) => void, paused: boolean, on: boolean) {
   return { video, state, torch, torchOK, toggleTorch }
 }
 
+/** 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める */
+export function useCameraOn() {
+  const visible = useVisible()
+  const [pageShown, setPageShown] = useState(!document.hidden)
+  useEffect(() => {
+    const f = () => setPageShown(!document.hidden)
+    document.addEventListener('visibilitychange', f)
+    return () => document.removeEventListener('visibilitychange', f)
+  }, [])
+  return visible && pageShown
+}
+
+/** カメラの映像と読み取り枠 */
+export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
+  return (
+    <div class="camera">
+      <video ref={cam.video} playsInline muted autoPlay />
+      {cam.state === 'running' && <div class="scan-frame" aria-hidden="true" />}
+      {cam.state !== 'running' && (
+        <div class="camera-msg">
+          {cam.state === 'starting' && 'カメラを起動しています…'}
+          {cam.state === 'denied' && 'カメラの使用が許可されていません。ブラウザの設定で、このサイトのカメラを許可してください。'}
+          {cam.state === 'unsupported' && 'このブラウザではカメラを使えません。下の手入力を使ってください。'}
+          {cam.state === 'error' && 'カメラを起動できませんでした。'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ScanPage() {
   const autoOpen = useStore(autoOpenStore)
   const history = useStore(scanHistory)
@@ -159,15 +190,7 @@ export function ScanPage() {
     addScan(r)
     if (autoOpenStore.get() && !openExternal(PMDA.url(r.gtin))) setBlocked(true)
   }
-  // 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める
-  const visible = useVisible()
-  const [pageShown, setPageShown] = useState(!document.hidden)
-  useEffect(() => {
-    const f = () => setPageShown(!document.hidden)
-    document.addEventListener('visibilitychange', f)
-    return () => document.removeEventListener('visibilitychange', f)
-  }, [])
-  const cam = useScanner(handle, false, visible && pageShown)
+  const cam = useScanner(handle, false, useCameraOn())
 
   return (
     <Page
@@ -180,18 +203,7 @@ export function ScanPage() {
         )
       }
     >
-      <div class="camera">
-        <video ref={cam.video} playsInline muted autoPlay />
-        {cam.state === 'running' && <div class="scan-frame" aria-hidden="true" />}
-        {cam.state !== 'running' && (
-          <div class="camera-msg">
-            {cam.state === 'starting' && 'カメラを起動しています…'}
-            {cam.state === 'denied' && 'カメラの使用が許可されていません。ブラウザの設定で、このサイトのカメラを許可してください。'}
-            {cam.state === 'unsupported' && 'このブラウザではカメラを使えません。下の手入力を使ってください。'}
-            {cam.state === 'error' && 'カメラを起動できませんでした。'}
-          </div>
-        )}
-      </div>
+      <CameraBox cam={cam} />
       {result && (
         <Section header="読み取り結果">
           {result.gtin ? (
@@ -202,6 +214,7 @@ export function ScanPage() {
                 </div>
               )}
               <LabeledRow label="GTIN" value={result.gtin} />
+              <OtcBadge gtin={result.gtin} />
               {result.expiry && <LabeledRow label="有効期限" value={result.expiry} />}
               {result.lot && <LabeledRow label="ロット" value={result.lot} />}
               {result.quantity && <LabeledRow label="数量" value={result.quantity} />}

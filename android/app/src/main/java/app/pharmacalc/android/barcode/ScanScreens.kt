@@ -152,7 +152,7 @@ fun BarcodeCamera(torch: Boolean, paused: Boolean, onScan: (String) -> Unit, mod
 }
 
 @Composable
-fun ScanScreen() {
+fun ScanScreen(openOtc: (String) -> Unit = {}) {
     val ctx = LocalContext.current
     val view = LocalView.current
     var granted by remember {
@@ -204,6 +204,7 @@ fun ScanScreen() {
                         val memo = ScanHistory.memo(gtin)
                         if (memo.isNotEmpty()) Text(memo, style = MaterialTheme.typography.titleMedium)
                         LabeledRow("GTIN", gtin)
+                        app.pharmacalc.android.otc.OtcBadge(gtin, openOtc)
                         r.expiry?.let { LabeledRow("有効期限", it) }
                         r.lot?.let { LabeledRow("ロット", it) }
                         r.quantity?.let { LabeledRow("数量", it) }

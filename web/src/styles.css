@@ -255,3 +255,13 @@ textarea.text-input { resize: vertical; }
 .move { width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
 .move:disabled { color: var(--fill2); }
 a.row { text-decoration: none; }
+
+/* OTC類似薬 */
+.otc-row { gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+.otc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.otc-main b { font-weight: 600; }
+.otc-verdict { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.otc-verdict.yes { background: var(--orange-soft); color: var(--orange); }
+.otc-verdict.no { background: var(--fill); color: var(--sub); }
+.otc-flag { margin-left: auto; font-size: 13px; color: var(--sub); }
+.otc-flag.on { color: var(--green); font-weight: 600; }

@@ -20,7 +20,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.2.0';
+    protected $pkgVersion = '1.3.0';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
@@ -62,6 +62,9 @@ class Controller extends Package
         if ($file === 'android.apk') {
             return $this->serveApk();
         }
+        if (preg_match('#^pmda-yj/(\d{8,14})$#', $file, $m)) {
+            return $this->pmdaYj($m[1]);
+        }
         $root = realpath(__DIR__ . '/app');
         $path = $root === false ? false : realpath($root . '/' . $file);
         // app/ の外のファイルは出さない
@@ -77,7 +80,19 @@ class Controller extends Package
             return new Response('', 401, ['Cache-Control' => 'no-store']);
         }
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $res = new BinaryFileResponse($path);
+        // 大きいファイル（腎機能の薬・OTC類似薬のデータなど）は、ビルドで作った .gz を圧縮のまま送る
+        $send = $path;
+        $gz = false;
+        $accept = (string) ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '');
+        if (strpos($accept, 'gzip') !== false && is_file($path . '.gz')) {
+            $send = $path . '.gz';
+            $gz = true;
+        }
+        $res = new BinaryFileResponse($send);
+        if ($gz) {
+            $res->headers->set('Content-Encoding', 'gzip');
+            $res->headers->set('Vary', 'Accept-Encoding');
+        }
         $res->headers->set('Content-Type', self::TYPES[$ext] ?? 'application/octet-stream');
         $res->headers->set('X-Content-Type-Options', 'nosniff');
         if (strpos($file, 'assets/') === 0) {
@@ -111,6 +126,92 @@ class Controller extends Package
         $res->headers->set('Cache-Control', 'no-cache');
         $res->headers->set('X-Content-Type-Options', 'nosniff');
         return $res;
+    }
+
+    /**
+     * GS1コード（GTIN）から、PMDA の添付文書に載っている製品の YJコードを返す（OTC類似薬チェック用）。
+     * PTPシートのコード（調剤包装単位）は公開のマスターに無いので、PMDA の「バーコードから添付文書を開く」を使う。
+     * ブラウザからは PMDA に直接問い合わせられないので、このサーバーが代わりに問い合わせる。結果は30日保存する
+     */
+    private function pmdaYj(string $gtin): Response
+    {
+        if (!$this->loggedIn()) {
+            return new Response('', 401, ['Cache-Control' => 'no-store']);
+        }
+        $gtin = str_pad($gtin, 14, '0', STR_PAD_LEFT);
+        $cache = sys_get_temp_dir() . '/pharmacalc_pmda_' . $gtin . '.json';
+        if (is_file($cache) && filemtime($cache) > time() - 30 * 86400) {
+            return $this->json(file_get_contents($cache));
+        }
+        $base = 'https://www.pmda.go.jp/PmdaSearch/';
+        [$status, $location, $body] = $this->fetch($base . 'bookSearch/01/' . $gtin);
+        if ($status === 0) {
+            return new Response('', 502);
+        }
+        // 1件なら添付文書（PDF）への転送、複数なら品目を選ぶ画面になる。どちらからも添付文書の番号を拾う
+        preg_match_all('#(\d{6}_\d{7}[0-9A-Z]\d{4}_\d+_\d+)#', $location . ' ' . $body, $m);
+        $ids = array_slice(array_values(array_unique($m[1])), 0, 4);
+        $yj = [];
+        foreach ($ids as $id) {
+            $rep = explode('_', $id)[1];
+            $yj[] = $rep;
+            [$st, , $html] = $this->fetch($base . 'iyakuDetail/' . $id);
+            if ($st === 200 && preg_match_all('#(?<![0-9A-Z])(\d{7}[0-9A-Z]\d{4})(?![0-9A-Z])#', $html, $mm)) {
+                foreach ($mm[1] as $code) {
+                    // 同じ添付文書に載る製品は、YJコードの先頭7桁（成分と剤形の分類）が同じ
+                    if (substr($code, 0, 7) === substr($rep, 0, 7)) {
+                        $yj[] = $code;
+                    }
+                }
+            }
+        }
+        $out = json_encode(['gtin' => $gtin, 'ids' => $ids, 'yj' => array_values(array_unique($yj))], JSON_UNESCAPED_UNICODE);
+        if ($ids) {
+            @file_put_contents($cache, $out);
+        }
+        return $this->json($out);
+    }
+
+    private function json(string $s): Response
+    {
+        return new Response($s, 200, ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store']);
+    }
+
+    /** 転送をたどらずに取得する。[状態コード, 転送先, 本文]（つながらなければ状態コード 0） */
+    private function fetch(string $url): array
+    {
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_HEADER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_USERAGENT => 'PharmaCalc/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            if ($raw === false) {
+                return [0, '', ''];
+            }
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $hsize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            $head = substr($raw, 0, $hsize);
+            $body = substr($raw, $hsize);
+        } else {
+            $ctx = stream_context_create(['http' => ['follow_location' => 0, 'timeout' => 15, 'ignore_errors' => true, 'user_agent' => 'PharmaCalc/1.0']]);
+            $body = @file_get_contents($url, false, $ctx);
+            if ($body === false) {
+                return [0, '', ''];
+            }
+            $head = implode("\n", $http_response_header ?? []);
+            $status = preg_match('#HTTP/\S+\s+(\d{3})#', $head, $sm) ? (int) $sm[1] : 0;
+        }
+        $location = preg_match('#^Location:\s*(\S+)#mi', $head, $lm) ? $lm[1] : '';
+        // PDF の中身は使わない
+        if (strpos($head, 'application/pdf') !== false) {
+            $body = '';
+        }
+        return [$status, $location, $body];
     }
 
     private function loggedIn(): bool

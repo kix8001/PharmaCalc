@@ -101,6 +101,7 @@ struct ScanScreen: View {
                     Text(memo).font(.headline)
                 }
                 LabeledContent("GTIN", value: gtin)
+                OTCBadge(gtin: gtin)
                 if let e = r.expiry { LabeledContent("有効期限", value: e) }
                 if let l = r.lot { LabeledContent("ロット", value: l) }
                 if let q = r.quantity { LabeledContent("数量", value: q) }
