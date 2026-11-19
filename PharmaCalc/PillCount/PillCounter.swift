@@ -75,6 +75,8 @@ enum PillCounter {
         var ex: [Float] = []
         var ey: [Float] = []
         var isEdge: [Bool]
+        /// 各画素の勾配の強さ（しきい値の前）
+        var mag: [Float] = []
         var ux: [Float]
         var uy: [Float]
     }
@@ -171,7 +173,36 @@ enum PillCounter {
             if accepted.count >= 3000 { break }
         }
 
-        return (accepted, R)
+        return (faintFilter(accepted, R, e), R)
+    }
+
+    /// 外周の輪郭がほかの錠剤よりずっと薄い検出を除く（トレーの水滴の跡・汚れ・反射の丸い影など）。
+    /// 16方向それぞれで半径付近（0.85R〜1.15R）の勾配の最大を取り、その中央値を「輪郭の濃さ」とする。
+    /// 全体の中央値の45%未満の物が少数（2割以下）のときだけ除く
+    private static func faintFilter(_ pts: [Int], _ R: Float, _ e: Edges) -> [Int] {
+        guard pts.count >= 5 else { return pts }
+        let w = e.w
+        let strength: [Float] = pts.map { i in
+            let x = i % w, y = i / w
+            var dir: [Float] = []
+            for k in 0..<16 {
+                let t = 2 * Float.pi * Float(k) / 16
+                let ct = cos(t), st = sin(t)
+                var mx: Float = 0
+                for j in 0...6 {
+                    let rr = R * (0.85 + 0.05 * Float(j))
+                    let px = Int((Float(x) + ct * rr).rounded()), py = Int((Float(y) + st * rr).rounded())
+                    guard px >= 0, px < w, py >= 0, py < e.h else { continue }
+                    mx = max(mx, e.mag[py * w + px])
+                }
+                dir.append(mx)
+            }
+            dir.sort()
+            return dir[8]
+        }
+        let med = strength.sorted()[strength.count / 2]
+        let keep = zip(pts, strength).filter { $0.1 >= 0.45 * med }.map(\.0)
+        return Float(pts.count - keep.count) <= 0.2 * Float(pts.count) ? keep : pts
     }
 
     // MARK: - 半径の推定
@@ -304,6 +335,7 @@ enum PillCounter {
             e.ex.append(ux)
             e.ey.append(uy)
         }
+        e.mag = bm
         return e
     }
 

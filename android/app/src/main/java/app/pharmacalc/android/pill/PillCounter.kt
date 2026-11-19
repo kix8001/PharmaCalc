@@ -34,7 +34,9 @@ object PillCounter {
     private class Plane(val w: Int, val h: Int, val v: FloatArray)
 
     private class Edges(val w: Int, val h: Int, val xs: IntArray, val ys: IntArray, val ex: FloatArray, val ey: FloatArray,
-                        val isEdge: BooleanArray, val ux: FloatArray, val uy: FloatArray)
+                        val isEdge: BooleanArray, val ux: FloatArray, val uy: FloatArray,
+                        /** 各画素の勾配の強さ（しきい値の前） */
+                        val mag: FloatArray)
 
     fun analyze(bmp: Bitmap, sensitivity: Double, roi: Rect? = null): PillCountResult {
         val empty = PillCountResult(emptyList(), 12f)
@@ -114,7 +116,38 @@ object PillCounter {
             grid.getOrPut(key(gx, gy)) { ArrayList() }.add(i)
             if (accepted.size >= 3000) break
         }
-        return accepted to R
+        return faintFilter(accepted, R, e) to R
+    }
+
+    /**
+     * 外周の輪郭がほかの錠剤よりずっと薄い検出を除く（トレーの水滴の跡・汚れ・反射の丸い影など）。
+     * 16方向それぞれで半径付近（0.85R〜1.15R）の勾配の最大を取り、その中央値を「輪郭の濃さ」とする。
+     * 全体の中央値の45%未満の物が少数（2割以下）のときだけ除く
+     */
+    private fun faintFilter(pts: List<Int>, R: Float, e: Edges): List<Int> {
+        if (pts.size < 5) return pts
+        val w = e.w
+        val strength = pts.map { i ->
+            val x = i % w; val y = i / w
+            val dir = FloatArray(16)
+            for (k in 0 until 16) {
+                val t = 2f * PI.toFloat() * k / 16f
+                val ct = cos(t); val st = sin(t)
+                var mx = 0f
+                for (j in 0..6) {
+                    val rr = R * (0.85f + 0.05f * j)
+                    val px = (x + ct * rr).roundToInt(); val py = (y + st * rr).roundToInt()
+                    if (px < 0 || px >= w || py < 0 || py >= e.h) continue
+                    mx = max(mx, e.mag[py * w + px])
+                }
+                dir[k] = mx
+            }
+            dir.sort()
+            dir[8]
+        }
+        val med = strength.sorted()[strength.size / 2]
+        val keep = pts.filterIndexed { j, _ -> strength[j] >= 0.45f * med }
+        return if (pts.size - keep.size <= 0.2f * pts.size) keep else pts
     }
 
     private fun key(x: Int, y: Int) = x.toLong() * 100_000L + y
@@ -239,7 +272,7 @@ object PillCounter {
             xs[j] = i % w; ys[j] = i / w; ex[j] = a; ey[j] = b
             j++
         }
-        return Edges(w, h, xs, ys, ex, ey, isEdge, ux, uy)
+        return Edges(w, h, xs, ys, ex, ey, isEdge, ux, uy, bm)
     }
 
     /** 輪郭の各点から、勾配の向きの両側へ r だけ進んだ点に1票ずつ */

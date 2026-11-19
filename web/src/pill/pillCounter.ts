@@ -5,6 +5,7 @@
  * 3. 半径は「円の数が急に減る手前の大きさ」から決める（錠剤の外周。刻印の輪は内側なので選ばれない）
  * 4. 票の山を中心候補とし、周り16方向の多くに輪郭がある物だけを錠剤とする。直径より近い候補は除く
  * 5. 通常の輪郭と薄い輪郭の両方で数え、白い錠剤×白っぽい背景で刻印を1錠ずつ数える誤りを防ぐ
+ * 6. 外周の輪郭がほかの錠剤よりずっと薄い物（トレーの水滴の跡・汚れ・反射など）は除く
  */
 
 export interface PillMarker {
@@ -36,6 +37,8 @@ interface Edges {
   ex: Float32Array
   ey: Float32Array
   isEdge: Uint8Array
+  /** 各画素の勾配の強さ（しきい値の前） */
+  mag: Float32Array
   ux: Float32Array
   uy: Float32Array
 }
@@ -148,7 +151,36 @@ function detect(rgb: Plane[], w: number, edgeFrac: number, sensitivity: number):
     else grid.set(key, [i])
     if (accepted.length >= 3000) break
   }
-  return { pts: accepted, R }
+  return { pts: faintFilter(accepted, R, e), R }
+}
+
+/**
+ * 外周の輪郭がほかの錠剤よりずっと薄い検出を除く（トレーの水滴の跡・汚れ・反射の丸い影など）。
+ * 16方向それぞれで半径付近（0.85R〜1.15R）の勾配の最大を取り、その中央値を「輪郭の濃さ」とする。
+ * 全体の中央値の45%未満の物が少数（2割以下）のときだけ除く
+ */
+function faintFilter(pts: number[], R: number, e: Edges): number[] {
+  if (pts.length < 5) return pts
+  const w = e.w
+  const strength = pts.map((i) => {
+    const x = i % w, y = Math.floor(i / w)
+    const dir: number[] = []
+    for (let k = 0; k < 16; k++) {
+      let mx = 0
+      for (let j = 0; j <= 6; j++) {
+        const rr = R * (0.85 + 0.05 * j)
+        const px = Math.round(x + COS[k] * rr), py = Math.round(y + SIN[k] * rr)
+        if (px < 0 || px >= w || py < 0 || py >= e.h) continue
+        mx = Math.max(mx, e.mag[py * w + px])
+      }
+      dir.push(mx)
+    }
+    dir.sort((a, b) => a - b)
+    return dir[8]
+  })
+  const med = [...strength].sort((a, b) => a - b)[Math.floor(strength.length / 2)]
+  const keep = pts.filter((_, j) => strength[j] >= 0.45 * med)
+  return pts.length - keep.length <= 0.2 * pts.length ? keep : pts
 }
 
 // ---- 半径の推定 ----
@@ -289,7 +321,7 @@ function edges(rgb: Plane[], blur: number, frac: number): Edges {
     ey[j] = b
     j++
   }
-  return { w, h, xs, ys, ex, ey, isEdge, ux, uy }
+  return { w, h, xs, ys, ex, ey, isEdge, mag: bm, ux, uy }
 }
 
 /** 輪郭の各点から、勾配の向きの両側へ r だけ進んだ点に1票ずつ */
