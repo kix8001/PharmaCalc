@@ -27,10 +27,10 @@
 - 計算式は画面のフッターに必ず表示する。SwiftUI の `View.Body` と衝突するので型名に `Body` を使わない。
 
 ## Web 版（`web/`・`concrete/`）
-- iOS・Android と同じ機能の Web アプリ（Preact＋TypeScript＋Vite、`web/README.md`）。社内の Concrete CMS 9 サイトに「パッケージ」（`concrete/pharmacalc/controller.php`）として置き、`/pharmacalc` をログインした人だけに配る（ログインしていなければログイン画面→戻ってくる。manifest とアイコンだけはログイン不要）。`concrete/pharmacalc/apk/PharmaCalc.apk` を置くと `/pharmacalc/android.apk` で Android 版を配り（ログイン必須、MIME は application/vnd.android.package-archive）、Android で開いた Web 版のホームと情報にダウンロードの案内が出る（APK が無ければ出ない）。
+- iOS・Android と同じ機能の Web アプリ（Preact＋TypeScript＋Vite、`web/README.md`）。社内の Concrete CMS 9 サイトに「パッケージ」（`concrete/pharmacalc/controller.php`）として置き、`/pharmacalc` をログインした人だけに配る（ログインしていなければログイン画面→戻ってくる。manifest とアイコンだけはログイン不要）。`concrete/pharmacalc/apk/PharmaCalc.apk` を置くと `/pharmacalc/android.apk` で Android 版を配り（ログイン必須、MIME は application/vnd.android.package-archive）。Web 版の画面には APK の案内を出さない（ユーザーの指示で削除）。
 - `cd web && npm ci && npm run package` で `out/packages/pharmacalc`（controller.php＋app/＝ビルド結果）を作る。GitHub Actions の雛形は `ci/web.yml`（アーティファクト `PharmaCalc-web`）。ファイルは相対パスで参照するので、Concrete がサブフォルダにあっても動く。
 - 構成：`src/core`（format・patient・formulas・jpdate・store）、`src/ui`（`components.tsx`・`nav.tsx`＝タブごとの画面の積み重ね、ブラウザの戻るにも対応）、`src/calc`（各電卓）、`src/ped`・`src/renal`（`data/*.json` を読む。腎機能の薬は開いたときに読み込む）、`src/barcode`（zxing-wasm 2.2.4 の reader、wasm はサイトに置く。枠の中と映像全体を交互に読む）、`src/pill`（`pillCounter.ts` は Swift 版の移植で、Web Worker で計算）。
-- 端末への保存は localStorage（キーは iOS と同じ名前）。患者情報は保存しない。サービスワーカー `sw.js` は vite.config.ts がビルド時に作り、全ファイルを先に保存する（電波が無くても動く）。
+- 端末への保存は localStorage（キーは iOS と同じ名前）。患者情報は保存しない。サービスワーカー `sw.js` は vite.config.ts がビルド時に作り、全ファイルを先に保存する（電波が無くても動く）。新しい版を置くと、main.tsx が controllerchange でその場で読み込み直す（表に戻ったときも reg.update() で確かめる）。ブックマークやホーム画面への追加はし直さなくてよい。
 - 動作確認は Playwright（スマホの大きさ）と、この環境に立てた Concrete CMS 9.4.8 で行った。Concrete はユーザーエージェントが変わるとログインを切るので、Playwright でスマホの「端末のまね」をするとサービスワーカーの取得で 401 になる（実機では起きない）。
 
 ## Android 版（`android/`）
