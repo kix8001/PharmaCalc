@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.CurrencyYen
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Medication
@@ -79,7 +80,8 @@ enum class CalcItem(
     NUTRITION("栄養・輸液（必要量・NPC/N）", "栄養・輸液", "必要エネルギー・水分・たんぱく、輸液のカロリー", "栄養 カロリー 輸液 tpn 経腸 harris benedict 水分 npc 在宅", Icons.Filled.Restaurant, CalcGroup.HOME_CARE),
     OXYGEN("酸素ボンベの残り時間", "酸素ボンベ", "在宅酸素の残量と使える時間", "酸素 ボンベ hot 在宅 同調器", Icons.Filled.Air, CalcGroup.HOME_CARE),
     DILUTION("消毒液の希釈", "消毒液", "次亜塩素酸ナトリウムなどの作り方", "消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅", Icons.Filled.Sanitizer, CalcGroup.HOME_CARE),
-    OTC("OTC類似薬チェック", "OTC類似薬", "バーコードや名前で、薬剤費の4分の1の別途の負担の対象かを調べる", "otc 類似薬 一部保険外療養 特別の料金 4分の1 選定療養 バーコード 対象 判定", Icons.Filled.Percent, CalcGroup.INSURANCE),
+    OTC("OTC類似薬チェック", "OTC類似薬", "バーコードや名前で、薬剤費の4分の1の別途の負担の対象かを調べる", "otc 類似薬 一部保険外療養 特別の料金 4分の1 バーコード 対象 判定", Icons.Filled.Percent, CalcGroup.INSURANCE),
+    SENTEI("選定療養チェック", "選定療養", "バーコードや名前で、長期収載品の選定療養（価格差の2分の1）の対象かを調べる", "選定療養 長期収載品 先発品 後発品 ジェネリック 患者希望 特別の料金 2分の1 バーコード 対象 判定", Icons.Filled.CurrencyExchange, CalcGroup.INSURANCE),
     FEE("薬剤料・窓口負担", "負担金", "薬価から点数（五捨五超入）と窓口負担", "点数 薬価 負担 窓口 お金 五捨五超入 保険", Icons.Filled.CurrencyYen, CalcGroup.INSURANCE);
 
     fun matches(q: String): Boolean = app.pharmacalc.android.core.matchesSearch(title + subtitle + keywords + shortTitle, q)

@@ -64,28 +64,49 @@ import app.pharmacalc.android.ui.WarningRow
 
 private val OrangeDark = Color(0xFFC2410C)
 
+/** 画面の名前・制度の説明（制度ごと） */
+val OtcKind.title get() = if (this == OtcKind.OTC) "OTC類似薬チェック" else "選定療養チェック"
+val OtcKind.short get() = if (this == OtcKind.OTC) "OTC類似薬" else "選定療養"
+private val OtcKind.yes get() = if (this == OtcKind.OTC) "OTC類似薬（別途の負担の対象）" else "長期収載品（選定療養の対象）"
+private val OtcKind.no get() = if (this == OtcKind.OTC) "OTC類似薬ではない" else "選定療養の対象ではない"
+private val OtcKind.url get() = if (this == OtcKind.OTC) "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryouhoken/juuyou/otc.html"
+    else "https://www.mhlw.go.jp/stf/newpage_39830.html"
+private val OtcKind.about get() = if (this == OtcKind.OTC)
+    "OTC医薬品との代替性が特に高い医療用医薬品（OTC類似薬）を保険診療で使うと、令和9年3月1日から、薬剤費の4分の1を「別途の負担（特別の料金）」として患者さんが支払います。こども・がん治療・入院中などは対象外です。"
+    else "後発医薬品のある先発医薬品（長期収載品）を患者さんの希望で使うと、先発医薬品と後発医薬品（いちばん高いもの）の価格差の2分の1（令和8年6月から）を「特別の料金」として、消費税を加えて患者さんが支払います。医療上必要な場合・後発医薬品を提供できない場合・入院中は対象外です。"
+private val OtcKind.searchHint get() = if (this == OtcKind.OTC) "名前で探す（例：ロキソニン）" else "名前で探す（例：ムコスタ）"
+
 /** 判定の札：対象（オレンジ）／対象外 */
 @Composable
-private fun Verdict(target: Boolean) {
+private fun Verdict(kind: OtcKind, target: Boolean) {
     val bg = if (target) Orange.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (target) OrangeDark else MaterialTheme.colorScheme.onSurfaceVariant
-    Text(if (target) "OTC類似薬（別途の負担の対象）" else "OTC類似薬ではない",
+    Text(if (target) kind.yes else kind.no,
         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = fg,
         modifier = Modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 3.dp))
 }
 
-/** 製品1つの行。押すと詳しい画面へ */
+/** 対象のときの価格の1行 */
 @Composable
-private fun ProductRow(d: OtcData, yj: String, open: (String) -> Unit) {
-    val t = d.targets[yj]
-    Row(Modifier.fillMaxWidth().clickable { open(yj) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun PriceLine(d: OtcData, kind: OtcKind, yj: String) {
+    val text = if (kind == OtcKind.OTC) d.targets[yj]?.let {
+        "${it.spec}・薬価 ${fmtTrim(it.price, 2)}円 → 別途の負担 ${fmtTrim(it.quarter, 2)}円／${Otc.unitOf(it.spec)}"
+    } else d.sentei[yj]?.let {
+        "${it.spec}・薬価 ${fmtTrim(it.price, 2)}円・後発品 ${fmtTrim(it.generic, 2)}円 → 特別の料金 ${fmtTrim(it.half, 2)}円／${Otc.unitOf(it.spec)}（税別）"
+    }
+    if (text != null) Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** 製品1つの行。押すと詳しい画面へ。kinds に並べた制度の判定を出す */
+@Composable
+private fun ProductRow(d: OtcData, yj: String, kinds: List<OtcKind>, open: (String, OtcKind) -> Unit) {
+    // 詳しい画面は、対象になっている制度のほうを開く
+    val kind = kinds.firstOrNull { d.isTarget(it, yj) } ?: kinds.first()
+    Row(Modifier.fillMaxWidth().clickable { open(yj, kind) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(d.nameOf(yj), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-            Verdict(t != null)
-            if (t != null) {
-                Text("${t.spec}・薬価 ${fmtTrim(t.price, 2)}円 → 別途の負担 ${fmtTrim(t.quarter, 2)}円／${Otc.unitOf(t.spec)}",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            kinds.forEach { Verdict(it, d.isTarget(it, yj)) }
+            kinds.forEach { PriceLine(d, it, yj) }
         }
         Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
     }
@@ -93,7 +114,7 @@ private fun ProductRow(d: OtcData, yj: String, open: (String) -> Unit) {
 
 /** 調べた結果（製品が複数のこともある） */
 @Composable
-private fun LookupResult(d: OtcData, r: Lookup, open: (String) -> Unit) {
+private fun LookupResult(d: OtcData, r: Lookup, kinds: List<OtcKind>, open: (String, OtcKind) -> Unit) {
     when (r) {
         Lookup.Offline -> WarningRow("この製品は端末の中の表に無く、PMDA にも問い合わせられませんでした。電波のあるところで読み直すか、下の「名前で探す」を使ってください。")
         Lookup.NotFound -> WarningRow("このコードの医療用医薬品が見つかりませんでした。下の「名前で探す」を使ってください。")
@@ -104,33 +125,33 @@ private fun LookupResult(d: OtcData, r: Lookup, open: (String) -> Unit) {
             }
             r.yj.forEachIndexed { i, y ->
                 if (i > 0) Divider()
-                ProductRow(d, y, open)
+                ProductRow(d, y, kinds, open)
             }
         }
     }
 }
 
-/** バーコード画面の読み取り結果に出す、OTC類似薬かどうか */
+/** バーコード画面の読み取り結果に出す、OTC類似薬・選定療養の対象かどうか */
 @Composable
-fun OtcBadge(gtin: String, open: (String) -> Unit) {
+fun OtcBadge(gtin: String, open: (String, OtcKind) -> Unit) {
     val ctx = LocalContext.current
     val d by produceState<OtcData?>(null) { value = Otc.load(ctx) }
     val r by produceState<Lookup?>(null, gtin) { value = null; value = Otc.lookup(ctx, gtin) }
     val dd = d
     val rr = r
     if (dd == null || rr == null) {
-        Text("OTC類似薬かどうか調べています…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("OTC類似薬・選定療養の対象か調べています…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else if (rr !is Lookup.Found) {
-        Text(if (rr == Lookup.Offline) "OTC類似薬：調べられませんでした（電波を確かめてください）" else "OTC類似薬：製品が見つかりませんでした",
+        Text(if (rr == Lookup.Offline) "OTC類似薬・選定療養：調べられませんでした（電波を確かめてください）" else "OTC類似薬・選定療養：製品が見つかりませんでした",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
-        LookupResult(dd, rr, open)
+        LookupResult(dd, rr, listOf(OtcKind.OTC, OtcKind.SENTEI), open)
     }
 }
 
-/** OTC類似薬チェック：PTPシートや箱のバーコード、または名前で、別途の負担（薬剤費の4分の1）の対象かどうかを出す */
+/** PTPシートや箱のバーコード、または名前で、その制度の特別の料金の対象かどうかを出す */
 @Composable
-fun OtcScreen(open: (String) -> Unit) {
+fun OtcScreen(kind: OtcKind = OtcKind.OTC, open: (String, OtcKind) -> Unit) {
     val ctx = LocalContext.current
     val view = LocalView.current
     var granted by remember {
@@ -170,7 +191,7 @@ fun OtcScreen(open: (String) -> Unit) {
                 Section("読み取り結果（GTIN $g）") {
                     val r = result
                     if (dd == null || r == null) Text("調べています…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else LookupResult(dd, r, open)
+                    else LookupResult(dd, r, listOf(kind), open)
                 }
             }
             Section(footer = "PTPシートのGS1データバー、箱のGS1-128・GS1データバーを読めます。箱のコードは端末の中の表で、PTPシートのコードはPMDAの添付文書（電波が必要）で製品を調べます。") {
@@ -181,24 +202,23 @@ fun OtcScreen(open: (String) -> Unit) {
                     TextButton(onClick = { handle(manual) }, enabled = manual.isNotEmpty()) { Text("調べる") }
                 }
             }
-            OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("名前で探す（例：ロキソニン）") },
+            OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text(kind.searchHint) },
                 leadingIcon = { Icon(Icons.Filled.Search, null) }, modifier = Modifier.fillMaxWidth())
             if (dd != null && query.trim().length >= 2) {
-                val hits = remember(query, dd) { dd.search(query) }
+                val hits = remember(query, dd) { dd.search(query, kind) }
                 Section {
                     if (hits.isEmpty()) Text("見つかりませんでした", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     hits.forEachIndexed { i, y ->
                         if (i > 0) Divider()
-                        ProductRow(dd, y, open)
+                        ProductRow(dd, y, listOf(kind), open)
                     }
                 }
             }
-            Section("制度のあらまし", footer = dd?.let { "${it.source}、${it.hot}をもとに判定しています。最終的な判断は、医師の診察（別途の負担の対象外に当たるか）と最新の厚労省の資料で確かめてください。" }) {
-                Text("OTC医薬品との代替性が特に高い医療用医薬品（OTC類似薬）を保険診療で使うと、令和9年3月1日から、薬剤費の4分の1を「別途の負担（特別の料金）」として患者さんが支払います。こども・がん治療・入院中などは対象外です。",
-                    style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = { PMDA.open(ctx, "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryouhoken/juuyou/otc.html") }) {
-                    Text("厚労省のページを開く")
-                }
+            Section("制度のあらまし", footer = dd?.let {
+                "${if (kind == OtcKind.OTC) it.source else it.senteiSource}、${it.hot}をもとに判定しています。最終的な判断は、処方箋の記載・医師の判断（対象外に当たるか）と最新の厚労省の資料で確かめてください。"
+            }) {
+                Text(kind.about, style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { PMDA.open(ctx, kind.url) }) { Text("厚労省のページを開く") }
             }
         }
     }
@@ -206,7 +226,7 @@ fun OtcScreen(open: (String) -> Unit) {
 
 /** 製品ごとの詳しい画面：判定・価格・特別の料金の計算・対象外になる場合 */
 @Composable
-fun OtcDetailScreen(yj: String) {
+fun OtcDetailScreen(yj: String, kind: OtcKind = OtcKind.OTC) {
     val ctx = LocalContext.current
     val d by produceState<OtcData?>(null) { value = Otc.load(ctx) }
     var qty by rememberSaveable { mutableStateOf("") }
@@ -215,65 +235,118 @@ fun OtcDetailScreen(yj: String) {
         CalcPage { Text("読み込んでいます…") }
         return
     }
-    val t = dd.targets[yj]
     CalcPage {
         Section {
             Text(dd.nameOf(yj), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-            Verdict(t != null)
+            Verdict(kind, dd.isTarget(kind, yj))
             Text("YJコード $yj", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (t == null) {
-            Section(footer = "厚労省の対象医薬品リストに無い製品です。通常どおりの保険給付です。") {
-                Text("この製品は別途の負担（薬剤費の4分の1）の対象ではありません。")
+        if (kind == OtcKind.OTC) OtcBody(dd, yj, qty, { qty = it }, dq, { dq = it })
+        else SenteiBody(dd, yj, qty) { qty = it }
+        if (dd.targets.containsKey(yj) && dd.sentei.containsKey(yj)) {
+            Section("OTC類似薬で、長期収載品でもある薬") {
+                Text("OTC類似薬の別途の負担（4分の1）の対象になるときは、選定療養の特別の料金はかかりません。OTC類似薬の対象外に当たり、患者さんの希望で長期収載品を使うときは、選定療養の特別の料金の対象です。同じ処方箋に両方の対象があるときは、特別の料金をそれぞれ計算します（選定療養の分だけ消費税がかかる）。",
+                    style = MaterialTheme.typography.bodyMedium)
             }
-        } else {
-            Section("価格（厚労省マスタ）") {
-                LabeledRow("成分", t.ingredient)
-                LabeledRow("規格", t.spec)
-                LabeledRow("メーカー", t.maker)
-                LabeledRow("薬価", "${fmtTrim(t.price, 2)}円")
-                LabeledRow("価格の4分の1（別途の負担）", "${fmtTrim(t.quarter, 2)}円")
-                LabeledRow("保険外併用療養費の算出に用いる価格", "${fmtTrim(t.base, 2)}円")
-            }
-            Section("別途の負担（特別の料金）の計算",
-                footer = "特別の料金 ＝ 価格の4分の1 × 投薬全量。10円以上なら5円未満の端数は切り捨て、5円以上は10円に切り上げ、10円未満は10円。同じ処方箋に対象医薬品が複数あるときは合算してから丸めます。保険の分（自己負担）は「保険外併用療養費の算出に用いる価格」で薬剤料を算定します。") {
-                NumField("投薬全量", qty, { qty = it }, Otc.unitOf(t.spec))
-                val q = parseNum(qty)
-                if (q != null && q > 0) {
-                    ResultRow("特別の料金", "${Otc.fee(t.quarter * q)}", "円",
-                        note = "${fmtTrim(t.quarter, 2)}円 × ${fmtTrim(q, 2)} ＝ ${fmtTrim(t.quarter * q, 2)}円", color = OrangeDark)
-                    ResultRow("保険の対象となる価格の合計", fmtTrim(t.base * q, 2), "円",
-                        note = "薬剤料の点数はこの価格で算定（1剤1日分ごとに五捨五超入）", big = false)
-                }
-            }
-            Section("この製品で対象外になる場合") {
-                LabeledRow("妊婦・妊娠の可能性がある者", if (yj in dd.pregnant) "対象外になる" else "該当なし",
-                    valueColor = if (yj in dd.pregnant) Color(0xFF1F8A3B) else null)
-                LabeledRow("授乳婦", if (yj in dd.lactating) "対象外になる" else "該当なし",
-                    valueColor = if (yj in dd.lactating) Color(0xFF1F8A3B) else null)
-            }
-            val eff = dd.effects[yj].orEmpty()
-            if (eff.isNotEmpty()) {
-                Section("この効能・効果で使うときは対象外", footer = "類似のOTC医薬品では承認されていない効能・効果です。") {
-                    eff.forEach { Text(it) }
-                }
-            }
-            val dis = dd.diseases[t.ingredient].orEmpty()
-            if (dis.isNotEmpty()) {
-                Section("この傷病名で使うときは対象外（例 ${dis.size}件・成分 ${t.ingredient}）") {
-                    OutlinedTextField(dq, { dq = it }, singleLine = true, placeholder = { Text("傷病名で絞り込む") }, modifier = Modifier.fillMaxWidth())
-                    val shown = dis.filter { matchesSearch(it, dq) }
-                    shown.take(100).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-                    if (shown.size > 100) Text("ほか${shown.size - 100}件（絞り込んでください）", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        Section("次のいずれかに当たるときは、どの対象医薬品も別途の負担の対象外") {
-            Otc.EXEMPTIONS.forEachIndexed { i, x -> Text("${i + 1}. $x", style = MaterialTheme.typography.bodySmall) }
         }
         TextButton(onClick = { PMDA.open(ctx, "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${yj.take(7)}") }) {
             Text("添付文書を見る（PMDA）")
         }
+    }
+}
+
+@Composable
+private fun OtcBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Unit, dq: String, setDq: (String) -> Unit) {
+    val t = dd.targets[yj]
+    if (t == null) {
+        Section(footer = "厚労省の対象医薬品リストに無い製品です。通常どおりの保険給付です。") {
+            Text("この製品は別途の負担（薬剤費の4分の1）の対象ではありません。")
+        }
+    } else {
+        Section("価格（厚労省マスタ）") {
+            LabeledRow("成分", t.ingredient)
+            LabeledRow("規格", t.spec)
+            LabeledRow("メーカー", t.maker)
+            LabeledRow("薬価", "${fmtTrim(t.price, 2)}円")
+            LabeledRow("価格の4分の1（別途の負担）", "${fmtTrim(t.quarter, 2)}円")
+            LabeledRow("保険外併用療養費の算出に用いる価格", "${fmtTrim(t.base, 2)}円")
+        }
+        Section("別途の負担（特別の料金）の計算",
+            footer = "特別の料金 ＝ 価格の4分の1 × 投薬全量。10円以上なら5円未満の端数は切り捨て、5円以上は10円に切り上げ、10円未満は10円。同じ処方箋に対象医薬品が複数あるときは合算してから丸めます。保険の分（自己負担）は「保険外併用療養費の算出に用いる価格」で薬剤料を算定します。") {
+            NumField("投薬全量", qty, setQty, Otc.unitOf(t.spec))
+            val q = parseNum(qty)
+            if (q != null && q > 0) {
+                ResultRow("特別の料金", "${Otc.fee(t.quarter * q)}", "円",
+                    note = "${fmtTrim(t.quarter, 2)}円 × ${fmtTrim(q, 2)} ＝ ${fmtTrim(t.quarter * q, 2)}円", color = OrangeDark)
+                ResultRow("保険の対象となる価格の合計", fmtTrim(t.base * q, 2), "円",
+                    note = "薬剤料の点数はこの価格で算定（1剤1日分ごとに五捨五超入）", big = false)
+            }
+        }
+        Section("この製品で対象外になる場合") {
+            LabeledRow("妊婦・妊娠の可能性がある者", if (yj in dd.pregnant) "対象外になる" else "該当なし",
+                valueColor = if (yj in dd.pregnant) Color(0xFF1F8A3B) else null)
+            LabeledRow("授乳婦", if (yj in dd.lactating) "対象外になる" else "該当なし",
+                valueColor = if (yj in dd.lactating) Color(0xFF1F8A3B) else null)
+        }
+        val eff = dd.effects[yj].orEmpty()
+        if (eff.isNotEmpty()) {
+            Section("この効能・効果で使うときは対象外", footer = "類似のOTC医薬品では承認されていない効能・効果です。") {
+                eff.forEach { Text(it) }
+            }
+        }
+        val dis = dd.diseases[t.ingredient].orEmpty()
+        if (dis.isNotEmpty()) {
+            Section("この傷病名で使うときは対象外（例 ${dis.size}件・成分 ${t.ingredient}）") {
+                OutlinedTextField(dq, setDq, singleLine = true, placeholder = { Text("傷病名で絞り込む") }, modifier = Modifier.fillMaxWidth())
+                val shown = dis.filter { matchesSearch(it, dq) }
+                shown.take(100).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (shown.size > 100) Text("ほか${shown.size - 100}件（絞り込んでください）", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    Section("次のいずれかに当たるときは、どの対象医薬品も別途の負担の対象外") {
+        Otc.EXEMPTIONS.forEachIndexed { i, x -> Text("${i + 1}. $x", style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun SenteiBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Unit) {
+    val t = dd.sentei[yj]
+    if (t == null) {
+        Section(footer = "厚労省の対象医薬品リストに無い製品です（後発医薬品、後発医薬品の無い先発医薬品、後発医薬品との価格差の無いものなど）。通常どおりの保険給付です。") {
+            Text("この製品は長期収載品の選定療養（特別の料金）の対象ではありません。")
+        }
+    } else {
+        Section("価格（厚労省マスタ）") {
+            LabeledRow("成分", t.ingredient)
+            LabeledRow("規格", t.spec)
+            LabeledRow("メーカー", t.maker)
+            LabeledRow("薬価", "${fmtTrim(t.price, 2)}円")
+            LabeledRow("後発医薬品の最高価格", "${fmtTrim(t.generic, 2)}円")
+            LabeledRow("価格差の2分の1（特別の料金）", "${fmtTrim(t.half, 2)}円")
+            LabeledRow("保険外併用療養費の算出に用いる価格", "${fmtTrim(t.base, 2)}円")
+        }
+        Section("特別の料金の計算",
+            footer = "特別の料金 ＝ 価格差の2分の1 × 投薬全量（10円以上なら5円未満の端数は切り捨て、5円以上は10円に切り上げ、10円未満は10円）に消費税（10%）を加える。同じ処方箋に対象の長期収載品が複数あるときは合算してから丸めます。保険の分（自己負担）は「保険外併用療養費の算出に用いる価格」で薬剤料を算定します。") {
+            NumField("投薬全量", qty, setQty, Otc.unitOf(t.spec))
+            val q = parseNum(qty)
+            if (q != null && q > 0) {
+                val (fee, withTax) = Otc.senteiFee(t.half * q)
+                ResultRow("特別の料金（消費税込み）", "$withTax", "円",
+                    note = "${fmtTrim(t.half, 2)}円 × ${fmtTrim(q, 2)} ＝ ${fmtTrim(t.half * q, 2)}円 → ${fee}円 × 1.1", color = OrangeDark)
+                ResultRow("特別の料金（税抜き）", "$fee", "円", big = false)
+                ResultRow("保険の対象となる価格の合計", fmtTrim(t.base * q, 2), "円",
+                    note = "薬剤料の点数はこの価格で算定（1剤1日分ごとに五捨五超入）", big = false)
+            }
+        }
+        Section("選定療養の対象になるとき", footer = "患者さんの希望で長期収載品を使う場合に限ります。調剤時にも選定療養について説明し、希望を確かめます。") {
+            Text("・処方箋の「患者希望」欄に「✓」又は「×」がある銘柄名処方", style = MaterialTheme.typography.bodySmall)
+            Text("・一般名処方、または「変更不可（医療上必要）」「患者希望」のどちらにも記載の無い銘柄名処方で、患者さんが長期収載品を希望したとき",
+                style = MaterialTheme.typography.bodySmall)
+        }
+    }
+    Section("次のいずれかに当たるときは選定療養の対象外（通常の保険給付）") {
+        Otc.SENTEI_EXEMPTIONS.forEachIndexed { i, x -> Text("${i + 1}. $x", style = MaterialTheme.typography.bodySmall) }
     }
 }

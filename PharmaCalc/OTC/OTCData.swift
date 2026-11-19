@@ -14,11 +14,35 @@ struct OTCTarget: Decodable {
     var base: Double
 }
 
-/// OTC類似薬の判定データ（data/otc.json。tools/make_otc.py で作る。Android・Web と共通）
+/// 長期収載品の選定療養の対象医薬品（厚労省の対象医薬品リスト。価格は円）
+struct SenteiTarget: Decodable {
+    var name: String
+    var ingredient: String
+    var spec: String
+    var maker: String
+    /// 薬価
+    var price: Double
+    /// 後発医薬品の最高価格
+    var generic: Double
+    /// 長期収載品と後発医薬品の価格差の2分の1（特別の料金の計算に使う）
+    var half: Double
+    /// 保険外併用療養費の算出に用いる価格
+    var base: Double
+}
+
+/// 調べる制度：OTC類似薬の一部保険外療養／長期収載品の選定療養
+enum OTCKind: Hashable {
+    case otc, sentei
+}
+
+/// OTC類似薬・長期収載品の選定療養の判定データ（data/otc.json。tools/make_otc.py で作る。Android・Web と共通）
 final class OTCData: Decodable {
     let source: String
     let hot: String
     let targets: [String: OTCTarget]
+    let senteiSource: String
+    /// YJ → 長期収載品の選定療養の対象
+    let sentei: [String: SenteiTarget]
     /// YJ → 特別の料金の対象外となる効能・効果
     let effects: [String: [String]]
     /// 成分 → 特別の料金の対象外となる傷病名の例
@@ -30,20 +54,25 @@ final class OTCData: Decodable {
     /// 箱（販売包装単位）のGS1コード → YJ
     let box: [String: String]
     /// 名前で探すための（YJ, 検索用の文字）
-    private(set) lazy var index: [(String, String)] = self.names.map { ($0.key, searchKey($0.value + (self.targets[$0.key]?.ingredient ?? ""))) }
+    private(set) lazy var index: [(String, String)] = self.names.map { ($0.key, searchKey($0.value + (self.targets[$0.key]?.ingredient ?? self.sentei[$0.key]?.ingredient ?? ""))) }
 
     private enum CodingKeys: String, CodingKey {
-        case source, hot, targets, effects, diseases, pregnant, lactating, names, box
+        case source, hot, targets, senteiSource, sentei, effects, diseases, pregnant, lactating, names, box
     }
 
-    func name(_ yj: String) -> String { targets[yj]?.name ?? names[yj] ?? yj }
+    func name(_ yj: String) -> String { targets[yj]?.name ?? sentei[yj]?.name ?? names[yj] ?? yj }
 
-    func search(_ q: String, limit: Int = 50) -> [String] {
+    /// その制度の対象か
+    func isTarget(_ kind: OTCKind, _ yj: String) -> Bool {
+        kind == .otc ? targets[yj] != nil : sentei[yj] != nil
+    }
+
+    func search(_ q: String, kind: OTCKind = .otc, limit: Int = 50) -> [String] {
         let k = searchKey(q.trimmingCharacters(in: .whitespaces))
         guard k.count >= 2 else { return [] }
         // 対象医薬品を先に
-        let a = index.filter { targets[$0.0] != nil && $0.1.contains(k) }.map(\.0)
-        let b = index.filter { targets[$0.0] == nil && $0.1.contains(k) }.map(\.0)
+        let a = index.filter { isTarget(kind, $0.0) && $0.1.contains(k) }.map(\.0)
+        let b = index.filter { !isTarget(kind, $0.0) && $0.1.contains(k) }.map(\.0)
         return Array((a + b).prefix(limit))
     }
 }
@@ -95,7 +124,7 @@ enum OTC {
             }
         }
         var seen = Set<String>()
-        let list = yj.filter { seen.insert($0).inserted && (d.names[$0] != nil || d.targets[$0] != nil) }
+        let list = yj.filter { seen.insert($0).inserted && (d.names[$0] != nil || d.targets[$0] != nil || d.sentei[$0] != nil) }
         return list.isEmpty ? .notFound : .found(list, viaPMDA: true)
     }
 
@@ -141,6 +170,21 @@ enum OTC {
         "類似のOTC医薬品で承認されている効能・効果では対応できない状態に使う場合（この薬の該当する効能・効果・傷病名の例は上に）",
         "妊婦・妊娠している可能性がある者・授乳婦が、特定の対象医薬品を使う場合",
     ]
+
+    /// 長期収載品の選定療養の対象外となる場合（保医発0327第9号ほか。令和8年6月1日から）
+    static let senteiExemptions = [
+        "医療上必要があると認められる場合（処方箋の「変更不可（医療上必要）」欄に「✓」又は「×」がある）",
+        "薬局（医療機関）で、後発医薬品の在庫状況等により後発医薬品を提供することが困難な場合",
+        "服用しにくい剤形である、効能・効果に差異があるなど、後発医薬品では適切な服用が困難で、薬剤師が長期収載品を服用すべきと判断した場合（医療上必要に当たる）",
+        "入院中の患者",
+        "OTC類似薬でもある薬で、OTC類似薬の別途の負担（4分の1）の対象になる場合（2つの制度は重ならない）",
+    ]
+
+    /// 選定療養の特別の料金（円）。価格差の2分の1 × 投薬全量を fee と同じく丸め、消費税（10%）を加える
+    static func senteiFee(_ yen: Double) -> (fee: Int, withTax: Int) {
+        let f = fee(yen)
+        return (f, Int((Double(f) * 1.1).rounded()))
+    }
 
     /// 特別の料金（円）＝ 対象医薬品の価格の4分の1 × 投薬全量。
     /// 10円以上なら5円未満の端数は切り捨て、5円以上10円未満は10円に切り上げ。10円未満は10円

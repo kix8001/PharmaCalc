@@ -14,10 +14,32 @@ export interface OtcTarget {
   base: number
 }
 
+/** 長期収載品の選定療養の対象医薬品（厚労省の対象医薬品リスト。価格は円） */
+export interface SenteiTarget {
+  name: string
+  ingredient: string
+  spec: string
+  maker: string
+  /** 薬価 */
+  price: number
+  /** 後発医薬品の最高価格 */
+  generic: number
+  /** 長期収載品と後発医薬品の価格差の2分の1（特別の料金の計算に使う） */
+  half: number
+  /** 保険外併用療養費の算出に用いる価格 */
+  base: number
+}
+
+/** 調べる制度：OTC類似薬の一部保険外療養／長期収載品の選定療養 */
+export type Kind = 'otc' | 'sentei'
+
 export interface OtcData {
   source: string
   hot: string
   targets: Record<string, OtcTarget>
+  senteiSource: string
+  /** YJ → 長期収載品の選定療養の対象 */
+  sentei: Record<string, SenteiTarget>
   /** YJ → 特別の料金の対象外となる効能・効果 */
   effects: Record<string, string[]>
   /** 成分 → 特別の料金の対象外となる傷病名の例 */
@@ -41,7 +63,7 @@ export function loadOtc(): Promise<OtcData> {
     const d = (m.default ?? m) as unknown as OtcData
     d.pregnantSet = new Set(d.pregnant)
     d.lactatingSet = new Set(d.lactating)
-    d.index = Object.entries(d.names).map(([yj, n]) => [yj, searchKey(n + (d.targets[yj]?.ingredient ?? ''))])
+    d.index = Object.entries(d.names).map(([yj, n]) => [yj, searchKey(n + (d.targets[yj]?.ingredient ?? d.sentei[yj]?.ingredient ?? ''))])
     return d
   })
   return dataPromise
@@ -59,6 +81,30 @@ export const OTC_EXEMPTIONS = [
   '類似のOTC医薬品で承認されている効能・効果では対応できない状態に使う場合（この薬の該当する効能・効果・傷病名の例は下に）',
   '妊婦・妊娠している可能性がある者・授乳婦が、特定の対象医薬品を使う場合',
 ]
+
+/** その制度の対象か */
+export function isTarget(d: OtcData, kind: Kind, yj: string): boolean {
+  return kind === 'otc' ? !!d.targets[yj] : !!d.sentei[yj]
+}
+
+export function productName(d: OtcData, yj: string): string {
+  return d.targets[yj]?.name ?? d.sentei[yj]?.name ?? d.names[yj] ?? yj
+}
+
+/** 長期収載品の選定療養の対象外となる場合（保医発0327第9号ほか。令和8年6月1日から） */
+export const SENTEI_EXEMPTIONS = [
+  '医療上必要があると認められる場合（処方箋の「変更不可（医療上必要）」欄に「✓」又は「×」がある）',
+  '薬局（医療機関）で、後発医薬品の在庫状況等により後発医薬品を提供することが困難な場合',
+  '服用しにくい剤形である、効能・効果に差異があるなど、後発医薬品では適切な服用が困難で、薬剤師が長期収載品を服用すべきと判断した場合（医療上必要に当たる）',
+  '入院中の患者',
+  'OTC類似薬でもある薬で、OTC類似薬の別途の負担（4分の1）の対象になる場合（2つの制度は重ならない）',
+]
+
+/** 選定療養の特別の料金（円）。価格差の2分の1 × 投薬全量を otcFee と同じく丸め、消費税（10%）を加える */
+export function senteiFee(yen: number): { fee: number; withTax: number } {
+  const fee = otcFee(yen)
+  return { fee, withTax: Math.round((fee * 110) / 100) }
+}
 
 /**
  * 特別の料金（円）＝ 対象医薬品の価格の4分の1 × 投薬全量。
@@ -93,7 +139,7 @@ export async function lookupGtin(gtin: string): Promise<Lookup> {
     const r = await fetch(`./pmda-yj/${g}`, { cache: 'no-store' })
     if (!r.ok) return { kind: 'offline' }
     const j = (await r.json()) as { yj?: string[] }
-    const list = (j.yj ?? []).filter((y) => d.names[y] || d.targets[y])
+    const list = (j.yj ?? []).filter((y) => d.names[y] || d.targets[y] || d.sentei[y])
     return list.length ? { kind: 'found', yj: list, via: 'pmda' } : { kind: 'notFound' }
   } catch {
     return { kind: 'offline' }
@@ -107,12 +153,12 @@ export function unitOfSpec(spec: string): string {
   return Number(m[1]) === 1 ? m[2] : m[1] + m[2]
 }
 
-export function searchProducts(d: OtcData, q: string, limit = 50): string[] {
+export function searchProducts(d: OtcData, q: string, kind: Kind = 'otc', limit = 50): string[] {
   const k = searchKey(q.trim())
   if (k.length < 2) return []
   const hits: string[] = []
   // 対象医薬品を先に
-  for (const [yj, s] of d.index) if (d.targets[yj] && s.includes(k)) hits.push(yj)
-  for (const [yj, s] of d.index) if (!d.targets[yj] && s.includes(k)) hits.push(yj)
+  for (const [yj, s] of d.index) if (isTarget(d, kind, yj) && s.includes(k)) hits.push(yj)
+  for (const [yj, s] of d.index) if (!isTarget(d, kind, yj) && s.includes(k)) hits.push(yj)
   return hits.slice(0, limit)
 }

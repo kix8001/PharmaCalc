@@ -23,11 +23,30 @@ class OtcTarget(
     val base: Double,
 )
 
-/** OTC類似薬の判定データ（data/otc.json。tools/make_otc.py で作る。iOS・Web と共通） */
+/** 長期収載品の選定療養の対象医薬品（厚労省の対象医薬品リスト。価格は円） */
+class SenteiTarget(
+    val name: String, val ingredient: String, val spec: String, val maker: String,
+    /** 薬価 */
+    val price: Double,
+    /** 後発医薬品の最高価格 */
+    val generic: Double,
+    /** 長期収載品と後発医薬品の価格差の2分の1（特別の料金の計算に使う） */
+    val half: Double,
+    /** 保険外併用療養費の算出に用いる価格 */
+    val base: Double,
+)
+
+/** 調べる制度：OTC類似薬の一部保険外療養／長期収載品の選定療養 */
+enum class OtcKind { OTC, SENTEI }
+
+/** OTC類似薬・長期収載品の選定療養の判定データ（data/otc.json。tools/make_otc.py で作る。iOS・Web と共通） */
 class OtcData(
     val source: String,
     val hot: String,
     val targets: Map<String, OtcTarget>,
+    val senteiSource: String,
+    /** YJ → 長期収載品の選定療養の対象 */
+    val sentei: Map<String, SenteiTarget>,
     /** YJ → 特別の料金の対象外となる効能・効果 */
     val effects: Map<String, List<String>>,
     /** 成分 → 特別の料金の対象外となる傷病名の例 */
@@ -41,14 +60,17 @@ class OtcData(
     /** 名前で探すための（YJ, 検索用の文字） */
     val index: List<Pair<String, String>>,
 ) {
-    fun nameOf(yj: String) = targets[yj]?.name ?: names[yj] ?: yj
+    fun nameOf(yj: String) = targets[yj]?.name ?: sentei[yj]?.name ?: names[yj] ?: yj
 
-    fun search(q: String, limit: Int = 50): List<String> {
+    /** その制度の対象か */
+    fun isTarget(kind: OtcKind, yj: String) = if (kind == OtcKind.OTC) targets.containsKey(yj) else sentei.containsKey(yj)
+
+    fun search(q: String, kind: OtcKind = OtcKind.OTC, limit: Int = 50): List<String> {
         val k = searchKey(q.trim())
         if (k.length < 2) return emptyList()
         // 対象医薬品を先に
-        val a = index.filter { targets.containsKey(it.first) && it.second.contains(k) }.map { it.first }
-        val b = index.filter { !targets.containsKey(it.first) && it.second.contains(k) }.map { it.first }
+        val a = index.filter { isTarget(kind, it.first) && it.second.contains(k) }.map { it.first }
+        val b = index.filter { !isTarget(kind, it.first) && it.second.contains(k) }.map { it.first }
         return (a + b).take(limit)
     }
 }
@@ -84,13 +106,20 @@ object Otc {
                 OtcTarget(t.getString("name"), t.getString("ingredient"), t.getString("spec"), t.getString("maker"),
                     t.getDouble("price"), t.getDouble("quarter"), t.getDouble("base"))
             }
+            val sj = o.getJSONObject("sentei")
+            val sentei = sj.keys().asSequence().associateWith { k ->
+                val t = sj.getJSONObject(k)
+                SenteiTarget(t.getString("name"), t.getString("ingredient"), t.getString("spec"), t.getString("maker"),
+                    t.getDouble("price"), t.getDouble("generic"), t.getDouble("half"), t.getDouble("base"))
+            }
             val names = strMap("names")
             OtcData(
                 source = o.getString("source"), hot = o.getString("hot"), targets = targets,
+                senteiSource = o.getString("senteiSource"), sentei = sentei,
                 effects = listMap("effects"), diseases = listMap("diseases"),
                 pregnant = set("pregnant"), lactating = set("lactating"),
                 names = names, box = strMap("box"),
-                index = names.map { (yj, n) -> yj to searchKey(n + (targets[yj]?.ingredient ?: "")) },
+                index = names.map { (yj, n) -> yj to searchKey(n + (targets[yj]?.ingredient ?: sentei[yj]?.ingredient ?: "")) },
             ).also { data = it }
         }
     }
@@ -122,7 +151,7 @@ object Otc {
                             .map { it.groupValues[1] }.filter { it.take(7) == rep.take(7) }.forEach { yj += it }
                     }
                 }
-                val list = yj.distinct().filter { d.names.containsKey(it) || d.targets.containsKey(it) }
+                val list = yj.distinct().filter { d.names.containsKey(it) || d.targets.containsKey(it) || d.sentei.containsKey(it) }
                 if (list.isEmpty()) Lookup.NotFound else Lookup.Found(list, true)
             } catch (e: Exception) {
                 Lookup.Offline
@@ -160,6 +189,21 @@ object Otc {
         "類似のOTC医薬品で承認されている効能・効果では対応できない状態に使う場合（この薬の該当する効能・効果・傷病名の例は上に）",
         "妊婦・妊娠している可能性がある者・授乳婦が、特定の対象医薬品を使う場合",
     )
+
+    /** 長期収載品の選定療養の対象外となる場合（保医発0327第9号ほか。令和8年6月1日から） */
+    val SENTEI_EXEMPTIONS = listOf(
+        "医療上必要があると認められる場合（処方箋の「変更不可（医療上必要）」欄に「✓」又は「×」がある）",
+        "薬局（医療機関）で、後発医薬品の在庫状況等により後発医薬品を提供することが困難な場合",
+        "服用しにくい剤形である、効能・効果に差異があるなど、後発医薬品では適切な服用が困難で、薬剤師が長期収載品を服用すべきと判断した場合（医療上必要に当たる）",
+        "入院中の患者",
+        "OTC類似薬でもある薬で、OTC類似薬の別途の負担（4分の1）の対象になる場合（2つの制度は重ならない）",
+    )
+
+    /** 選定療養の特別の料金（円）。価格差の2分の1 × 投薬全量を fee と同じく丸め、消費税（10%）を加える。（税抜き, 税込み） */
+    fun senteiFee(yen: Double): Pair<Long, Long> {
+        val f = fee(yen)
+        return f to Math.round(f * 1.1)
+    }
 
     /**
      * 特別の料金（円）＝ 対象医薬品の価格の4分の1 × 投薬全量。

@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   BadgePercent,
+  BadgeJapaneseYen,
   CirclePlus,
   Download,
   CircleMinus,
@@ -60,7 +61,7 @@ import { PedDosePage } from './ped/pedViews'
 import { RenalDrugsPage } from './renal/renalDrugs'
 import { HistoryPage, ScanPage } from './barcode/scan'
 import { PillCountPage } from './pill/pillView'
-import { OtcPage } from './otc/otcViews'
+import { OtcPage, SenteiPage } from './otc/otcViews'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -133,10 +134,20 @@ const items: CalcItem[] = [
     title: 'OTC類似薬チェック',
     short: 'OTC類似薬',
     subtitle: 'バーコードや名前で、薬剤費の4分の1の別途の負担の対象かを調べる',
-    keywords: 'otc 類似薬 一部保険外療養 特別の料金 4分の1 選定療養 バーコード 対象 判定',
+    keywords: 'otc 類似薬 一部保険外療養 特別の料金 4分の1 バーコード 対象 判定',
     icon: BadgePercent,
     group: 'insurance',
     page: () => <OtcPage />,
+  },
+  {
+    id: 'sentei',
+    title: '選定療養チェック',
+    short: '選定療養',
+    subtitle: 'バーコードや名前で、長期収載品の選定療養（価格差の2分の1）の対象かを調べる',
+    keywords: '選定療養 長期収載品 先発品 後発品 ジェネリック 患者希望 特別の料金 2分の1 バーコード 対象 判定',
+    icon: BadgeJapaneseYen,
+    group: 'insurance',
+    page: () => <SenteiPage />,
   },
   { id: 'fee', title: '薬剤料・窓口負担', short: '負担金', subtitle: '薬価から点数（五捨五超入）と窓口負担', keywords: '点数 薬価 負担 窓口 お金 五捨五超入 保険', icon: JapaneseYen, group: 'insurance', page: () => <FeePage /> },
   { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
@@ -146,7 +157,7 @@ const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */

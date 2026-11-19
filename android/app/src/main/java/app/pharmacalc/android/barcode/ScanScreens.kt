@@ -152,7 +152,7 @@ fun BarcodeCamera(torch: Boolean, paused: Boolean, onScan: (String) -> Unit, mod
 }
 
 @Composable
-fun ScanScreen(openOtc: (String) -> Unit = {}) {
+fun ScanScreen(openOtc: (String, app.pharmacalc.android.otc.OtcKind) -> Unit = { _, _ -> }) {
     val ctx = LocalContext.current
     val view = LocalView.current
     var granted by remember {

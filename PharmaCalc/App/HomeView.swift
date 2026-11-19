@@ -38,7 +38,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
     case barcode, scanHistory
     case opioid, steroid
     case pca, nutrition, oxygen, dilution
-    case otc, fee
+    case otc, sentei, fee
 
     var id: String { rawValue }
 
@@ -73,6 +73,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .oxygen: return "酸素ボンベの残り時間"
         case .dilution: return "消毒液の希釈"
         case .otc: return "OTC類似薬チェック"
+        case .sentei: return "選定療養チェック"
         case .fee: return "薬剤料・窓口負担"
         }
     }
@@ -109,6 +110,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .oxygen: return "酸素ボンベ"
         case .dilution: return "消毒液"
         case .otc: return "OTC類似薬"
+        case .sentei: return "選定療養"
         case .fee: return "負担金"
         }
     }
@@ -144,6 +146,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .oxygen: return "在宅酸素の残量と使える時間"
         case .dilution: return "次亜塩素酸ナトリウムなどの作り方"
         case .otc: return "バーコードや名前で、薬剤費の4分の1の別途の負担の対象かを調べる"
+        case .sentei: return "バーコードや名前で、長期収載品の選定療養（価格差の2分の1）の対象かを調べる"
         case .fee: return "薬価から点数（五捨五超入）と窓口負担"
         }
     }
@@ -177,7 +180,8 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .nutrition: return "栄養 カロリー 輸液 tpn 経腸 harris benedict 水分 npc 在宅"
         case .oxygen: return "酸素 ボンベ hot 在宅 同調器"
         case .dilution: return "消毒 次亜塩素酸 ハイター ノロ 希釈 ppm 在宅"
-        case .otc: return "otc 類似薬 一部保険外療養 特別の料金 4分の1 選定療養 バーコード 対象 判定"
+        case .otc: return "otc 類似薬 一部保険外療養 特別の料金 4分の1 バーコード 対象 判定"
+        case .sentei: return "選定療養 長期収載品 先発品 後発品 ジェネリック 患者希望 特別の料金 2分の1 バーコード 対象 判定"
         case .fee: return "点数 薬価 負担 窓口 お金 五捨五超入 保険"
         }
     }
@@ -213,6 +217,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .oxygen: return "lungs"
         case .dilution: return "drop.halffull"
         case .otc: return "percent"
+        case .sentei: return "yensign.square"
         case .fee: return "yensign.circle"
         }
     }
@@ -228,13 +233,13 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .lab: return .renal
         case .opioid, .steroid: return .convert
         case .pca, .nutrition, .oxygen, .dilution: return .homeCare
-        case .otc, .fee: return .insurance
+        case .otc, .sentei, .fee: return .insurance
         }
     }
 
     /// クリアボタンを出すか（入力の無い画面・自分のクリアがある画面は出さない）
     var clearable: Bool {
-        ![.renalDrugs, .pillCount, .remainder, .barcode, .scanHistory, .otc].contains(self)
+        ![.renalDrugs, .pillCount, .remainder, .barcode, .scanHistory, .otc, .sentei].contains(self)
     }
 
     /// クリアで患者情報（共通）も消すか（患者情報を入れる画面）
@@ -273,6 +278,7 @@ enum CalcItem: String, CaseIterable, Identifiable {
         case .oxygen: OxygenView()
         case .dilution: DilutionView()
         case .otc: OTCView()
+        case .sentei: OTCView(kind: .sentei)
         case .fee: FeeView()
         }
     }

@@ -6,6 +6,9 @@
 #  - MEDIS-DC「医薬品HOTコードマスター（販売包装単位コード付版）」：箱のGS1コード（販売包装単位）→ YJコード、販売名
 #      https://www2.medis.or.jp/hcode/  （引数で MEDISyyyymmdd_h.txt を渡す。無ければダウンロードする）
 #
+#  - 厚労省「後発医薬品のある先発医薬品（長期収載品）の選定療養について」の対象医薬品リスト（tools/sentei_src/ の xlsx）
+#      https://www.mhlw.go.jp/stf/newpage_39830.html
+#
 # PTPシート（調剤包装単位）のGS1コードはHOTマスターに無いので、アプリが PMDA に問い合わせて YJコードを得る。
 # 使い方：python3 tools/make_otc.py [MEDISyyyymmdd_h.txt]
 import csv, io, json, os, re, sys, urllib.request, zipfile
@@ -66,6 +69,21 @@ def yjs(sheet):
 pregnant = yjs("妊婦・妊娠の可能性がある者")
 lactating = yjs("授乳婦")
 
+# ---- 長期収載品の選定療養の対象医薬品リスト ----
+SENTEI = os.path.join(HERE, "sentei_src")
+sentei_file = [f for f in os.listdir(SENTEI) if f.endswith(".xlsx")]
+if len(sentei_file) != 1:
+    raise SystemExit("tools/sentei_src に xlsx を1つだけ置いてください")
+sentei = {}
+for r in sheet_rows(os.path.join(SENTEI, sentei_file[0]))[1:]:
+    if not r[0]:
+        continue
+    sentei[str(r[0]).strip()] = {
+        "name": z2h(r[1]), "ingredient": z2h(r[2]), "spec": z2h(r[3]), "maker": z2h(r[4]),
+        "price": round(float(r[5]), 2), "generic": round(float(r[6]), 2),
+        "half": round(float(r[7]), 2), "base": round(float(r[8]), 2),
+    }
+
 # ---- HOTコードマスター：箱のGS1コード → YJ、YJ → 販売名 ----
 if len(sys.argv) > 1:
     hot_text = open(sys.argv[1], encoding="cp932").read()
@@ -90,7 +108,7 @@ for r in rows[1:]:
     g = r[iG].strip()
     if re.fullmatch(r"\d{14}", g):
         box[g] = yj
-for yj, t in targets.items():
+for yj, t in list(targets.items()) + list(sentei.items()):
     names.setdefault(yj, t["name"])
 
 out = {
@@ -101,10 +119,12 @@ out = {
     "diseases": diseases,
     "pregnant": pregnant,
     "lactating": lactating,
+    "senteiSource": "厚生労働省「長期収載品の処方等又は調剤に係る選定療養の対象医薬品リスト」（令和8年6月1日から・令和8年3月31日更新）",
+    "sentei": sentei,
     "names": names,
     "box": box,
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
 print("対象", len(targets), "効能", len(effects), "傷病名の成分", len(diseases), "妊婦", len(pregnant), "授乳婦", len(lactating),
-      "販売名", len(names), "箱のコード", len(box), "→", os.path.getsize(OUT) // 1024, "KB")
+      "選定療養", len(sentei), "販売名", len(names), "箱のコード", len(box), "→", os.path.getsize(OUT) // 1024, "KB")

@@ -58,6 +58,7 @@ import app.pharmacalc.android.calc.WeightDoseScreen
 import app.pharmacalc.android.home.CalcItem
 import app.pharmacalc.android.home.HomeScreen
 import app.pharmacalc.android.home.TileEditScreen
+import app.pharmacalc.android.otc.short
 import app.pharmacalc.android.pill.PillCountScreen
 
 /** 画面（ナビゲーションライブラリは使わず、タブごとの積み重ねで管理する） */
@@ -68,12 +69,12 @@ sealed interface Screen {
     data object EditTiles : Screen { override val title = "ホームの編集" }
     data class HistoryDetail(val id: String) : Screen { override val title get() = "履歴の詳細" }
     data class RenalDrugDetail(val name: String) : Screen { override val title get() = name.substringAfter("|") }
-    data class OtcDetail(val yj: String) : Screen { override val title get() = "OTC類似薬" }
+    data class OtcDetail(val yj: String, val kind: app.pharmacalc.android.otc.OtcKind) : Screen { override val title get() = kind.short }
     data class PedDrugEdit(val id: String?) : Screen { override val title get() = if (id == null) "薬を追加" else "薬を編集" }
 }
 
 /** クリアボタンを出さない電卓（入力の無い画面・自分のクリアがある画面） */
-private val noClear = setOf(CalcItem.RENAL_DRUGS, CalcItem.PILL_COUNT, CalcItem.REMAINDER, CalcItem.BARCODE, CalcItem.SCAN_HISTORY, CalcItem.OTC)
+private val noClear = setOf(CalcItem.RENAL_DRUGS, CalcItem.PILL_COUNT, CalcItem.REMAINDER, CalcItem.BARCODE, CalcItem.SCAN_HISTORY, CalcItem.OTC, CalcItem.SENTEI)
 
 /** クリアで患者情報（共通）も消す電卓（患者情報を入れる画面） */
 private val clearsPatient = setOf(CalcItem.RENAL, CalcItem.BODY, CalcItem.PEDIATRIC, CalcItem.PED_DRUGS,
@@ -108,7 +109,7 @@ fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
         CalcItem.WEIGHT_DOSE -> WeightDoseScreen()
         CalcItem.DRIP -> DripScreen()
         CalcItem.GAMMA -> GammaScreen()
-        CalcItem.BARCODE -> ScanScreen { push(Screen.OtcDetail(it)) }
+        CalcItem.BARCODE -> ScanScreen { yj, k -> push(Screen.OtcDetail(yj, k)) }
         CalcItem.SCAN_HISTORY -> HistoryScreen { push(Screen.HistoryDetail(it)) }
         CalcItem.LAB -> app.pharmacalc.android.calc.LabScreen()
         CalcItem.OPIOID -> app.pharmacalc.android.calc.OpioidScreen()
@@ -118,7 +119,8 @@ fun CalcContent(item: CalcItem, push: (Screen) -> Unit) {
         CalcItem.OXYGEN -> app.pharmacalc.android.calc.OxygenScreen()
         CalcItem.DILUTION -> app.pharmacalc.android.calc.DilutionScreen()
         CalcItem.FEE -> app.pharmacalc.android.calc.FeeScreen()
-        CalcItem.OTC -> app.pharmacalc.android.otc.OtcScreen { push(Screen.OtcDetail(it)) }
+        CalcItem.OTC -> app.pharmacalc.android.otc.OtcScreen(app.pharmacalc.android.otc.OtcKind.OTC) { yj, k -> push(Screen.OtcDetail(yj, k)) }
+        CalcItem.SENTEI -> app.pharmacalc.android.otc.OtcScreen(app.pharmacalc.android.otc.OtcKind.SENTEI) { yj, k -> push(Screen.OtcDetail(yj, k)) }
     }
 }
 
@@ -185,7 +187,7 @@ fun App() {
                             open = { push(Screen.Calc(it)) },
                             openPatient = { push(Screen.Patient) },
                             editTiles = { push(Screen.EditTiles) })
-                        Tab.SCAN -> ScanScreen { push(Screen.OtcDetail(it)) }
+                        Tab.SCAN -> ScanScreen { yj, k -> push(Screen.OtcDetail(yj, k)) }
                         Tab.HISTORY -> HistoryScreen { push(Screen.HistoryDetail(it)) }
                         Tab.INFO -> AboutScreen()
                     }
@@ -194,7 +196,7 @@ fun App() {
                     Screen.EditTiles -> TileEditScreen()
                     is Screen.HistoryDetail -> HistoryDetailScreen(top.id, onDeleted = pop)
                     is Screen.RenalDrugDetail -> app.pharmacalc.android.renal.RenalDrugDetailScreen(top.name)
-                    is Screen.OtcDetail -> app.pharmacalc.android.otc.OtcDetailScreen(top.yj)
+                    is Screen.OtcDetail -> app.pharmacalc.android.otc.OtcDetailScreen(top.yj, top.kind)
                     is Screen.PedDrugEdit -> app.pharmacalc.android.ped.PedDrugEditScreen(top.id, done = pop)
                 }
             }
