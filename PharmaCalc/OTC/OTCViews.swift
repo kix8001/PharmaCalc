@@ -2,6 +2,8 @@ import AVFoundation
 import SwiftUI
 
 private let otcOrange = Color(red: 0.76, green: 0.25, blue: 0.05)
+/// 対象外になる効能・効果・傷病名の色
+private let otcExempt = Color.blue
 
 /// 画面の名前・制度の説明（制度ごと）
 extension OTCKind {
@@ -323,22 +325,24 @@ struct OTCDetailView: View {
             let eff = d.effects[yj] ?? []
             if !eff.isEmpty {
                 Section {
-                    ForEach(eff, id: \.self) { Text($0) }
+                    ForEach(eff, id: \.self) { Text($0).foregroundStyle(otcExempt).fontWeight(.semibold) }
                 } header: {
-                    Text("この効能・効果で使うときは対象外")
+                    Text("この効能・効果で使うときは対象外").foregroundStyle(otcExempt)
                 } footer: {
                     Text("類似のOTC医薬品では承認されていない効能・効果です。")
                 }
             }
             let dis = d.diseases[t.ingredient] ?? []
             if !dis.isEmpty {
-                Section("この傷病名で使うときは対象外（例 \(dis.count)件・成分 \(t.ingredient)）") {
+                Section {
                     TextField("傷病名で絞り込む", text: $dq)
                     let shown = dis.filter { matchesSearch($0, dq) }
-                    ForEach(shown.prefix(100), id: \.self) { Text($0).font(.callout) }
+                    ForEach(shown.prefix(100), id: \.self) { Text($0).font(.callout).foregroundStyle(otcExempt).fontWeight(.semibold) }
                     if shown.count > 100 {
                         Text("ほか\(shown.count - 100)件（絞り込んでください）").font(.caption).foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("この傷病名で使うときは対象外（例 \(dis.count)件・成分 \(t.ingredient)）").foregroundStyle(otcExempt)
                 }
             }
         } else {

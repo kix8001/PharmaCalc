@@ -66,11 +66,11 @@ fun CalcPage(content: @Composable ColumnScope.() -> Unit) {
 
 /** iOS の Form のセクションに相当するカード */
 @Composable
-fun Section(title: String? = null, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
+fun Section(title: String? = null, footer: String? = null, titleColor: Color? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (title != null) {
             Text(title, style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
+                color = titleColor ?: MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
         }
         Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier.fillMaxWidth()) {

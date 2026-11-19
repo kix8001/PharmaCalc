@@ -351,19 +351,19 @@ function OtcBody({ d, yj, q, qty, setQty, dq, setDq }: BodyProps & { dq: string;
             </div>
           </Section>
           {eff.length > 0 && (
-            <Section header="この効能・効果で使うときは対象外" footer="類似のOTC医薬品では承認されていない効能・効果です。">
+            <Section header={<span class="otc-exempt">この効能・効果で使うときは対象外</span>} footer="類似のOTC医薬品では承認されていない効能・効果です。">
               {eff.map((x) => (
-                <div class="row">{x}</div>
+                <div class="row otc-exempt">{x}</div>
               ))}
             </Section>
           )}
           {dis.length > 0 && (
-            <Section header={`この傷病名で使うときは対象外（例 ${dis.length}件・成分 ${t.ingredient}）`}>
+            <Section header={<span class="otc-exempt">この傷病名で使うときは対象外（例 {dis.length}件・成分 {t.ingredient}）</span>}>
               <div class="row">
                 <input class="text-input" placeholder="傷病名で絞り込む" value={dq} onInput={(e) => setDq((e.target as HTMLInputElement).value)} />
               </div>
               {disShown.slice(0, 100).map((x) => (
-                <div class="row small">{x}</div>
+                <div class="row small otc-exempt">{x}</div>
               ))}
               {disShown.length > 100 && <div class="row small sub">ほか{disShown.length - 100}件（絞り込んでください）</div>}
             </Section>

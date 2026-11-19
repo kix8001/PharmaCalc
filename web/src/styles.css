@@ -9,6 +9,7 @@
   --fill2: #e3e3e8;
   --accent: #0e7c86;
   --accent-soft: #e2f3f4;
+  --exempt: #0a6bd6;
   --orange: #c2410c;
   --orange-soft: #fdeee6;
   --red: #c81e1e;
@@ -33,6 +34,7 @@
     --fill2: #3a3a3c;
     --accent: #3cc3cc;
     --accent-soft: #123a3d;
+    --exempt: #5aa9ff;
     --orange: #ff9f5a;
     --orange-soft: #3a2414;
     --red: #ff6961;
@@ -267,3 +269,4 @@ a.row { text-decoration: none; }
 .otc-flag.on { color: var(--green); font-weight: 600; }
 .otc-brand-head { padding-top: 4px; padding-bottom: 0; }
 .otc-brand { padding-left: 28px; }
+.otc-exempt { color: var(--exempt); font-weight: 600; }

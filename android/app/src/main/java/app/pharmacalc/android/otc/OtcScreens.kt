@@ -64,6 +64,10 @@ import app.pharmacalc.android.ui.WarningRow
 
 private val OrangeDark = Color(0xFFC2410C)
 
+/** 対象外になる効能・効果・傷病名の色 */
+@Composable
+private fun exemptColor() = if (androidx.compose.foundation.isSystemInDarkTheme()) Color(0xFF5AA9FF) else Color(0xFF0A6BD6)
+
 /** 画面の名前・制度の説明（制度ごと） */
 val OtcKind.title get() = if (this == OtcKind.OTC) "OTC類似薬チェック" else "選定療養チェック"
 val OtcKind.short get() = if (this == OtcKind.OTC) "OTC類似薬" else "選定療養"
@@ -316,16 +320,16 @@ private fun OtcBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Un
         }
         val eff = dd.effects[yj].orEmpty()
         if (eff.isNotEmpty()) {
-            Section("この効能・効果で使うときは対象外", footer = "類似のOTC医薬品では承認されていない効能・効果です。") {
-                eff.forEach { Text(it) }
+            Section("この効能・効果で使うときは対象外", footer = "類似のOTC医薬品では承認されていない効能・効果です。", titleColor = exemptColor()) {
+                eff.forEach { Text(it, color = exemptColor(), fontWeight = FontWeight.SemiBold) }
             }
         }
         val dis = dd.diseases[t.ingredient].orEmpty()
         if (dis.isNotEmpty()) {
-            Section("この傷病名で使うときは対象外（例 ${dis.size}件・成分 ${t.ingredient}）") {
+            Section("この傷病名で使うときは対象外（例 ${dis.size}件・成分 ${t.ingredient}）", titleColor = exemptColor()) {
                 OutlinedTextField(dq, setDq, singleLine = true, placeholder = { Text("傷病名で絞り込む") }, modifier = Modifier.fillMaxWidth())
                 val shown = dis.filter { matchesSearch(it, dq) }
-                shown.take(100).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                shown.take(100).forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = exemptColor(), fontWeight = FontWeight.SemiBold) }
                 if (shown.size > 100) Text("ほか${shown.size - 100}件（絞り込んでください）", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
