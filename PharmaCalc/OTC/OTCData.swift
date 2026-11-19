@@ -56,6 +56,14 @@ final class OTCData: Decodable {
     /// 名前で探すための（YJ, 検索用の文字）
     private(set) lazy var index: [(String, String)] = self.names.map { ($0.key, searchKey($0.value + (self.targets[$0.key]?.ingredient ?? self.sentei[$0.key]?.ingredient ?? ""))) }
 
+    /// YJコードの先頭9桁（成分・剤形・規格）→ 選定療養の対象の長期収載品
+    private(set) lazy var senteiBy9: [String: [String]] = Dictionary(grouping: self.sentei.keys.sorted()) { String($0.prefix(9)) }
+
+    /// 後発医薬品などから、同じ成分・剤形・規格（YJコードの先頭9桁が同じ）の長期収載品（選定療養の対象）を探す。その製品自身が対象なら空
+    func senteiBrands(_ yj: String) -> [String] {
+        sentei[yj] != nil ? [] : (senteiBy9[String(yj.prefix(9))] ?? [])
+    }
+
     private enum CodingKeys: String, CodingKey {
         case source, hot, targets, senteiSource, sentei, effects, diseases, pregnant, lactating, names, box
     }

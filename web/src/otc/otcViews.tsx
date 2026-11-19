@@ -14,6 +14,7 @@ import {
   otcFee,
   productName,
   searchProducts,
+  senteiBrands,
   senteiFee,
   unitOfSpec,
   type Kind,
@@ -103,6 +104,28 @@ function ProductRow({ d, yj, kinds }: { d: OtcData; yj: string; kinds: Kind[] })
   )
 }
 
+/** 後発医薬品などを読んだとき：同じ成分・剤形・規格の長期収載品（選定療養の対象）を並べる */
+function BrandRows({ d, yj }: { d: OtcData; yj: string }) {
+  const nav = useNav()
+  const brands = senteiBrands(d, yj)
+  if (!brands.length) return null
+  return (
+    <>
+      <div class="row small sub otc-brand-head">同じ成分・剤形・規格の先発医薬品（長期収載品）：患者さんの希望でこちらを使うと選定療養の対象</div>
+      {brands.map((b) => (
+        <button class="row otc-row otc-brand" onClick={() => nav.push(<OtcDetailPage yj={b} kind="sentei" />)}>
+          <span class="otc-main">
+            <b>{productName(d, b)}</b>
+            <Verdict kind="sentei" target />
+            <PriceLine d={d} kind="sentei" yj={b} />
+          </span>
+          <ChevronRight size={18} class="chev" />
+        </button>
+      ))}
+    </>
+  )
+}
+
 /** 調べた結果（製品が複数のこともある） */
 function LookupResult({ d, r, kinds }: { d: OtcData; r: Lookup; kinds: Kind[] }) {
   if (r.kind === 'offline') return <WarningRow>この製品は端末の中の表に無く、PMDA にも問い合わせられませんでした。電波のあるところで読み直すか、下の「名前で探す」を使ってください。</WarningRow>
@@ -111,7 +134,10 @@ function LookupResult({ d, r, kinds }: { d: OtcData; r: Lookup; kinds: Kind[] })
     <>
       {r.yj.length > 1 && <div class="row small sub">この添付文書には{r.yj.length}製品が載っています。手元の製品を確かめてください。</div>}
       {r.yj.map((y) => (
-        <ProductRow d={d} yj={y} kinds={kinds} />
+        <>
+          <ProductRow d={d} yj={y} kinds={kinds} />
+          {kinds.includes('sentei') && <BrandRows d={d} yj={y} />}
+        </>
       ))}
     </>
   )
@@ -199,7 +225,12 @@ function CheckPage({ kind }: { kind: Kind }) {
           {hits.length === 0 ? (
             <div class="row sub">見つかりませんでした</div>
           ) : (
-            hits.map((y) => <ProductRow d={d} yj={y} kinds={[kind]} />)
+            hits.map((y) => (
+              <>
+                <ProductRow d={d} yj={y} kinds={[kind]} />
+                {kind === 'sentei' && <BrandRows d={d} yj={y} />}
+              </>
+            ))
           )}
         </Section>
       )}
@@ -350,15 +381,38 @@ function OtcBody({ d, yj, q, qty, setQty, dq, setDq }: BodyProps & { dq: string;
   )
 }
 
+function BrandLink({ d, yj }: { d: OtcData; yj: string }) {
+  const nav = useNav()
+  return (
+    <button class="row otc-row" onClick={() => nav.push(<OtcDetailPage yj={yj} kind="sentei" />)}>
+      <span class="otc-main">
+        <b>{productName(d, yj)}</b>
+        <Verdict kind="sentei" target />
+        <PriceLine d={d} kind="sentei" yj={yj} />
+      </span>
+      <ChevronRight size={18} class="chev" />
+    </button>
+  )
+}
+
 function SenteiBody({ d, yj, q, qty, setQty }: BodyProps) {
   const t = d.sentei[yj]
   const f = t && q != null && q > 0 ? senteiFee(t.half * q) : null
   return (
     <>
       {!t ? (
-        <Section footer="厚労省の対象医薬品リストに無い製品です（後発医薬品、後発医薬品の無い先発医薬品、後発医薬品との価格差の無いものなど）。通常どおりの保険給付です。">
-          <div class="row">この製品は長期収載品の選定療養（特別の料金）の対象ではありません。</div>
-        </Section>
+        <>
+          <Section footer="厚労省の対象医薬品リストに無い製品です（後発医薬品、後発医薬品の無い先発医薬品、後発医薬品との価格差の無いものなど）。通常どおりの保険給付です。">
+            <div class="row">この製品は長期収載品の選定療養（特別の料金）の対象ではありません。</div>
+          </Section>
+          {senteiBrands(d, yj).length > 0 && (
+            <Section header="同じ成分・剤形・規格の先発医薬品（長期収載品）" footer="YJコードの先頭9桁（成分・剤形・規格）が同じ製品です。患者さんの希望でこちらを使うと選定療養の対象です。">
+              {senteiBrands(d, yj).map((b) => (
+                <BrandLink d={d} yj={b} />
+              ))}
+            </Section>
+          )}
+        </>
       ) : (
         <>
           <Section header="価格（厚労省マスタ）">

@@ -60,6 +60,12 @@ class OtcData(
     /** 名前で探すための（YJ, 検索用の文字） */
     val index: List<Pair<String, String>>,
 ) {
+    /** YJコードの先頭9桁（成分・剤形・規格）→ 選定療養の対象の長期収載品 */
+    private val senteiBy9: Map<String, List<String>> by lazy { sentei.keys.sorted().groupBy { it.take(9) } }
+
+    /** 後発医薬品などから、同じ成分・剤形・規格（YJコードの先頭9桁が同じ）の長期収載品（選定療養の対象）を探す。その製品自身が対象なら空 */
+    fun senteiBrands(yj: String): List<String> = if (sentei.containsKey(yj)) emptyList() else senteiBy9[yj.take(9)].orEmpty()
+
     fun nameOf(yj: String) = targets[yj]?.name ?: sentei[yj]?.name ?: names[yj] ?: yj
 
     /** その制度の対象か */

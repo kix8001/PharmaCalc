@@ -54,6 +54,8 @@ export interface OtcData {
   lactatingSet: Set<string>
   /** 名前で探すための [YJ, 検索用の文字] */
   index: [string, string][]
+  /** YJコードの先頭9桁（成分・剤形・規格）→ 選定療養の対象の長期収載品 */
+  senteiBy9: Map<string, string[]>
 }
 
 let dataPromise: Promise<OtcData> | null = null
@@ -64,6 +66,11 @@ export function loadOtc(): Promise<OtcData> {
     d.pregnantSet = new Set(d.pregnant)
     d.lactatingSet = new Set(d.lactating)
     d.index = Object.entries(d.names).map(([yj, n]) => [yj, searchKey(n + (d.targets[yj]?.ingredient ?? d.sentei[yj]?.ingredient ?? ''))])
+    d.senteiBy9 = new Map()
+    for (const yj of Object.keys(d.sentei)) {
+      const k = yj.slice(0, 9)
+      d.senteiBy9.set(k, [...(d.senteiBy9.get(k) ?? []), yj])
+    }
     return d
   })
   return dataPromise
@@ -85,6 +92,15 @@ export const OTC_EXEMPTIONS = [
 /** その制度の対象か */
 export function isTarget(d: OtcData, kind: Kind, yj: string): boolean {
   return kind === 'otc' ? !!d.targets[yj] : !!d.sentei[yj]
+}
+
+/**
+ * 後発医薬品などから、同じ成分・剤形・規格（YJコードの先頭9桁が同じ）の長期収載品（選定療養の対象）を探す。
+ * その製品自身が対象なら空
+ */
+export function senteiBrands(d: OtcData, yj: string): string[] {
+  if (d.sentei[yj]) return []
+  return d.senteiBy9.get(yj.slice(0, 9)) ?? []
 }
 
 export function productName(d: OtcData, yj: string): string {

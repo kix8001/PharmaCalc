@@ -196,7 +196,7 @@ fun App() {
                     Screen.EditTiles -> TileEditScreen()
                     is Screen.HistoryDetail -> HistoryDetailScreen(top.id, onDeleted = pop)
                     is Screen.RenalDrugDetail -> app.pharmacalc.android.renal.RenalDrugDetailScreen(top.name)
-                    is Screen.OtcDetail -> app.pharmacalc.android.otc.OtcDetailScreen(top.yj, top.kind)
+                    is Screen.OtcDetail -> app.pharmacalc.android.otc.OtcDetailScreen(top.yj, top.kind) { yj, k -> push(Screen.OtcDetail(yj, k)) }
                     is Screen.PedDrugEdit -> app.pharmacalc.android.ped.PedDrugEditScreen(top.id, done = pop)
                 }
             }

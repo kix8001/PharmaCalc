@@ -73,6 +73,38 @@ struct OTCProductRow: View {
     }
 }
 
+/// 同じ成分・剤形・規格の長期収載品（選定療養の対象）への行
+struct OTCBrandRow: View {
+    let data: OTCData
+    let yj: String
+    var body: some View {
+        NavigationLink {
+            OTCDetailView(yj: yj, kind: .sentei)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(data.name(yj)).font(.headline)
+                OTCVerdict(kind: .sentei, target: true)
+                OTCPriceLine(data: data, kind: .sentei, yj: yj)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+/// 後発医薬品などを読んだとき：同じ成分・剤形・規格の長期収載品（選定療養の対象）を並べる
+struct OTCBrandRows: View {
+    let data: OTCData
+    let yj: String
+    var body: some View {
+        let brands = data.senteiBrands(yj)
+        if !brands.isEmpty {
+            Text("同じ成分・剤形・規格の先発医薬品（長期収載品）：患者さんの希望でこちらを使うと選定療養の対象")
+                .font(.caption).foregroundStyle(.secondary)
+            ForEach(brands, id: \.self) { OTCBrandRow(data: data, yj: $0).padding(.leading, 16) }
+        }
+    }
+}
+
 /// 調べた結果（製品が複数のこともある）
 struct OTCLookupRows: View {
     let data: OTCData
@@ -90,7 +122,10 @@ struct OTCLookupRows: View {
                 Text("この添付文書には\(list.count)製品が載っています。手元の製品を確かめてください。")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            ForEach(list, id: \.self) { OTCProductRow(data: data, yj: $0, kinds: kinds) }
+            ForEach(list, id: \.self) { y in
+                OTCProductRow(data: data, yj: y, kinds: kinds)
+                if kinds.contains(.sentei) { OTCBrandRows(data: data, yj: y) }
+            }
         }
     }
 }
@@ -165,7 +200,10 @@ struct OTCView: View {
                         if hits.isEmpty {
                             Text("見つかりませんでした").foregroundStyle(.secondary)
                         }
-                        ForEach(hits, id: \.self) { OTCProductRow(data: data, yj: $0, kinds: [kind]) }
+                        ForEach(hits, id: \.self) { y in
+                            OTCProductRow(data: data, yj: y, kinds: [kind])
+                            if kind == .sentei { OTCBrandRows(data: data, yj: y) }
+                        }
                     }
                 }
                 Section {
@@ -356,6 +394,16 @@ struct OTCDetailView: View {
                 Text("この製品は長期収載品の選定療養（特別の料金）の対象ではありません。")
             } footer: {
                 Text("厚労省の対象医薬品リストに無い製品です（後発医薬品、後発医薬品の無い先発医薬品、後発医薬品との価格差の無いものなど）。通常どおりの保険給付です。")
+            }
+            let brands = d.senteiBrands(yj)
+            if !brands.isEmpty {
+                Section {
+                    ForEach(brands, id: \.self) { OTCBrandRow(data: d, yj: $0) }
+                } header: {
+                    Text("同じ成分・剤形・規格の先発医薬品（長期収載品）")
+                } footer: {
+                    Text("YJコードの先頭9桁（成分・剤形・規格）が同じ製品です。患者さんの希望でこちらを使うと選定療養の対象です。")
+                }
             }
         }
         Section("次のいずれかに当たるときは選定療養の対象外（通常の保険給付）") {

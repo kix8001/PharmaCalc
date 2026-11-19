@@ -265,3 +265,5 @@ a.row { text-decoration: none; }
 .otc-verdict.no { background: var(--fill); color: var(--sub); }
 .otc-flag { margin-left: auto; font-size: 13px; color: var(--sub); }
 .otc-flag.on { color: var(--green); font-weight: 600; }
+.otc-brand-head { padding-top: 4px; padding-bottom: 0; }
+.otc-brand { padding-left: 28px; }

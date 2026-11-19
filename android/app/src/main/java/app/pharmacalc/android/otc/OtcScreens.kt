@@ -112,6 +112,30 @@ private fun ProductRow(d: OtcData, yj: String, kinds: List<OtcKind>, open: (Stri
     }
 }
 
+/** 同じ成分・剤形・規格の長期収載品（選定療養の対象）への行 */
+@Composable
+private fun BrandRow(d: OtcData, yj: String, open: (String, OtcKind) -> Unit, indent: Boolean = false) {
+    Row(Modifier.fillMaxWidth().clickable { open(yj, OtcKind.SENTEI) }.padding(start = if (indent) 20.dp else 0.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(d.nameOf(yj), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Verdict(OtcKind.SENTEI, true)
+            PriceLine(d, OtcKind.SENTEI, yj)
+        }
+        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
+    }
+}
+
+/** 後発医薬品などを読んだとき：同じ成分・剤形・規格の長期収載品（選定療養の対象）を並べる */
+@Composable
+private fun BrandRows(d: OtcData, yj: String, open: (String, OtcKind) -> Unit) {
+    val brands = d.senteiBrands(yj)
+    if (brands.isEmpty()) return
+    Text("同じ成分・剤形・規格の先発医薬品（長期収載品）：患者さんの希望でこちらを使うと選定療養の対象",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    brands.forEach { BrandRow(d, it, open, indent = true) }
+}
+
 /** 調べた結果（製品が複数のこともある） */
 @Composable
 private fun LookupResult(d: OtcData, r: Lookup, kinds: List<OtcKind>, open: (String, OtcKind) -> Unit) {
@@ -126,6 +150,7 @@ private fun LookupResult(d: OtcData, r: Lookup, kinds: List<OtcKind>, open: (Str
             r.yj.forEachIndexed { i, y ->
                 if (i > 0) Divider()
                 ProductRow(d, y, kinds, open)
+                if (OtcKind.SENTEI in kinds) BrandRows(d, y, open)
             }
         }
     }
@@ -211,6 +236,7 @@ fun OtcScreen(kind: OtcKind = OtcKind.OTC, open: (String, OtcKind) -> Unit) {
                     hits.forEachIndexed { i, y ->
                         if (i > 0) Divider()
                         ProductRow(dd, y, listOf(kind), open)
+                        if (kind == OtcKind.SENTEI) BrandRows(dd, y, open)
                     }
                 }
             }
@@ -226,7 +252,7 @@ fun OtcScreen(kind: OtcKind = OtcKind.OTC, open: (String, OtcKind) -> Unit) {
 
 /** 製品ごとの詳しい画面：判定・価格・特別の料金の計算・対象外になる場合 */
 @Composable
-fun OtcDetailScreen(yj: String, kind: OtcKind = OtcKind.OTC) {
+fun OtcDetailScreen(yj: String, kind: OtcKind = OtcKind.OTC, open: (String, OtcKind) -> Unit = { _, _ -> }) {
     val ctx = LocalContext.current
     val d by produceState<OtcData?>(null) { value = Otc.load(ctx) }
     var qty by rememberSaveable { mutableStateOf("") }
@@ -242,7 +268,7 @@ fun OtcDetailScreen(yj: String, kind: OtcKind = OtcKind.OTC) {
             Text("YJコード $yj", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (kind == OtcKind.OTC) OtcBody(dd, yj, qty, { qty = it }, dq, { dq = it })
-        else SenteiBody(dd, yj, qty) { qty = it }
+        else SenteiBody(dd, yj, qty, { qty = it }, open)
         if (dd.targets.containsKey(yj) && dd.sentei.containsKey(yj)) {
             Section("OTC類似薬で、長期収載品でもある薬") {
                 Text("OTC類似薬の別途の負担（4分の1）の対象になるときは、選定療養の特別の料金はかかりません。OTC類似薬の対象外に当たり、患者さんの希望で長期収載品を使うときは、選定療養の特別の料金の対象です。同じ処方箋に両方の対象があるときは、特別の料金をそれぞれ計算します（選定療養の分だけ消費税がかかる）。",
@@ -311,11 +337,21 @@ private fun OtcBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Un
 }
 
 @Composable
-private fun SenteiBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Unit) {
+private fun SenteiBody(dd: OtcData, yj: String, qty: String, setQty: (String) -> Unit, open: (String, OtcKind) -> Unit) {
     val t = dd.sentei[yj]
     if (t == null) {
         Section(footer = "厚労省の対象医薬品リストに無い製品です（後発医薬品、後発医薬品の無い先発医薬品、後発医薬品との価格差の無いものなど）。通常どおりの保険給付です。") {
             Text("この製品は長期収載品の選定療養（特別の料金）の対象ではありません。")
+        }
+        val brands = dd.senteiBrands(yj)
+        if (brands.isNotEmpty()) {
+            Section("同じ成分・剤形・規格の先発医薬品（長期収載品）",
+                footer = "YJコードの先頭9桁（成分・剤形・規格）が同じ製品です。患者さんの希望でこちらを使うと選定療養の対象です。") {
+                brands.forEachIndexed { i, b ->
+                    if (i > 0) Divider()
+                    BrandRow(dd, b, open)
+                }
+            }
         }
     } else {
         Section("価格（厚労省マスタ）") {
