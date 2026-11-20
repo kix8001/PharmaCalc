@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Camera, Crop, Image as ImageIcon } from 'lucide-preact'
-import { ButtonRow, NumField, OkRow, Page, ResultRow, Section, WarningRow } from '../ui/components'
+import { ButtonRow, NumField, OkRow, Page, ResultRow, Section, Segmented, WarningRow } from '../ui/components'
+import { persistedStore, useStore } from '../core/store'
+import { CameraShot } from './cameraShot'
 import { parseIntNum } from '../core/format'
 import { nextMarkerId, type PillMarker, type Rect } from './pillCounter'
 
@@ -27,6 +29,9 @@ async function prepare(file: File): Promise<Prepared> {
   return { url: URL.createObjectURL(blob), width, height, rgba }
 }
 
+/** 錠剤の形（round＝丸い錠剤：円の検出、any＝楕円・長い錠剤・カプセル：形を問わない数え方） */
+const shapeStore = persistedStore<'round' | 'any'>('pillShape', 'round')
+
 let worker: Worker | null = null
 let jobSeq = 0
 function getWorker() {
@@ -45,13 +50,15 @@ export function PillCountPage() {
   const [selecting, setSelecting] = useState(false)
   const [error, setError] = useState('')
   const camIn = useRef<HTMLInputElement>(null)
+  const shape = useStore(shapeStore)
+  const [shooting, setShooting] = useState(false)
   const libIn = useRef<HTMLInputElement>(null)
   const job = useRef(0)
   const total = markers.reduce((a, m) => a + m.count, 0)
 
   useEffect(() => () => prepared && URL.revokeObjectURL(prepared.url), [prepared])
 
-  const analyze = (p: Prepared | null = prepared, area: Rect | null = roi, s = sensitivity) => {
+  const analyze = (p: Prepared | null = prepared, area: Rect | null = roi, s = sensitivity, sh = shape) => {
     if (!p) return
     setBusy(true)
     const id = ++jobSeq
@@ -67,7 +74,7 @@ export function PillCountPage() {
       setBusy(false)
       setError('数えられませんでした。もう一度撮ってください。')
     }
-    w.postMessage({ rgba: p.rgba.slice(), width: p.width, height: p.height, sensitivity: s, roi: area, job: id })
+    w.postMessage({ rgba: p.rgba.slice(), width: p.width, height: p.height, sensitivity: s, roi: area, job: id, shape: sh })
   }
 
   const load = async (file: File | undefined) => {
@@ -90,8 +97,35 @@ export function PillCountPage() {
   const e = parseIntNum(expected)
   return (
     <Page title="錠剤カウント">
+      {shooting && (
+        <CameraShot
+          onShot={(f) => {
+            setShooting(false)
+            load(f)
+          }}
+          onClose={() => setShooting(false)}
+          onFail={() => {
+            // アプリの中でカメラを開けない端末は、端末のカメラアプリで撮る
+            setShooting(false)
+            camIn.current?.click()
+          }}
+        />
+      )}
+      <Section header="錠剤の形" footer="丸い錠剤は「丸い」、楕円の錠剤・細長い錠剤・カプセルは「楕円・長い・カプセル」を選んでください（選んだ物は次も使います）。">
+        <Segmented
+          options={[
+            ['round', '丸い'],
+            ['any', '楕円・長い・カプセル'],
+          ]}
+          value={shape}
+          onChange={(v) => {
+            shapeStore.set(v)
+            analyze(prepared, roi, sensitivity, v)
+          }}
+        />
+      </Section>
       <Section footer="袋から出し、無地の紙やトレーの上に重ならないように広げて、真上から画面いっぱいに撮ってください。白い錠剤は黒い背景、色の濃い錠剤は白い背景が向いています。">
-        <ButtonRow icon={<Camera size={20} />} onClick={() => camIn.current?.click()}>
+        <ButtonRow icon={<Camera size={20} />} onClick={() => setShooting(true)}>
           撮影する
         </ButtonRow>
         <ButtonRow icon={<ImageIcon size={20} />} onClick={() => libIn.current?.click()}>

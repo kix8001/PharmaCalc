@@ -343,3 +343,12 @@ a.row { text-decoration: none; }
 .name-search .text-input { flex: 1; }
 .suggest { display: block; width: 100%; text-align: left; font-size: 16px; line-height: 1.4; padding-top: 10px; padding-bottom: 10px; color: var(--text); background: var(--card); }
 .suggest:active { background: var(--fill); }
+/* 錠剤カウントの撮影画面（背面カメラ） */
+.shot { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; align-items: center; justify-content: center; }
+.shot-video { width: 100%; height: 100%; object-fit: contain; }
+.shot-msg { position: absolute; color: #fff; font-size: 16px; }
+.shot-hint { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 16px); left: 64px; right: 64px; text-align: center; color: #fff; font-size: 14px; text-shadow: 0 1px 3px #000; }
+.shot-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 8px; width: 48px; height: 48px; border-radius: 24px; color: #fff; background: rgba(0, 0, 0, 0.35); display: grid; place-items: center; }
+.shot-btn { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); left: 50%; transform: translateX(-50%); width: 76px; height: 76px; border-radius: 50%; background: #fff; border: 6px solid rgba(255, 255, 255, 0.45); background-clip: padding-box; }
+.shot-btn:disabled { opacity: 0.4; }
+.shot-btn:active { transform: translateX(-50%) scale(0.93); }

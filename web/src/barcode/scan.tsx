@@ -7,6 +7,7 @@ import { useNav, useVisible } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { ScanSummary } from './summary'
+import { backCameras, cameraStore, openBackCamera, preferredCamera, type CamInfo } from './camera'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
 import { loadOtc, nameForGtin, productName, suggestProducts, type OtcData } from '../otc/otcData'
 
@@ -27,32 +28,6 @@ const readerOptions: ReaderOptions = {
 export const autoOpenStore = persistedStore<boolean>('autoOpen', true)
 /** カメラの倍率（ズームできる端末だけ。0＝まだ選んでいない→2倍で始める） */
 const zoomStore = persistedStore<number>('cameraZoom', 0)
-/** 選んだ背面カメラ（deviceId。空＝自動で選ぶ） */
-const cameraStore = persistedStore<string>('cameraDevice', '')
-
-interface CamInfo {
-  id: string
-  label: string
-}
-
-/** 背面のカメラの一覧（許可を得たあとでないと名前が分からない） */
-async function backCameras(): Promise<CamInfo[]> {
-  const all = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput')
-  const back = all.filter((d) => /back|rear|environment|背面|後面/i.test(d.label))
-  return (back.length ? back : all).map((d) => ({ id: d.deviceId, label: d.label }))
-}
-
-/**
- * 自動で選ぶカメラ。Android の Chrome では背面カメラが何台も並び、近くにピントが合わない物（超広角・望遠など）が
- * 選ばれることがあるので、メインのカメラ（名前が「camera2 0」や「camera 0」）を優先する
- */
-function preferredCamera(cams: CamInfo[]): string | null {
-  const saved = cameraStore.get()
-  if (saved && cams.some((c) => c.id === saved)) return saved
-  const main = cams.find((c) => /camera2? 0\b/i.test(c.label))
-  return main ? main.id : null
-}
-
 type CamState = 'starting' | 'running' | 'denied' | 'stopped' | 'unsupported' | 'error'
 
 /** このページで一度でもカメラが動いたか（動いたあとに断られたら「再開」のボタンを出す） */
@@ -107,9 +82,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         const saved = cameraStore.get()
         const got = pendingStream
         pendingStream = null
-        stream = got && got.getVideoTracks()[0]?.readyState === 'live' ? got : await navigator.mediaDevices
-          .getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...size } : { facingMode: { ideal: 'environment' }, ...size } })
-          .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...size } }))
+        stream = got && got.getVideoTracks()[0]?.readyState === 'live' ? got : await openBackCamera(size, saved)
       } catch (e) {
         // iPhone のホーム画面のアプリは、添付文書などから戻った直後にカメラを断ることがある。少し待って数回やり直す
         if (!stop && tries < 3) {
@@ -281,9 +254,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   const resume = () => {
     setState('starting')
     const saved = cameraStore.get()
-    navigator.mediaDevices
-      ?.getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...SIZE } : { facingMode: { ideal: 'environment' }, ...SIZE } })
-      .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...SIZE } }))
+    openBackCamera(SIZE, saved)
       .then((st) => {
         pendingStream = st
       })
