@@ -66,6 +66,7 @@ import { PillCountPage } from './pill/pillView'
 import { OtcPage, SenteiPage } from './otc/otcViews'
 import { LimitsPage } from './limits/limits'
 import { RmpPage } from './rmp/rmp'
+import { IdentPage } from './barcode/ident'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -175,13 +176,23 @@ const items: CalcItem[] = [
     group: 'tools',
     page: () => <RmpPage />,
   },
+  {
+    id: 'ident',
+    title: '刻印・外観で探す',
+    short: '刻印検索',
+    subtitle: '錠剤の刻印（識別コード）・色・形から、何の薬か探す（錠剤の鑑別）',
+    keywords: '刻印 識別コード 鑑別 錠剤鑑別 持参薬 色 形 外観 印字 カプセル',
+    icon: Search,
+    group: 'tools',
+    page: () => <IdentPage />,
+  },
   { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
 ]
 const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp', 'ident']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */

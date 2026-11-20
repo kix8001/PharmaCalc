@@ -54,6 +54,7 @@ def text(x):
 
 # 識別コード
 idc = {}
+look = {}  # 外観
 seen = set()
 for d in CACHES:
     for f in glob.glob(os.path.join(d, "*.zip")):
@@ -71,10 +72,39 @@ for d in CACHES:
             yj = brands.get(m.group(1))
             if not yj:
                 continue
-            codes = [text(c) for c in re.findall(r"<IdCode[^>]*>(.*?)</IdCode>", m.group(2), re.S)]
+            b = m.group(2)
+            codes = [text(c) for c in re.findall(r"<IdCode[^>]*>(.*?)</IdCode>", b, re.S)]
+            # IdCode の欄が無く「識別コード XXX」と文で書いてある添付文書もある
+            if not codes:
+                t = text(b)
+                mm = re.search(r"識別(コード|記号)\s*[:：]?\s*([^\n]{1,40})", t)
+                if mm:
+                    codes = [mm.group(2).strip()]
             codes = [c for c in dict.fromkeys(codes) if c and c not in ("-", "－", "なし")]
             if codes and yj not in idc:
                 idc[yj] = " / ".join(codes)[:60]
+            # 外観：色・剤形・大きさ・形（丸い r／楕円・長い o／カプセル c）
+            if yj not in look:
+                col = re.search(r"<ColorTone>(.*?)</ColorTone>", b, re.S)
+                fm = re.search(r"<Formulation>(.*?)</Formulation>", b, re.S)
+                dia = re.search(r"<SizeDiameter>(.*?)</SizeDiameter>", b, re.S)
+                lng = re.search(r"<SizeLongDiameter>(.*?)</SizeLongDiameter>", b, re.S)
+                sht = re.search(r"<SizeShortDiameter>(.*?)</SizeShortDiameter>", b, re.S)
+                fmt = text(fm.group(1)).replace("\n", " ")[:30] if fm else ""
+                rec = {}
+                if col:
+                    rec["k"] = text(col.group(1)).replace("\n", " ")[:30]
+                if fmt:
+                    rec["m"] = fmt
+                if lng:
+                    rec["z"] = "長径" + text(lng.group(1)) + ("・短径" + text(sht.group(1)) if sht else "")
+                elif dia:
+                    rec["z"] = "直径" + text(dia.group(1))
+                shape = "c" if "カプセル" in fmt else "o" if lng or "楕円" in fmt or "長円" in fmt else "r" if dia and "錠" in fmt + "錠" else ""
+                if shape:
+                    rec["h"] = shape
+                if rec:
+                    look[yj] = rec
 
 # 錠剤の図（性状の表の表・裏・横の画像。PMDA の SimpleImageGIF で開く）。今の添付文書（GeneralList に載っている物）だけ
 current = set()
@@ -135,7 +165,7 @@ for b, (n, p) in list(cheap.items()):
             cheap[b] = (ex[0], p)
 
 out = {}
-for yj in set(price) | set(idc) | set(fig):
+for yj in set(price) | set(idc) | set(fig) | set(look):
     rec = {}
     if yj in price:
         rec.update(price[yj])
@@ -143,6 +173,8 @@ for yj in set(price) | set(idc) | set(fig):
         rec["i"] = idc[yj]
     if yj in fig:
         rec["f"] = fig[yj]
+    if yj in look:
+        rec.update(look[yj])
     if yj in cheap:
         rec["c"] = [cheap[yj][0], fmt_price(cheap[yj][1])]
     out[yj] = rec
@@ -165,4 +197,4 @@ data = {
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-print("薬価", len(price), "識別コード", len(idc), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
+print("薬価", len(price), "識別コード", len(idc), "外観", len(look), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")

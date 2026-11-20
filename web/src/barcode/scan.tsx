@@ -7,6 +7,7 @@ import { useNav, useVisible } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { ScanSummary } from './summary'
+import { IdentPage } from './ident'
 import { backCameras, cameraStore, openBackCamera, preferredCamera, type CamInfo } from './camera'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
 import { loadOtc, nameForGtin, productName, suggestProducts, type OtcData } from '../otc/otcData'
@@ -333,6 +334,7 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
 }
 
 export function ScanPage() {
+  const nav = useNav()
   const history = useStore(scanHistory)
   const [result, setResult] = useState<GS1Result | null>(null)
   const [manual, setManual] = useState('')
@@ -372,6 +374,11 @@ export function ScanPage() {
           setResult(null)
         }}
       />
+      <Section>
+        <ButtonRow icon={<Search size={20} />} onClick={() => nav.push(<IdentPage />)}>
+          刻印・色・形で探す（錠剤の鑑別）
+        </ButtonRow>
+      </Section>
       {picked && (
         <Section header="検索結果">
           <ScanSummary yj={[picked.yj]} memo={picked.name} detail="薬品名で探した結果" />

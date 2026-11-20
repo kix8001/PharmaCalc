@@ -390,3 +390,12 @@ a.row { text-decoration: none; }
 .lot-desk { font-weight: 700; font-size: 14px; }
 .lot-tel { text-decoration: none; }
 .lot-input .text-input { text-transform: uppercase; }
+/* 刻印・外観で探す */
+.ident-chips { flex-wrap: wrap; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+.ident-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--card); font-size: 14px; color: var(--text); }
+.ident-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.ident-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line); }
+.ident-hit { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card); color: var(--text); }
+.ident-fig { flex: none; width: 52px; height: 40px; display: grid; place-items: center; }
+.ident-fig img { max-width: 52px; max-height: 40px; background: #fff; border-radius: 4px; }
+.ident-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.4; }

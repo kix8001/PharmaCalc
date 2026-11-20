@@ -11,6 +11,11 @@ export interface InfoItem {
   x?: string
   /** 錠剤の図：[添付文書番号, 表, 裏, 横]（"figNN" は「番号_figNN」、"!名前" はそのままの名前） */
   f?: string[]
+  /** 外観：色調・剤形・大きさ・形（r 丸い／o 楕円・長い／c カプセル） */
+  k?: string
+  m?: string
+  z?: string
+  h?: string
   /** 先発品：薬価がいちばん安いジェネリック [名前, 薬価] */
   c?: [string, string]
 }
