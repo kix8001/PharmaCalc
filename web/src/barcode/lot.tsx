@@ -48,21 +48,23 @@ export function LotLookup({ yj, name }: { yj: string[]; name: string }) {
     openExternal(c.u!)
   }
   const mailto = () =>
-    `mailto:${c.m}?subject=${encodeURIComponent('使用期限の問い合わせ')}&body=${encodeURIComponent(`製品名：${name}\nロット番号：${L || '（記入してください）'}\n\nこのロットの使用期限を教えてください。`)}`
+    `mailto:${c.m}?subject=${encodeURIComponent('使用期限の問い合わせ')}&body=${encodeURIComponent(`製品名：${name}\nロット番号：（記入してください）\n\nこのロットの使用期限を教えてください。`)}`
 
   return (
     <div class="lot">
       <div class="lot-title">ロット番号から使用期限を調べる</div>
-      <div class="lot-input">
-        <input
-          class="text-input"
-          placeholder="PTP シートのロット番号"
-          autocapitalize="characters"
-          autocomplete="off"
-          value={lot}
-          onInput={(e) => setLot((e.target as HTMLInputElement).value)}
-        />
-      </div>
+      {c.u && (
+        <div class="lot-input">
+          <input
+            class="text-input"
+            placeholder="PTP シートのロット番号"
+            autocapitalize="characters"
+            autocomplete="off"
+            value={lot}
+            onInput={(e) => setLot((e.target as HTMLInputElement).value)}
+          />
+        </div>
+      )}
       {c.u ? (
         <>
           <button class="primary-btn" onClick={openSite}>
