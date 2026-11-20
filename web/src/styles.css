@@ -287,3 +287,5 @@ a.row { text-decoration: none; }
 .rmp-scope.in b { background: var(--accent); }
 .rmp-scope.part b { background: var(--orange); }
 .rmp-scope.out { color: var(--sub); }
+.cam-resume { display: block; margin: 14px auto 0; min-height: 44px; padding: 0 18px; border-radius: 22px; background: #fff; color: #000; font-size: 16px; font-weight: 700; }
+.rmp-more { justify-content: space-between; width: 100%; }

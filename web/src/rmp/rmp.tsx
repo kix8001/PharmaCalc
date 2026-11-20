@@ -218,10 +218,28 @@ export function RmpBadge({ gtin }: { gtin: string }) {
   return (
     <>
       {hits.map((i) => (
-        <ButtonRow icon={<FileText size={20} />} onClick={() => nav.push(<RmpDetailPage id={i.id} />)}>
-          患者向けRMP資材を見る（{i.label}）
+        <MatButtons i={i} withName={hits.length > 1} onMore={() => nav.push(<RmpDetailPage id={i.id} />)} />
+      ))}
+    </>
+  )
+}
+
+/** 患者向け資材（PDF）を直接開くボタン */
+function MatButtons({ i, withName, onMore }: { i: RmpItem; withName?: boolean; onMore?: () => void }) {
+  return (
+    <>
+      {withName && <div class="row small sub">{i.label}</div>}
+      {i.mats.map((m) => (
+        <ButtonRow icon={<FileText size={20} />} onClick={() => openExternal(m.url)}>
+          患者向けRMP資材：{m.title}
         </ButtonRow>
       ))}
+      {onMore && (
+        <button class="row small sub rmp-more" onClick={onMore}>
+          効能・RMPの対象などを見る
+          <ChevronRight size={16} class="chev" />
+        </button>
+      )}
     </>
   )
 }
@@ -229,6 +247,7 @@ export function RmpBadge({ gtin }: { gtin: string }) {
 /** 患者向けRMP資材：品目の一覧・検索・バーコード */
 export function RmpPage() {
   const d = useRmp()
+  const nav = useNav()
   const [query, setQuery] = useState('')
   const [gtin, setGtin] = useState<string | null>(null)
   const [r, setR] = useState<Lookup | null>(null)
@@ -289,7 +308,7 @@ export function RmpPage() {
             <>
               {!scanned.exact && <div class="row small sub">この製品と同じ成分の品目です（販売名の一致する品目はありません）。</div>}
               {scanned.items.map((i) => (
-                <ItemRow i={i} />
+                <MatButtons i={i} withName onMore={() => nav.push(<RmpDetailPage id={i.id} />)} />
               ))}
             </>
           ) : (
@@ -389,7 +408,6 @@ export function RmpDetailPage({ id }: { id: string }) {
       </Section>
       <Section>
         <ButtonRow onClick={() => openExternal(i.pageUrl)}>PMDA 品目ページ（添付文書・医療従事者向け資材）</ButtonRow>
-        <ButtonRow onClick={() => openExternal(i.rmpUrl)}>RMP本体（PDF）</ButtonRow>
       </Section>
     </Page>
   )

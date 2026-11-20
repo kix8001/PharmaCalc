@@ -55,7 +55,10 @@ function preferredCamera(cams: CamInfo[]): string | null {
   return main ? main.id : null
 }
 
-type CamState = 'starting' | 'running' | 'denied' | 'unsupported' | 'error'
+type CamState = 'starting' | 'running' | 'denied' | 'stopped' | 'unsupported' | 'error'
+
+/** このページで一度でもカメラが動いたか（動いたあとに断られたら「再開」のボタンを出す） */
+let startedOnce = false
 
 /** カメラの映像を少しずつ読み取る */
 export function useScanner(onCode: (s: string) => void, paused: boolean, on: boolean) {
@@ -87,6 +90,8 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     let lastAt = 0
     let frame = 0
 
+    let tries = 0
+    let retryTimer = 0
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setState('unsupported')
@@ -99,9 +104,21 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
           .getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...size } : { facingMode: { ideal: 'environment' }, ...size } })
           .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...size } }))
       } catch (e) {
-        setState((e as DOMException)?.name === 'NotAllowedError' ? 'denied' : 'error')
+        // iPhone のホーム画面のアプリは、添付文書などから戻った直後にカメラを断ることがある。少し待って数回やり直す
+        if (!stop && tries < 3) {
+          tries++
+          retryTimer = window.setTimeout(start, 700 * tries)
+          return
+        }
+        setState((e as DOMException)?.name === 'NotAllowedError' ? (startedOnce ? 'stopped' : 'denied') : 'error')
         return
       }
+      if (stop) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+      tries = 0
+      startedOnce = true
       // 背面カメラが何台もあるときは、メインのカメラに替える
       try {
         const list = await backCameras()
@@ -115,10 +132,6 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         setCamId(stream.getVideoTracks()[0]?.getSettings().deviceId ?? '')
       } catch {
         /* 一覧が取れない端末は、そのままのカメラで */
-      }
-      if (stop) {
-        stream.getTracks().forEach((t) => t.stop())
-        return
       }
       const v = video.current!
       v.srcObject = stream
@@ -185,6 +198,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     return () => {
       stop = true
       clearTimeout(timer)
+      clearTimeout(retryTimer)
       stream?.getTracks().forEach((t) => t.stop())
       track.current = null
       setTorch(false)
@@ -221,6 +235,15 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     cameraStore.set(cams[(i + 1) % cams.length].id)
     setRestart((x) => x + 1)
   }
+  /** 押したらカメラを起動し直す（iPhone は画面を押した流れでないとカメラを許可しないことがある） */
+  const resume = () => {
+    setState('starting')
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+      .then((s) => s.getTracks().forEach((t) => t.stop()))
+      .catch(() => {})
+      .finally(() => setRestart((x) => x + 1))
+  }
   /** 映像を押したら、ピントを合わせ直す */
   const refocus = async () => {
     const t = track.current
@@ -234,7 +257,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     }
   }
   const camNo = cams.findIndex((c) => c.id === camId) + 1
-  return { video, state, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus, camCount: cams.length, camNo, switchCamera }
+  return { video, state, resume, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus, camCount: cams.length, camNo, switchCamera }
 }
 
 /** 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める */
@@ -275,6 +298,12 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
         <div class="camera-msg">
           {cam.state === 'starting' && 'カメラを起動しています…'}
           {cam.state === 'denied' && 'カメラの使用が許可されていません。ブラウザの設定で、このサイトのカメラを許可してください。'}
+          {cam.state === 'stopped' && 'カメラが止まりました。'}
+          {(cam.state === 'stopped' || cam.state === 'denied' || cam.state === 'error') && (
+            <button class="cam-resume" onClick={cam.resume}>
+              タップしてカメラを再開
+            </button>
+          )}
           {cam.state === 'unsupported' && 'このブラウザではカメラを使えません。下の手入力を使ってください。'}
           {cam.state === 'error' && 'カメラを起動できませんでした。'}
         </div>
