@@ -9,7 +9,7 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
-import { diffText, figUrls, infoFor, loadInfo, type InfoItem } from './info'
+import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
 import type { GenericData } from './generic'
 import { HandlingDetailPage, HandlingTiles, handlingFor, ifFor, loadHandling, loadIf, type HandlingDoc, type IfDoc } from './handling'
 
@@ -90,7 +90,7 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
-function GenericRow({ g }: { g: GenericInfo }) {
+function GenericRow({ g, cmp }: { g: GenericInfo; cmp?: Product['cmp'] }) {
   return (
     <div class="scan-gen">
       <div class="scan-chips">
@@ -106,12 +106,24 @@ function GenericRow({ g }: { g: GenericInfo }) {
           <span class="sub">先発品：</span>
           {g.brands.length ? (
             <>
-              <b>{g.brands.join('、')}</b>
+              {g.brands.map((b, i) => (
+                <>
+                  {i > 0 && '、'}
+                  <b>{b}</b>
+                  {cmp && cmp.name === b && <span> {cmp.price}円</span>}
+                </>
+              ))}
               {g.brandNote && <span class="sub">（{g.brandNote}）</span>}
             </>
           ) : (
             <span class="sub">なし（先発品が無い、または薬価基準に無い）</span>
           )}
+        </div>
+      )}
+      {g.kind !== '後発品' && cmp && (
+        <div class="scan-brand">
+          <span class="sub">ジェネリック（例）：</span>
+          <b>{cmp.name}</b> <span>{cmp.price}円</span>
         </div>
       )}
     </div>
@@ -137,12 +149,6 @@ function docUrl(otc: Awaited<ReturnType<typeof loadOtc>>, gtin: string | undefin
   if (gtin) return PMDA.url(gtin)
   const g = gtinForYj(otc, yj[0])
   return g ? PMDA.url(g) : `https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${yj[0].slice(0, 7)}`
-}
-
-/** 「60mg1錠」→「1錠あたり」、「10%1g」→「1gあたり」 */
-function unitLabel(spec?: string): string {
-  const m = spec && /([\d.]*)([^\d.]+)$/.exec(spec)
-  return m ? `${m[1] && m[1] !== '1' ? m[1] : '1'}${m[2]}あたり` : ''
 }
 
 /** 判定のアイコン（2列×2段） */
@@ -197,25 +203,12 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
               <span class="sub">薬価</span>
               <span>{p.info.p ? `${p.info.p}円${p.info.s ? `（${p.info.s}）` : ''}` : '—'}</span>
             </div>
-            {p.cmp && p.info.p && (
+            {p.info.i && (
               <div class="scan-prod-row">
-                <span class="sub">差額</span>
-                <span>
-                  {p.cmp.label === '先発品' ? (
-                    <b class="price-diff">先発品より{diffText(Number(p.info.p), Number(p.cmp.price), unitLabel(p.info.s))}</b>
-                  ) : (
-                    <b class="price-diff">最安のジェネリックは{diffText(Number(p.cmp.price), Number(p.info.p), unitLabel(p.info.s))}</b>
-                  )}
-                  <span class="small sub" style={{ display: 'block' }}>
-                    {p.cmp.name} {p.cmp.price}円
-                  </span>
-                </span>
+                <span class="sub">識別コード</span>
+                <span>{p.info.i}</span>
               </div>
             )}
-            <div class="scan-prod-row">
-              <span class="sub">識別コード</span>
-              <span>{p.info.i ?? <span class="sub">{figUrls(p.info.f).length ? '下の図を参照' : '添付文書の図を参照'}</span>}</span>
-            </div>
             {figUrls(p.info.f).length > 0 && (
               <div class="scan-figs" aria-label="錠剤の図（表・裏・横）">
                 {figUrls(p.info.f).map((u) => (
@@ -234,7 +227,7 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
         </div>
       ) : (
         <>
-          {s.generic && <GenericRow g={s.generic} />}
+          {s.generic && <GenericRow g={s.generic} cmp={s.products[0]?.cmp} />}
           <Tiles tiles={s.tiles} />
           {s.handling && <HandlingTiles h={s.handling} f={s.iff} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} f={s.iff} name={name} doc={s.doc} />)} />}
         </>

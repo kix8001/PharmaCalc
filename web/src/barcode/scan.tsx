@@ -467,12 +467,15 @@ function NameSearch({ onPick }: { onPick: (yj: string, name: string) => void }) 
           }}
         />
       </div>
-      {open &&
-        list.map((yj) => (
-          <button class="row suggest" onClick={() => pick(yj)}>
-            {productName(otc!, yj)}
-          </button>
-        ))}
+      {open && list.length > 0 && (
+        <div class="name-suggest-list">
+          {list.map((yj) => (
+            <button class="row suggest" onClick={() => pick(yj)}>
+              {productName(otc!, yj)}
+            </button>
+          ))}
+        </div>
+      )}
       {open && otc && q.trim() && !list.length && <div class="row small sub">見つかりませんでした</div>}
     </Section>
   )

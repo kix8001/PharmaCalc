@@ -367,3 +367,5 @@ a.row { text-decoration: none; }
 .price-diff { color: var(--accent); font-weight: 700; }
 .scan-figs { display: flex; gap: 8px; align-items: center; margin: 6px 0 2px 5.5em; padding-left: 10px; flex-wrap: wrap; }
 .scan-figs img { height: 44px; width: auto; background: #fff; border-radius: 6px; border: 1px solid var(--line); padding: 3px; }
+/* 薬品名の候補は多いときスクロール */
+.name-suggest-list { max-height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch; }

@@ -206,7 +206,7 @@ export function searchProducts(d: OtcData, q: string, kind: Kind = 'otc', limit 
 }
 
 /** 薬品名の候補（スキャン画面の「薬品名で探す」）。名前の頭が合う物を先に、ひらがな・カタカナどちらでも */
-export function suggestProducts(d: OtcData, q: string, limit = 12): string[] {
+export function suggestProducts(d: OtcData, q: string, limit = 40): string[] {
   const k = searchKey(q.trim())
   if (!k) return []
   const head: string[] = []
@@ -216,8 +216,15 @@ export function suggestProducts(d: OtcData, q: string, limit = 12): string[] {
     if (n.startsWith(k)) head.push(yj)
     else if (s.includes(k)) mid.push(yj)
   }
-  const byName = (a: string, b: string) => productName(d, a).localeCompare(productName(d, b), 'ja')
-  return [...head.sort(byName), ...mid.sort(byName)].slice(0, limit)
+  // 並び：ふつうの錠を先に、OD錠（口腔内崩壊錠）などはあとに。そのうえで名前（「OD」を除いて）の順
+  // （「フェブキソスタット」と入れると「OD錠」が先に並び、ふつうの錠が候補に出なかった）
+  const isOD = (n: string) => /OD|ＯＤ|口腔内崩壊|D錠/.test(n)
+  const key = (n: string) => n.replace(/OD|ＯＤ/g, '')
+  const order = (a: string, b: string) => {
+    const na = productName(d, a), nb = productName(d, b)
+    return Number(isOD(na)) - Number(isOD(nb)) || key(na).localeCompare(key(nb), 'ja')
+  }
+  return [...head.sort(order), ...mid.sort(order)].slice(0, limit)
 }
 
 let gtinOfYj: Map<string, string> | null = null

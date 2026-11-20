@@ -118,6 +118,19 @@ for yj, g in gen["items"].items():
         if b not in cheap or p < cheap[b][1] or (p == cheap[b][1] and pname[yj] < cheap[b][0]):
             cheap[b] = (pname[yj], p)
 
+# 例に出す名前：一般名でまとめて載る行（「」の無い名前）なら、その行にまとめられている実際の製品の名前を1つ
+otc_names = json.load(open(os.path.join(HERE, "..", "data", "otc.json"), encoding="utf-8"))["names"]
+by9names = {}
+for y, n in otc_names.items():
+    if y not in price and "「" in n:
+        by9names.setdefault(y[:9], []).append(n)
+for b, (n, p) in list(cheap.items()):
+    if "「" not in n:
+        u = [k for k, v in pname.items() if v == n]
+        ex = sorted(by9names.get(u[0][:9], [])) if u else []
+        if ex:
+            cheap[b] = (ex[0], p)
+
 out = {}
 for yj in set(price) | set(idc) | set(fig):
     rec = {}
@@ -130,6 +143,11 @@ for yj in set(price) | set(idc) | set(fig):
     if yj in cheap:
         rec["c"] = [cheap[yj][0], fmt_price(cheap[yj][1])]
     out[yj] = rec
+# 統一名収載の製品：先頭9桁が同じ「一般名でまとめて載る後発品の行」（generic.json の u9）の薬価を優先する
+# （先発品と後発品で薬価が違うと、9桁の薬価がそろわず引けなかった。例：フェブキソスタット錠10mg「DSEP」）
+for k9, u in gen.get("u9", {}).items():
+    if u and u in price:
+        p9[k9] = price[u]
 # 統一名収載の製品：一覧に無い YJ は先頭9桁で薬価を引く（識別コードだけある製品にも足す）
 for yj, rec in out.items():
     if "p" not in rec and yj[:9] in p9:
