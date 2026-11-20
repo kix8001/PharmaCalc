@@ -1,3 +1,4 @@
+import changelog from './changelog.json'
 import type { VNode } from 'preact'
 import type { LucideIcon } from 'lucide-preact'
 import { useEffect, useState } from 'preact/hooks'
@@ -358,6 +359,19 @@ function AboutPage() {
       </Section>
       <Section header="クレジット">
         <LabeledRow label="開発" value="学術・社内広報室" />
+      </Section>
+      <Section header="更新の履歴" footer="新しい順。中を指で動かすと、前の版も見られます。">
+        <div class="changelog">
+          {changelog.map((c) => (
+            <div class="changelog-row">
+              <div class="changelog-v">
+                <b>{c.v}</b>
+                <span class="sub">{c.d.replace(/^(\d+)-(\d+)-(\d+)$/, (_, y, m, d) => `${y}年${Number(m)}月${Number(d)}日`)}</span>
+              </div>
+              <div class="changelog-t">{c.t}</div>
+            </div>
+          ))}
+        </div>
       </Section>
       <Section header="ご注意">
         <div class="row small" style={{ display: 'block' }}>

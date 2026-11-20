@@ -1,6 +1,6 @@
 import type { VNode } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
-import { FileHeart, FileText } from 'lucide-preact'
+import { BookOpen, FileHeart, FileText } from 'lucide-preact'
 import { openExternal } from '../ui/components'
 import { useNav } from '../ui/nav'
 import { gtinForYj, loadOtc, lookupGtin, productName, senteiBrands, type Lookup } from '../otc/otcData'
@@ -9,6 +9,7 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
+import { infoFor, loadInfo, type InfoItem } from './info'
 import { HandlingDetailPage, HandlingTiles, handlingFor, ifFor, loadHandling, loadIf, type HandlingDoc, type IfDoc } from './handling'
 
 /** 4つの判定の1つ。yes＝該当あり（オレンジの「！」）、no＝該当なし（グレー） */
@@ -30,13 +31,15 @@ interface Summary {
   iff: (IfDoc & { url: string }) | null
   /** 添付文書を開く URL */
   doc: string
+  /** 製品ごとの YJ コード・薬価・識別コード */
+  products: { yj: string; name: string; info: InfoItem }[]
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
 async function summarize(gtin: string | undefined, yjs: string[] | undefined, push: (el: VNode) => void): Promise<Summary> {
   const look: Promise<Lookup> = yjs ? Promise.resolve({ kind: 'found', yj: yjs, via: 'name' }) : lookupGtin(gtin!)
-  const [r, otc, lim, gen, hd, ifd] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf()])
-  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null, doc: gtin ? PMDA.url(gtin) : '' }
+  const [r, otc, lim, gen, hd, ifd, inf] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf(), loadInfo()])
+  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null, doc: gtin ? PMDA.url(gtin) : '', products: [] }
   const yj = r.yj
   const names = [...new Set(yj.map((y) => productName(otc, y)))]
 
@@ -74,7 +77,7 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: productName(otc, y), info: infoFor(inf, y) })) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
@@ -154,6 +157,23 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
       <div class="scan-head">
         <div class="scan-name">{name || (s ? '薬品名が分かりませんでした' : '調べています…')}</div>
         <div class="small sub">{detail}</div>
+        {s?.products.map((p) => (
+          <div class="scan-prod">
+            {s.products.length > 1 && <div class="scan-prod-name">{p.name}</div>}
+            <div class="scan-prod-row">
+              <span class="sub">YJコード</span>
+              <span class="num">{p.yj}</span>
+            </div>
+            <div class="scan-prod-row">
+              <span class="sub">薬価</span>
+              <span>{p.info.p ? `${p.info.p}円${p.info.s ? `（${p.info.s}）` : ''}` : '—'}</span>
+            </div>
+            <div class="scan-prod-row">
+              <span class="sub">識別コード</span>
+              <span>{p.info.i ?? <span class="sub">添付文書の図を参照</span>}</span>
+            </div>
+          </div>
+        ))}
       </div>
       {!s ? (
         <div class="row sub small">OTC類似薬・選定療養・投与日数・RMP資材を調べています…</div>
@@ -172,6 +192,17 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
         <button class="primary-btn" disabled={!s?.doc} onClick={() => s?.doc && openExternal(s.doc)}>
           <FileText size={20} /> 添付文書を開く
         </button>
+        {s && s.lookup.kind === 'found' && (
+          <button
+            class="primary-btn"
+            onClick={() =>
+              openExternal(s.iff ? s.iff.url : `https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${(s.lookup as { yj: string[] }).yj[0].slice(0, 7)}`)
+            }
+          >
+            <BookOpen size={20} /> インタビューフォームを開く
+          </button>
+        )}
+        {s && s.lookup.kind === 'found' && !s.iff && <div class="small sub scan-mat-t">PMDA の製品の一覧が開きます。目的の製品の「インタビューフォーム」を押してください。</div>}
         {s?.rmp.map((i) =>
           i.mats.map((m) => (
             <div class="scan-mat">

@@ -374,7 +374,7 @@ export function ScanPage() {
       />
       {picked && (
         <Section header="検索結果">
-          <ScanSummary yj={[picked.yj]} memo={picked.name} detail={`YJコード ${picked.yj}`} />
+          <ScanSummary yj={[picked.yj]} memo={picked.name} detail="薬品名で探した結果" />
         </Section>
       )}
       {result && (

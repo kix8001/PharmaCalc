@@ -352,3 +352,15 @@ a.row { text-decoration: none; }
 .shot-btn { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); left: 50%; transform: translateX(-50%); width: 76px; height: 76px; border-radius: 50%; background: #fff; border: 6px solid rgba(255, 255, 255, 0.45); background-clip: padding-box; }
 .shot-btn:disabled { opacity: 0.4; }
 .shot-btn:active { transform: translateX(-50%) scale(0.93); }
+/* 情報：更新の履歴（中だけスクロール） */
+.changelog { max-height: 340px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.changelog-row { padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.changelog-row:last-child { border-bottom: 0; }
+.changelog-v { display: flex; gap: 10px; align-items: baseline; font-size: 15px; }
+.changelog-v .sub { font-size: 13px; }
+.changelog-t { font-size: 14px; line-height: 1.55; margin-top: 2px; }
+/* スキャンの結果：YJコード・薬価・識別コード */
+.scan-prod { margin-top: 6px; font-size: 14px; line-height: 1.5; }
+.scan-prod-name { font-weight: 700; margin-top: 4px; }
+.scan-prod-row { display: flex; gap: 10px; }
+.scan-prod-row > .sub:first-child { flex: none; width: 5.5em; }
