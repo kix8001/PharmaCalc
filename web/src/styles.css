@@ -379,3 +379,4 @@ a.row { text-decoration: none; }
 .fig-zoom-title { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
 .fig-zoom-imgs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-bottom: 10px; }
 .fig-zoom-imgs img { height: 120px; width: auto; max-width: 100%; image-rendering: auto; background: #fff; border-radius: 10px; border: 1px solid var(--line); padding: 6px; }
+.keika { color: var(--orange); }

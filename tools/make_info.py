@@ -39,8 +39,11 @@ for f in sorted(glob.glob(os.path.join(HERE, "generic_src", "tp*_0[123]_*.xlsx")
         pname[yj] = unicodedata.normalize("NFKC", str(r[7] or "")).strip()
         if r[13]:
             expiring.add(yj)
-        by9.setdefault(yj[:9], set()).add((rec["p"], rec["s"]))
-p9 = {k: {"p": list(v)[0][0], "s": list(v)[0][1]} for k, v in by9.items() if len(v) == 1}
+            # 経過措置による使用期限（「R9.3.31まで」→「令和9年3月31日」）
+            m = re.match(r"R(\d+)\.(\d+)\.(\d+)", nk(r[13]))
+            rec["x"] = f"令和{m.group(1)}年{m.group(2)}月{m.group(3)}日" if m else nk(r[13])
+        by9.setdefault(yj[:9], set()).add((rec["p"], rec["s"], rec.get("x", "")))
+p9 = {k: {"p": list(v)[0][0], "s": list(v)[0][1], **({"x": list(v)[0][2]} if list(v)[0][2] else {})} for k, v in by9.items() if len(v) == 1}
 
 
 def text(x):

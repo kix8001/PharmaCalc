@@ -106,13 +106,14 @@ function GenericRow({ g, cmp }: { g: GenericInfo; cmp?: Product['cmp'] }) {
           <span class="sub">先発品：</span>
           {g.brands.length ? (
             <>
-              {g.brands.map((b, i) => (
+              {g.brands.slice(0, 3).map((b, i) => (
                 <>
                   {i > 0 && '、'}
                   <b>{b}</b>
                   {cmp && cmp.name === b && <span> {cmp.price}円</span>}
                 </>
               ))}
+              {g.brands.length > 3 && <span class="sub"> ほか</span>}
               {g.brandNote && <span class="sub">（{g.brandNote}）</span>}
             </>
           ) : (
@@ -218,6 +219,12 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
               <span class="sub">薬価</span>
               <span>{p.info.p ? `${p.info.p}円${p.info.s ? `（${p.info.s}）` : ''}` : '—'}</span>
             </div>
+            {p.info.x && (
+              <div class="scan-prod-row">
+                <span class="sub">経過措置</span>
+                <b class="keika">経過措置品（{p.info.x}まで）</b>
+              </div>
+            )}
             {p.info.i && (
               <div class="scan-prod-row">
                 <span class="sub">識別コード</span>
