@@ -25,6 +25,8 @@ const readerOptions: ReaderOptions = {
 }
 
 export const autoOpenStore = persistedStore<boolean>('autoOpen', true)
+/** カメラの倍率（ズームできる端末だけ。0＝まだ選んでいない→2倍で始める） */
+const zoomStore = persistedStore<number>('cameraZoom', 0)
 
 type CamState = 'starting' | 'running' | 'denied' | 'unsupported' | 'error'
 
@@ -34,6 +36,9 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   const [state, setState] = useState<CamState>('starting')
   const [torchOK, setTorchOK] = useState(false)
   const [torch, setTorch] = useState(false)
+  /** ズームできる範囲（できない端末は null） */
+  const [zoomMax, setZoomMax] = useState<number | null>(null)
+  const [zoom, setZoomState] = useState(1)
   const track = useRef<MediaStreamTrack | null>(null)
   const onCodeRef = useRef(onCode)
   onCodeRef.current = onCode
@@ -73,10 +78,22 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       await v.play().catch(() => {})
       track.current = stream.getVideoTracks()[0] ?? null
       try {
-        const caps = track.current?.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean; focusMode?: string[] }
+        const caps = track.current?.getCapabilities?.() as MediaTrackCapabilities & {
+          torch?: boolean
+          focusMode?: string[]
+          zoom?: { min: number; max: number }
+        }
         setTorchOK(!!caps?.torch)
         if (caps?.focusMode?.includes('continuous')) {
           await track.current!.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] })
+        }
+        // 近くにピントが合わないカメラ（Galaxy の Ultra など）でも、2倍にして20cmほど離せば小さいPTPのバーコードを読める
+        if (caps?.zoom && caps.zoom.max >= 1.5) {
+          const max = Math.min(caps.zoom.max, 4)
+          setZoomMax(max)
+          const want = Math.min(zoomStore.get() || 2, max)
+          await track.current!.applyConstraints({ advanced: [{ zoom: want } as MediaTrackConstraintSet] })
+          setZoomState(want)
         }
       } catch {
         /* 使えない機能は飛ばす */
@@ -124,6 +141,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       stream?.getTracks().forEach((t) => t.stop())
       track.current = null
       setTorch(false)
+      setZoomMax(null)
       setState('starting')
     }
   }, [on])
@@ -138,7 +156,30 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       setTorchOK(false)
     }
   }
-  return { video, state, torch, torchOK, toggleTorch }
+  const setZoom = async (z: number) => {
+    const t = track.current
+    if (!t) return
+    try {
+      await t.applyConstraints({ advanced: [{ zoom: z } as MediaTrackConstraintSet] })
+      setZoomState(z)
+      zoomStore.set(z)
+    } catch {
+      setZoomMax(null)
+    }
+  }
+  /** 映像を押したら、ピントを合わせ直す */
+  const refocus = async () => {
+    const t = track.current
+    if (!t) return
+    const caps = t.getCapabilities?.() as MediaTrackCapabilities & { focusMode?: string[] }
+    try {
+      if (caps?.focusMode?.includes('single-shot')) await t.applyConstraints({ advanced: [{ focusMode: 'single-shot' } as MediaTrackConstraintSet] })
+      if (caps?.focusMode?.includes('continuous')) await t.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] })
+    } catch {
+      /* ピント合わせができない端末 */
+    }
+  }
+  return { video, state, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus }
 }
 
 /** 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める */
@@ -157,8 +198,19 @@ export function useCameraOn() {
 export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
   return (
     <div class="camera">
-      <video ref={cam.video} playsInline muted autoPlay />
+      <video ref={cam.video} playsInline muted autoPlay onClick={cam.refocus} />
       {cam.state === 'running' && <div class="scan-frame" aria-hidden="true" />}
+      {cam.state === 'running' && cam.zoomMax && (
+        <div class="zoom-chips">
+          {[1, 2, 3, 4]
+            .filter((z) => z <= cam.zoomMax! + 0.01)
+            .map((z) => (
+              <button class={'zoom-chip' + (Math.abs(cam.zoom - z) < 0.05 ? ' on' : '')} onClick={() => cam.setZoom(z)}>
+                {z}×
+              </button>
+            ))}
+        </div>
+      )}
       {cam.state !== 'running' && (
         <div class="camera-msg">
           {cam.state === 'starting' && 'カメラを起動しています…'}
@@ -237,7 +289,7 @@ export function ScanPage() {
           )}
         </Section>
       )}
-      <Section footer="PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、10cmほど離して枠いっぱいに写すと読みやすくなります。">
+      <Section footer="PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、枠いっぱいに写すと読みやすくなります。ピントが合わないときは、倍率を2×か3×にして少し離すか、映像を押してピントを合わせ直してください。">
         <Toggle label="読み取ったらすぐ添付文書を開く" value={autoOpen} onChange={(v) => autoOpenStore.set(v)} />
       </Section>
       <Section header="手入力">

@@ -270,3 +270,6 @@ a.row { text-decoration: none; }
 .otc-brand-head { padding-top: 4px; padding-bottom: 0; }
 .otc-brand { padding-left: 28px; }
 .otc-exempt { color: var(--exempt); font-weight: 600; }
+.zoom-chips { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 8px; }
+.zoom-chip { min-width: 44px; min-height: 36px; padding: 0 10px; border-radius: 18px; background: rgba(0,0,0,.55); color: #fff; font-size: 15px; font-weight: 600; }
+.zoom-chip.on { background: rgba(255,255,255,.92); color: #000; }
