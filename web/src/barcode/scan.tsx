@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { FileText, Flashlight, FlashlightOff, Search, SwitchCamera, Trash2 } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
-import { ButtonRow, LabeledRow, Page, Section, Toggle, WarningRow, openExternal } from '../ui/components'
+import { ButtonRow, LabeledRow, Page, Section, WarningRow, openExternal } from '../ui/components'
 import { useNav, useVisible } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
-import { OtcBadge } from '../otc/otcViews'
-import { LimitBadge } from '../limits/limits'
-import { RmpBadge } from '../rmp/rmp'
+import { ScanSummary } from './summary'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
 import { nameForGtin } from '../otc/otcData'
 
@@ -184,13 +182,31 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       if (v && v.videoWidth > 0 && !pausedRef.current && !document.hidden) {
         // 1回おきに「枠の中（真ん中の横長の部分）」と「映像全体」を読む。
         // 枠の中だけだとPTPの小さいバーコードが読みやすく、全体なら箱の横長のバーコードがはみ出しても読める
+        // さらに、斜めに傾けたバーコードのために、映像を±30°回した物も読む（90°は読み取り側が回して試す）
         const vw = v.videoWidth, vh = v.videoHeight
-        const whole = frame++ % 2 === 1
-        const cw = whole ? vw : Math.round(vw * 0.8)
-        const ch = whole ? vh : Math.round(Math.min(vh * 0.5, cw * 0.5))
-        canvas.width = cw
-        canvas.height = ch
-        ctx.drawImage(v, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, cw, ch)
+        const mode = frame++ % 4
+        let cw: number, ch: number
+        if (mode < 2) {
+          const whole = mode === 1
+          cw = whole ? vw : Math.round(vw * 0.8)
+          ch = whole ? vh : Math.round(Math.min(vh * 0.5, cw * 0.5))
+          canvas.width = cw
+          canvas.height = ch
+          ctx.drawImage(v, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, cw, ch)
+        } else {
+          const ang = ((mode === 2 ? 30 : -30) * Math.PI) / 180
+          cw = Math.round(vw * 0.8)
+          ch = Math.round(vh * 0.8)
+          canvas.width = cw
+          canvas.height = ch
+          ctx.save()
+          ctx.fillStyle = '#fff'
+          ctx.fillRect(0, 0, cw, ch)
+          ctx.translate(cw / 2, ch / 2)
+          ctx.rotate(ang)
+          ctx.drawImage(v, -vw / 2, -vh / 2, vw, vh)
+          ctx.restore()
+        }
         try {
           const res = await readBarcodes(ctx.getImageData(0, 0, cw, ch), readerOptions)
           const hit = res.find((r) => r.isValid && r.text)
@@ -346,16 +362,13 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
 }
 
 export function ScanPage() {
-  const autoOpen = useStore(autoOpenStore)
   const history = useStore(scanHistory)
   const [result, setResult] = useState<GS1Result | null>(null)
   const [manual, setManual] = useState('')
-  const [blocked, setBlocked] = useState(false)
 
   const handle = (code: string) => {
     const r = parseGS1(code)
     setResult(r)
-    setBlocked(false)
     try {
       navigator.vibrate?.(30)
     } catch {
@@ -364,7 +377,6 @@ export function ScanPage() {
     if (!r.gtin) return
     addScan(r)
     fillName(r.gtin)
-    if (autoOpenStore.get() && !openExternal(PMDA.url(r.gtin))) setBlocked(true)
   }
   const cam = useScanner(handle, false, useCameraOn())
 
@@ -383,26 +395,13 @@ export function ScanPage() {
       {result && (
         <Section header="読み取り結果">
           {result.gtin ? (
-            <>
-              {memoFor(history, result.gtin) && (
-                <div class="row">
-                  <b>{memoFor(history, result.gtin)}</b>
-                </div>
-              )}
-              <LabeledRow label="GTIN" value={result.gtin} />
-              <OtcBadge gtin={result.gtin} />
-              <LimitBadge gtin={result.gtin} />
-              <RmpBadge gtin={result.gtin} />
-              {result.expiry && <LabeledRow label="有効期限" value={result.expiry} />}
-              {result.lot && <LabeledRow label="ロット" value={result.lot} />}
-              {result.quantity && <LabeledRow label="数量" value={result.quantity} />}
-              <div class="row">
-                <button class="primary-btn" onClick={() => openExternal(PMDA.url(result.gtin!))}>
-                  <FileText size={20} /> 添付文書を開く
-                </button>
-              </div>
-              {blocked && <div class="row small sub">自動で開けませんでした（ブラウザがポップアップを止めました）。上のボタンで開いてください。</div>}
-            </>
+            <ScanSummary
+              gtin={result.gtin}
+              memo={memoFor(history, result.gtin)}
+              detail={[`GTIN ${result.gtin}`, result.expiry && `有効期限 ${result.expiry}`, result.lot && `ロット ${result.lot}`, result.quantity && `数量 ${result.quantity}`]
+                .filter(Boolean)
+                .join('・')}
+            />
           ) : (
             <>
               <WarningRow>医薬品のコード（GTIN）が見つかりませんでした</WarningRow>
@@ -414,7 +413,9 @@ export function ScanPage() {
         </Section>
       )}
       <Section footer="PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、枠いっぱいに写すと読みやすくなります。ピントが合わないときは、倍率を2×か3×にして少し離すか、映像を押してピントを合わせ直してください。それでもぼやけるときは、右上の「カメラ」で別のカメラに切り替えてください（選んだカメラは次も使います）。">
-        <Toggle label="読み取ったらすぐ添付文書を開く" value={autoOpen} onChange={(v) => autoOpenStore.set(v)} />
+        <div class="row small sub" style={{ display: 'block' }}>
+          読み取ると、OTC類似薬・選定療養・投与日数・RMP資材の判定が出ます。オレンジの「！」は該当あり、グレーは該当なしです。押すと詳しい画面が開きます。添付文書は「添付文書を開く」で開きます。
+        </div>
       </Section>
       <Section header="手入力">
         <div class="row">

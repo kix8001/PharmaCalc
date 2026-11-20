@@ -146,7 +146,7 @@ export function rmpForYj(d: RmpData, yj: string[], names: string[]): { items: Rm
 }
 
 /** バーコードの読み取り結果から、当たる品目を調べる */
-async function rmpForLookup(r: Lookup): Promise<{ items: RmpItem[]; exact: boolean }> {
+export async function rmpForLookup(r: Lookup): Promise<{ items: RmpItem[]; exact: boolean }> {
   if (r.kind !== 'found') return { items: [], exact: false }
   const [d, otc] = await Promise.all([loadRmp(), loadOtc()])
   return rmpForYj(d, r.yj, r.yj.map((y) => productName(otc, y)))

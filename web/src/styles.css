@@ -289,3 +289,24 @@ a.row { text-decoration: none; }
 .rmp-scope.out { color: var(--sub); }
 .cam-resume { display: block; margin: 14px auto 0; min-height: 44px; padding: 0 18px; border-radius: 22px; background: #fff; color: #000; font-size: 16px; font-weight: 700; }
 .rmp-more { justify-content: space-between; width: 100%; }
+/* スキャンの読み取り結果 */
+.scan-card { display: block; }
+.scan-head { padding: 12px 16px 4px; }
+.scan-name { font-size: 19px; font-weight: 700; line-height: 1.35; }
+.scan-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; }
+.scan-tile { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid; text-align: left; min-height: 56px; }
+.scan-tile:disabled { cursor: default; }
+.scan-tile-ic { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 17px; flex: none; }
+.scan-tile-tx { display: flex; flex-direction: column; min-width: 0; }
+.scan-tile-t { font-size: 12px; line-height: 1.2; }
+.scan-tile-v { font-size: 15px; font-weight: 800; line-height: 1.25; }
+.scan-tile.yes { background: var(--orange-soft); border-color: var(--orange); }
+.scan-tile.yes .scan-tile-ic { background: var(--orange); }
+.scan-tile.yes .scan-tile-t { color: var(--sub); }
+.scan-tile.yes .scan-tile-v { color: var(--orange); }
+.scan-tile.no { background: var(--fill); border-color: var(--line); }
+.scan-tile.no .scan-tile-ic { background: var(--fill2); color: var(--faint); }
+.scan-tile.no .scan-tile-t, .scan-tile.no .scan-tile-v { color: var(--faint); }
+.scan-tile.no .scan-tile-v { font-weight: 700; }
+.scan-btns { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px 14px; }
+.scan-mat-t { text-align: center; margin-top: 4px; }
