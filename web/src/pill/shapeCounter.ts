@@ -277,57 +277,218 @@ export interface PillSize {
 }
 
 /**
- * 指で囲んだ1錠から、長さ・幅・色を測る。四角の中心から36方向へ進み、最初の強い輪郭までの距離を測って
+ * 見本の1錠（タップした点、または囲んだ四角の中心）から、長さ・幅・色を測る。
+ * 中心の色を錠剤の色とし、36方向へ進んで色が変わる所（錠剤の縁）までの距離を測り、
  * 向かい合う2方向の和（差し渡し）の最大を長さ、最小を幅とする
  */
-export function measureSample(rgba: Uint8ClampedArray, W: number, H: number, r: Rect): PillSize | null {
-  const x0 = Math.max(0, Math.floor(r.x)), y0 = Math.max(0, Math.floor(r.y))
-  const x1 = Math.min(W, Math.ceil(r.x + r.w)), y1 = Math.min(H, Math.ceil(r.y + r.h))
-  const w = x1 - x0, h = y1 - y0
-  if (w < 8 || h < 8) return null
+export function measureSample(rgba: Uint8ClampedArray, W: number, H: number, r: Rect, hint?: PillSize): PillSize | null {
+  const cx = Math.round(r.x + r.w / 2), cy = Math.round(r.y + r.h / 2)
+  if (cx < 2 || cy < 2 || cx >= W - 2 || cy >= H - 2) return null
+  // 3×3 の平均の色
+  const at = (x: number, y: number): [number, number, number] | null => {
+    const xi = Math.round(x), yi = Math.round(y)
+    if (xi < 1 || yi < 1 || xi >= W - 1 || yi >= H - 1) return null
+    const c: [number, number, number] = [0, 0, 0]
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const k = ((yi + dy) * W + xi + dx) * 4
+        c[0] += rgba[k] / 9
+        c[1] += rgba[k + 1] / 9
+        c[2] += rgba[k + 2] / 9
+      }
+    return c
+  }
+  // 錠剤の色：中心の周り（刻印を避けるため 5×5 の点の中央値）
+  const pts: [number, number, number][] = []
+  for (let dy = -4; dy <= 4; dy += 2) for (let dx = -4; dx <= 4; dx += 2) {
+    const c = at(cx + dx, cy + dy)
+    if (c) pts.push(c)
+  }
+  const med = (i: number) => pts.map((p) => p[i]).sort((a, b) => a - b)[pts.length >> 1]
+  const col: [number, number, number] = [med(0), med(1), med(2)]
+  const maxR = hint ? Math.max(12, hint.L * 0.9) : Math.max(20, Math.min(W, H) / 4)
+  // 輪郭（タップした点の周りだけ）
+  const x0 = Math.max(0, Math.floor(cx - maxR - 2)), y0 = Math.max(0, Math.floor(cy - maxR - 2))
+  const x1 = Math.min(W, Math.ceil(cx + maxR + 2)), y1 = Math.min(H, Math.ceil(cy + maxR + 2))
+  const lw = x1 - x0, lh = y1 - y0
   const rgb: Plane[] = [0, 1, 2].map((c) => {
-    const v = new Float32Array(w * h)
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) v[y * w + x] = rgba[((y0 + y) * W + x0 + x) * 4 + c]
-    return { w, h, v }
+    const v = new Float32Array(lw * lh)
+    for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) v[y * lw + x] = rgba[((y0 + y) * W + x0 + x) * 4 + c]
+    return { w: lw, h: lh, v }
   })
-  const e = edges(rgb, Math.max(1, Math.round(Math.min(w, h) / 40)), 0.3)
-  const cx = w / 2, cy = h / 2
-  const maxR = Math.hypot(w, h) / 2
-  const dist: number[] = []
+  const e = edges(rgb, 1, 0.3)
+  // 色の差の基準：周りでいちばん違う色との差の45%（30以上）
+  let big = 0
+  const prof: { d: number; edge: boolean }[][] = []
   for (let q = 0; q < 36; q++) {
     const th = (2 * Math.PI * q) / 36, dx = Math.cos(th), dy = Math.sin(th)
-    let found = maxR
-    // 中心の刻印を拾わないよう、短い方の辺の15%より外から
-    for (let t = Math.min(w, h) * 0.15; t < maxR; t += 0.5) {
-      const xi = Math.round(cx + dx * t), yi = Math.round(cy + dy * t)
-      if (xi < 0 || yi < 0 || xi >= w || yi >= h) break
-      const i = yi * w + xi
-      if (e.isEdge[i] && Math.abs(e.ux[i] * dx + e.uy[i] * dy) > 0.5) {
-        found = t
+    const row: { d: number; edge: boolean }[] = []
+    for (let t = 1; t < maxR; t += 1) {
+      const px = cx + dx * t, py = cy + dy * t
+      const c = at(px, py)
+      if (!c) break
+      const d = Math.hypot(c[0] - col[0], c[1] - col[1], c[2] - col[2])
+      const li = Math.round(py - y0) * lw + Math.round(px - x0)
+      const edge = !!e.isEdge[li] && Math.abs(e.ux[li] * dx + e.uy[li] * dy) > 0.6
+      row.push({ d, edge })
+      if (d > big) big = d
+    }
+    prof.push(row)
+  }
+  const T = Math.max(30, big * 0.45)
+  const dist: number[] = []
+  for (const row of prof) {
+    // 色が2画素続けて変わる所か、外向きの強い輪郭（となりの錠剤とのくぼみ）の早い方。中心の3画素は刻印を避けて見ない
+    let f = row.length
+    for (let t = 3; t + 1 < row.length; t++)
+      if ((row[t].d > T && row[t + 1].d > T) || (row[t].edge && row[t].d > T * 0.35)) {
+        f = t + 1
         break
       }
-    }
-    dist.push(found)
+    dist.push(f)
   }
+  // 錠剤は左右対称なので、向かい合う2方向の短い方の2倍を差し渡しとする（となりの錠剤に突き抜けた方向を使わない）。
+  // タップが中心からずれていても、幅の向きは両側の和で正しく出る
   let L = 0, Wd = Infinity, ang = 0
   for (let q = 0; q < 18; q++) {
-    const D = dist[q] + dist[q + 18]
+    const a = dist[q], b = dist[q + 18]
+    const sum = a + b
+    const sym = 2 * Math.min(a, b)
+    if (sum < Wd) Wd = sum
+    // 長さ：片側が突き抜けていなければ和、突き抜けていそうなら短い方の2倍
+    const D = Math.max(a, b) > 1.6 * Math.min(a, b) && Math.max(a, b) > 0.9 * maxR ? sym : sum
     if (D > L) (L = D), (ang = (2 * Math.PI * q) / 36)
-    if (D < Wd) Wd = D
   }
-  // 色（中心付近の中央値）
-  const cr: number[] = [], cg: number[] = [], cb: number[] = []
-  const rr = Math.max(2, Wd * 0.2)
-  for (let y = Math.round(cy - rr); y <= cy + rr; y++)
-    for (let x = Math.round(cx - rr); x <= cx + rr; x++) {
-      const i = y * w + x
-      cr.push(rgb[0].v[i])
-      cg.push(rgb[1].v[i])
-      cb.push(rgb[2].v[i])
-    }
-  const med = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1]
   if (!isFinite(Wd) || Wd < 4) return null
-  return { L, W: Wd, angle: ang, color: [med(cr), med(cg), med(cb)] }
+  // 仕上げ：長さ・幅・向き・中心を少しずつ変えて、縁に輪郭がいちばんよく乗る形を選ぶ
+  // 中が錠剤の色か（1/0）
+  const colAt = (lx: number, ly: number) => {
+    const c = at(lx + x0, ly + y0)
+    return c && Math.hypot(c[0] - col[0], c[1] - col[1], c[2] - col[2]) < T ? 1 : 0
+  }
+  const lx = cx - x0, ly = cy - y0
+  const range = (lo: number, hi: number, st: number) => Array.from({ length: Math.round((hi - lo) / st) + 1 }, (_, i) => lo + i * st)
+  const deg = Math.PI / 180
+  let g
+  if (hint) {
+    // 測り直し：見本の大きさの近くだけ
+    g = fitPill(e, colAt, lx, ly, hint.W, range(0.9, 1.1, 0.05).map((k) => (hint.L / hint.W) * k), range(0.85, 1.15, 0.05), range(-10, 10, 10).map((d) => hint.angle + d * deg), hint.W * 0.2, Math.max(1, hint.W / 8))
+  } else {
+    // 粗く：幅は光線の測りの前後、長さは幅の1〜3.6倍、向き10°ごと、中心はタップから幅の0.6倍まで
+    const c = fitPill(e, colAt, lx, ly, Wd, range(1, 3.5, 0.25), [0.8, 0.9, 1, 1.1, 1.2], range(0, 165, 15).map((d) => d * deg), Wd * 0.6, Math.max(1, Wd / 4))
+    // 細かく
+    const rt = c.L / c.W
+    g = fitPill(e, colAt, c.x, c.y, c.W, range(rt * 0.9, rt * 1.1, rt * 0.025), range(0.9, 1.1, 0.025), range(-10, 10, 2.5).map((d) => c.ang + d * deg), Math.max(2, c.W / 6), 1)
+  }
+  if (g.sc <= 0) return null
+  return { L: g.L, W: g.W, angle: g.ang, color: col }
+}
+
+/**
+ * 楕円・長い錠剤を数える。いったん数えたあと、はっきり見つかった錠剤（強い順に6つ）で大きさを測り直し、
+ * 見本の大きさと5%以上違えば、測り直した大きさでもう一度数える（タップした見本がずれていても合うように）
+ */
+export function analyzeOblong(rgba: Uint8ClampedArray, W: number, H: number, sensitivity: number, roi: Rect | null, size: PillSize): { markers: PillMarker[]; unitRadius: number } {
+  // 長さの選び直し：見本の1錠だけでは、となりの錠剤とくっついた端が分かりにくい。
+  // 幅は見本のまま、長さを幅の1.4〜3.4倍で試しに数え、見つかった錠剤の縁がいちばんよく合う長さを選ぶ
+  let cur = size
+  let bestFit = analyzeOblongOnce(rgba, W, H, sensitivity, roi, cur, true).fit
+  const tryL = (L: number) => {
+    const f = analyzeOblongOnce(rgba, W, H, sensitivity, roi, { ...size, L }, true).fit
+    if (f > bestFit + 0.01) (bestFit = f), (cur = { ...size, L })
+  }
+  // 粗く（0.4きざみ）→ いちばん良い長さの前後（±0.2）
+  for (let rho = 1.4; rho <= 3.41; rho += 0.4) if (Math.abs(size.W * rho - size.L) > size.W * 0.15) tryL(size.W * rho)
+  const c0 = cur.L / size.W
+  for (const d of [-0.2, 0.2]) tryL(size.W * (c0 + d))
+  // 幅も（タップした場所で少しずれるので）前後を試す
+  const base = cur
+  for (const ws of [0.8, 0.9, 1.1, 1.2]) {
+    const z = { ...base, W: base.W * ws }
+    const f = analyzeOblongOnce(rgba, W, H, sensitivity, roi, z, true).fit
+    if (f > bestFit + 0.01) (bestFit = f), (cur = z)
+  }
+  let res = analyzeOblongOnce(rgba, W, H, sensitivity, roi, cur)
+  if (DEBUG) DEBUG.push({ x: cur.L, y: cur.W, why: 'size1', v: bestFit })
+  // 測り直しは1回だけ（長さは上で選んだので、主に幅を合わせる）
+  for (let it = 0; it < 1; it++) {
+    if (res.markers.length < 4) break
+    const Ls: number[] = [], Ws: number[] = []
+    res.markers.slice(0, 5).forEach((m, i) => {
+      const z = measureSample(rgba, W, H, { x: m.x, y: m.y, w: 0, h: 0 }, { ...cur, angle: res.angles[i] })
+      if (z) (Ls.push(z.L), Ws.push(z.W))
+    })
+    if (Ls.length < 3) break
+    const med = (a: number[]) => a.sort((p, q) => p - q)[a.length >> 1]
+    const L2 = med(Ls), W2 = med(Ws)
+    if (Math.abs(L2 - cur.L) < cur.L * 0.06 && Math.abs(W2 - cur.W) < cur.W * 0.06) break
+    cur = { ...cur, L: L2, W: W2 }
+    if (DEBUG) DEBUG.push({ x: cur.L, y: cur.W, why: 'size2', v: 0 })
+    res = analyzeOblongOnce(rgba, W, H, sensitivity, roi, cur)
+  }
+  return { markers: res.markers, unitRadius: res.unitRadius }
+}
+
+/**
+ * 長さ・幅・向き・中心を変えて、カプセル形の縁（40か所）に向きのそろった輪郭が乗り、中（15か所）が錠剤の色である割合が
+ * いちばん高い形を選ぶ。粗く探してから、いちばん良い形の近くを細かく探す
+ */
+function fitPill(
+  e: Edges,
+  colAt: (x: number, y: number) => number,
+  cx: number,
+  cy: number,
+  Wg: number,
+  ratios: number[],
+  wScale: number[],
+  angles: number[],
+  off: number,
+  offStep: number,
+): { L: number; W: number; ang: number; x: number; y: number; sc: number } {
+  let best = { L: Wg * 2, W: Wg, ang: 0, x: cx, y: cy, sc: -1 }
+  const N = 40
+  for (const ws of wScale) {
+    const W = Wg * ws, r = W / 2
+    for (const rt of ratios) {
+      const L = W * rt, a = Math.max(0, (L - W) / 2)
+      for (const ang of angles) {
+        const ux = Math.cos(ang), uy = Math.sin(ang)
+        for (let oy = -off; oy <= off + 1e-6; oy += offStep)
+          for (let ox = -off; ox <= off + 1e-6; ox += offStep) {
+            const x = cx + ox, y = cy + oy
+            let hit = 0
+            for (let q = 0; q < N; q++) {
+              const th = (2 * Math.PI * q) / N
+              const nx0 = Math.cos(th), ny0 = Math.sin(th)
+              const along = nx0 > 0.25 ? a : nx0 < -0.25 ? -a : ((q % 4) / 1.5 - 1) * a
+              const bx = along + r * nx0, by = r * ny0
+              const px = x + bx * ux - by * uy, py = y + bx * uy + by * ux
+              const nx = nx0 * ux - ny0 * uy, ny = nx0 * uy + ny0 * ux
+              for (const s of [0, -1, 1]) {
+                const xi = Math.round(px + s * nx), yi = Math.round(py + s * ny)
+                if (xi < 0 || yi < 0 || xi >= e.w || yi >= e.h) continue
+                const i = yi * e.w + xi
+                if (e.isEdge[i] && Math.abs(e.ux[i] * nx + e.uy[i] * ny) > 0.7) {
+                  hit++
+                  break
+                }
+              }
+            }
+            // 中が錠剤の色か（縁の0.6倍の内側）
+            let inside = 0
+            for (let i = -2; i <= 2; i++)
+              for (let j = -1; j <= 1; j++) {
+                const al = (i / 2) * (a + r * 0.6), ac = j * r * 0.6
+                inside += colAt(x + al * ux - ac * uy, y + al * uy + ac * ux)
+              }
+            // 縁に乗る割合×中が錠剤の色の割合（長さは数えるときに選び直す）
+            const sc = (hit / N) * (inside / 15)
+            if (sc > best.sc) best = { L, W, ang, x, y, sc }
+          }
+      }
+    }
+  }
+  return best
 }
 
 /** 調整用：理由つきで落とした候補を集める（ふだんは null） */
@@ -340,15 +501,16 @@ const NT = 18 // 向きの数（10°ずつ）
  * 1錠の大きさが分かっているときの数え方。輪郭の各点から「この点がカプセル形の縁なら中心はここ」という点に
  * 向きごとに投票し、票の山を錠剤とする（丸い錠剤の円の検出を、細長い形に広げたもの）
  */
-export function analyzeOblong(
+function analyzeOblongOnce(
   rgba: Uint8ClampedArray,
   W: number,
   H: number,
   sensitivity: number,
   roi: Rect | null,
   size: PillSize,
-): { markers: PillMarker[]; unitRadius: number } {
-  const empty = { markers: [], unitRadius: 12 }
+  quick = false,
+): { markers: PillMarker[]; unitRadius: number; angles: number[]; fit: number } {
+  const empty = { markers: [] as PillMarker[], unitRadius: 12, angles: [] as number[], fit: 0 }
   let x0 = 0, y0 = 0, x1 = W, y1 = H
   if (roi) {
     x0 = Math.max(0, Math.floor(roi.x))
@@ -359,7 +521,8 @@ export function analyzeOblong(
   const w0 = x1 - x0, h0 = y1 - y0
   if (w0 < 24 || h0 < 24) return empty
   // 錠剤の幅が 14 画素くらいになるよう縮める
-  const k = Math.max(1, Math.floor(size.W / 14))
+  // 錠剤の幅が 14 画素（試しに数えるときは 9 画素）くらいになるよう縮める
+  const k = Math.max(1, Math.floor(size.W / (quick ? 8 : 14)))
   let rgb: Plane[] = [0, 1, 2].map((c) => {
     const v = new Float32Array(w0 * h0)
     for (let y = 0; y < h0; y++) for (let x = 0; x < w0; x++) v[y * w0 + x] = rgba[((y0 + y) * W + x0 + x) * 4 + c]
@@ -379,24 +542,29 @@ export function analyzeOblong(
     const xi = Math.round(x), yi = Math.round(y)
     if (xi >= 0 && xi < w && yi >= 0 && yi < h) A[yi * w + xi] += v
   }
+  // 大きさが見本と少し違っても拾えるよう、3つの大きさで投票する
+  const scales = quick ? [1] : [0.88, 1, 1.12]
   for (let j = 0; j < e.xs.length; j++) {
     const px = e.xs[j], py = e.ys[j]
     for (const s of [1, -1]) {
       // 外向きの法線（錠剤が背景より明るいか暗いか分からないので両向き）
       const nx = s * e.ex[j], ny = s * e.ey[j]
-      const bx = px - r * nx, by = py - r * ny
-      for (let t = 0; t < NT; t++) {
-        const ux = cosT[t], uy = sinT[t]
-        const dd = nx * ux + ny * uy
-        const A = acc[t]
-        if (Math.abs(dd) < 0.3) {
-          // 平らな側面：中心は長い向きの線の上のどこか
-          const steps = Math.max(1, Math.round(a))
-          for (let q = -steps; q <= steps; q++) add(A, bx - (q / steps) * a * ux, by - (q / steps) * a * uy, 1 / Math.sqrt(steps))
-        } else {
-          // 丸い端
-          const sg = dd > 0 ? 1 : -1
-          add(A, bx - sg * a * ux, by - sg * a * uy, 1)
+      for (const sc of scales) {
+        const rr = r * sc, aa = a * sc
+        const bx = px - rr * nx, by = py - rr * ny
+        for (let t = 0; t < NT; t++) {
+          const ux = cosT[t], uy = sinT[t]
+          const dd = nx * ux + ny * uy
+          const A = acc[t]
+          if (Math.abs(dd) < 0.3) {
+            // 平らな側面：中心は長い向きの線の上のどこか
+            const steps = Math.max(1, Math.round(aa))
+            for (let q = -steps; q <= steps; q++) add(A, bx - (q / steps) * aa * ux, by - (q / steps) * aa * uy, 1 / Math.sqrt(steps))
+          } else {
+            // 丸い端
+            const sg = dd > 0 ? 1 : -1
+            add(A, bx - sg * aa * ux, by - sg * aa * uy, 1)
+          }
         }
       }
     }
@@ -429,6 +597,7 @@ export function analyzeOblong(
   const minV = ref * (0.45 - 0.3 * (sensitivity - 0.5))
   // 強い順に、すでに採った錠剤の中に入る物は除く
   const taken: { x: number; y: number; t: number; v: number }[] = []
+  const fits: number[] = []
   const inside = (x: number, y: number, c: { x: number; y: number; t: number }, shrink: number) => {
     const ux = cosT[c.t], uy = sinT[c.t]
     const dx = x - c.x, dy = y - c.y
@@ -452,8 +621,14 @@ export function analyzeOblong(
       if (c.v >= minV) why('nms')
       continue
     }
-    if (!outlineOk(e, x, y, t, a, r, cosT, sinT)) {
+    const of = outlineFrac(e, x, y, t, a, r, cosT, sinT)
+    if (of < 0.55) {
       why('outline')
+      continue
+    }
+    if (quick) {
+      taken.push(me)
+      fits.push(outlineFrac(e, x, y, t, a, r, cosT, sinT, true))
       continue
     }
     if (!contrastOk(rgb, x, y, t, a, r, cosT, sinT, size.color)) {
@@ -474,6 +649,9 @@ export function analyzeOblong(
   return {
     markers: taken.map((c) => ({ id: nextMarkerId(), x: x0 + (c.x + 0.5) * k, y: y0 + (c.y + 0.5) * k, count: 1 })),
     unitRadius: (size.W / 2) * 0.9,
+    angles: taken.map((c) => (Math.PI * c.t) / NT),
+    // 試しに数えたときの「縁の合い方」：強い順に10錠の平均（見つかった数が少なければ0）
+    fit: fits.length >= 5 ? fits.slice(0, 10).reduce((p, q) => p + q, 0) / Math.min(10, fits.length) : 0,
   }
 }
 
@@ -563,8 +741,8 @@ function colorOk(rgb: Plane[], x: number, y: number, t: number, a: number, r: nu
   return dist < 45 + 40 * (sens - 0.5) && sd < 22
 }
 
-/** 予想したカプセル形の縁の20か所のうち、輪郭がある所が半分以上か */
-function outlineOk(e: Edges, x: number, y: number, t: number, a: number, r: number, cosT: number[], sinT: number[]): boolean {
+/** 予想したカプセル形の縁の20か所のうち、輪郭がある所の割合 */
+function outlineFrac(e: Edges, x: number, y: number, t: number, a: number, r: number, cosT: number[], sinT: number[], graded = false): number {
   const ux = cosT[t], uy = sinT[t]
   let hit = 0, tot = 0
   for (let q = 0; q < 20; q++) {
@@ -576,15 +754,16 @@ function outlineOk(e: Edges, x: number, y: number, t: number, a: number, r: numb
     const px = x + ex0 * ux - ey0 * uy, py = y + ex0 * uy + ey0 * ux
     const nx = nx0 * ux - ny0 * uy, ny = nx0 * uy + ny0 * ux
     tot++
-    for (let s = -2; s <= 2; s++) {
+    // graded：縁ちょうどに輪郭があれば1、1画素ずれで0.6、2画素ずれで0.25（大きさの合い方を細かく比べる）
+    for (const s of [0, -1, 1, -2, 2]) {
       const xi = Math.round(px + s * nx), yi = Math.round(py + s * ny)
       if (xi < 0 || yi < 0 || xi >= e.w || yi >= e.h) continue
       const i = yi * e.w + xi
       if (e.isEdge[i] && Math.abs(e.ux[i] * nx + e.uy[i] * ny) > 0.6) {
-        hit++
+        hit += graded ? [1, 0.6, 0.6, 0.25, 0.25][[0, -1, 1, -2, 2].indexOf(s)] : 1
         break
       }
     }
   }
-  return hit >= tot * 0.55
+  return hit / tot
 }

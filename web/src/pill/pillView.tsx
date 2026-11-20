@@ -75,8 +75,17 @@ export function PillCountPage() {
     const id = ++jobSeq
     job.current = id
     const w = getWorker()
-    w.onmessage = (e: MessageEvent<{ job: number; markers: PillMarker[]; unitRadius: number }>) => {
+    w.onmessage = (e: MessageEvent<{ job: number; markers: PillMarker[]; unitRadius: number; noSample?: boolean }>) => {
       if (e.data.job !== job.current) return
+      if (e.data.noSample) {
+        // タップした所から錠剤の形が分からなかった
+        setBusy(false)
+        setSample(null)
+        setSampling(true)
+        setError('見本の錠剤が分かりませんでした。ほかと離れている錠剤の真ん中をタップし直してください。')
+        return
+      }
+      setError('')
       setMarkers(e.data.markers.map((m) => ({ ...m, id: nextMarkerId() })))
       setRadius(e.data.unitRadius)
       setBusy(false)
@@ -156,7 +165,7 @@ export function PillCountPage() {
           <Section
             footer={
               sampling ? (
-                <span style={{ color: 'var(--orange)' }}>数える錠剤のうち、ほかと離れている1錠を、指でなぞって四角でぴったり囲んでください（大きさと色を覚えます）。</span>
+                <span style={{ color: 'var(--orange)' }}>数える錠剤を1錠タップしてください（なるべく錠剤の真ん中を。大きさと色を覚えて、同じ形の錠剤を数えます）。</span>
               ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
@@ -171,6 +180,7 @@ export function PillCountPage() {
               radius={radius}
               roi={roi}
               selecting={selecting || sampling}
+              pointMode={sampling}
               busy={busy}
               onSelect={(r) => {
                 if (sampling) {
@@ -192,7 +202,7 @@ export function PillCountPage() {
           </Section>
           <Section>
             {shape === 'any' && (
-              <ButtonRow onClick={() => setSampling((s) => !s)}>{sampling ? '囲むのをやめる' : '見本の1錠を囲み直す'}</ButtonRow>
+              <ButtonRow onClick={() => setSampling((s) => !s)}>{sampling ? '選ぶのをやめる' : '見本の1錠を選び直す'}</ButtonRow>
             )}
             <ButtonRow icon={<Crop size={20} />} onClick={() => setSelecting((s) => !s)}>
               {selecting ? '範囲の指定をやめる' : '数える範囲を指定'}
@@ -243,6 +253,8 @@ function MarkedImage(props: {
   radius: number
   roi: Rect | null
   selecting: boolean
+  /** 見本の1錠を選ぶとき：タップ（点）でも四角でもよい */
+  pointMode?: boolean
   busy: boolean
   onSelect: (r: Rect) => void
 }) {
@@ -304,7 +316,8 @@ function MarkedImage(props: {
         if (props.selecting) {
           if (drag) {
             const r = { x: Math.min(drag.x0, drag.x1), y: Math.min(drag.y0, drag.y1), w: Math.abs(drag.x1 - drag.x0), h: Math.abs(drag.y1 - drag.y0) }
-            if (r.w * scale() > 20 && r.h * scale() > 20) props.onSelect(r)
+            if (props.pointMode && Math.max(r.w, r.h) * scale() < 20) props.onSelect({ x: drag.x0, y: drag.y0, w: 0, h: 0 })
+            else if (props.pointMode ? Math.max(r.w, r.h) * scale() >= 20 : r.w * scale() > 20 && r.h * scale() > 20) props.onSelect(r)
           }
           setDrag(null)
           return
