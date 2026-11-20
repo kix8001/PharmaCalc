@@ -162,6 +162,32 @@ export async function lookupGtin(gtin: string): Promise<Lookup> {
   }
 }
 
+/**
+ * 読み取ったコードの薬品名（履歴に自動で入れる名前）。分からなければ null。
+ * PTPシートのコードは添付文書までしか分からず、規格違い（10mg・20mg など）が複数出ることがあるので、
+ * そのときは規格を除いた共通の名前（「フェブキソスタット錠「DSEP」」など）にする
+ */
+export async function nameForGtin(gtin: string): Promise<string | null> {
+  const r = await lookupGtin(gtin)
+  if (r.kind !== 'found') return null
+  const d = await loadOtc()
+  return commonName(r.yj.map((y) => productName(d, y)))
+}
+
+/** 複数の販売名から、規格を除いた共通の名前を作る（共通部分が短すぎれば最初の名前＋「ほか」） */
+export function commonName(names: string[]): string {
+  if (names.length === 1) return names[0]
+  let p = names[0]
+  for (const n of names) while (!n.startsWith(p)) p = p.slice(0, -1)
+  p = p.replace(/[\d.]+$/, '')
+  const rest = names.map((n) => n.slice(p.length))
+  let s = rest[0]
+  for (const n of rest) while (!n.endsWith(s)) s = s.slice(1)
+  s = s.replace(/^[\d.]*(mg|g|μg|mL|%)?/, '')
+  const c = (p + s).trim()
+  return c.length >= 2 ? c : names[0] + ' ほか'
+}
+
 /** 規格の末尾の単位（「60mg1錠」→「錠」、「5%1g」→「g」、「10mL」→「10mL」） */
 export function unitOfSpec(spec: string): string {
   const m = /([\d.]+)([^\d.]+)$/.exec(spec)

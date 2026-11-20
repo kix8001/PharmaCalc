@@ -3,6 +3,7 @@
 ## 概要
 薬剤師向けの電卓アプリ「薬剤師電卓」。社内（ハローナビ https://helloph.co.jp の利用者）向け。
 - 版は3つ：**Web 版**（`web/`、iPhone の利用者はこれを使う。Concrete CMS のパッケージ `concrete/pharmacalc` でハローナビの /pharmacalc に配信）、**Android 版**（`android/`、Kotlin + Jetpack Compose、minSdk 29、`app.pharmacalc.android`。APK を /pharmacalc/android.apk で配る）、**iOS 版**（`PharmaCalc/`、SwiftUI、iOS 16 以上、`app.pharmacalc.ios`。社内配布には使っていないが、そのまま残して作り続けてよい）。
+- **2026年11月20日から iOS 版・Android 版は開発を一旦停止**（ユーザーの指示）。新しい機能・修正は Web 版だけに入れ、iOS・Android のコードと版の番号は触らない。再開の指示があったら、それまでに Web 版に入れた変更を移植する（停止後の Web の変更：履歴の薬品名の自動入力＝1.4.5〜）。
 - **機能は3つでそろえる。とくに Web 版は必ず並行して作る**（iOS・Android に機能を足したり直したりしたら、同じ変更を必ず Web 版にも入れる）。
 - ユーザーへの説明・UI文言・コードコメント・コミットメッセージは日本語。
 - 利用者向けマニュアル：https://claude.ai/artifact/4jcXo5xqVXBD46rbvqjzJq （機能を変えたら合わせて直す）

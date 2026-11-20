@@ -133,4 +133,9 @@ export function addScan(r: GS1Result) {
   })
 }
 
+/** 薬品名が空の履歴に、自動で調べた薬品名を入れる（自分で入れた名前は変えない） */
+export function setAutoName(gtin: string, name: string) {
+  scanHistory.set((items) => items.map((x) => (x.gtin === gtin && !x.memo ? { ...x, memo: name } : x)))
+}
+
 export const memoFor = (items: ScanRecord[], gtin: string) => items.find((x) => x.gtin === gtin)?.memo ?? ''

@@ -7,7 +7,8 @@ import { useNav, useVisible } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { OtcBadge } from '../otc/otcViews'
-import { PMDA, addScan, memoFor, parseGS1, scanHistory, type GS1Result } from './gs1'
+import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
+import { nameForGtin } from '../otc/otcData'
 
 // バーコードを読む部品（zxing-cpp の WebAssembly 版）は、このサイトに置いた物を使う（外部のサーバーから読まない）
 prepareZXingModule({
@@ -188,6 +189,7 @@ export function ScanPage() {
     }
     if (!r.gtin) return
     addScan(r)
+    fillName(r.gtin)
     if (autoOpenStore.get() && !openExternal(PMDA.url(r.gtin))) setBlocked(true)
   }
   const cam = useScanner(handle, false, useCameraOn())
@@ -265,6 +267,34 @@ export function ScanPage() {
   )
 }
 
+/** 履歴の薬品名が空なら、箱のコードの表や PMDA の添付文書から調べて入れる */
+function fillName(gtin: string) {
+  if (memoFor(scanHistory.get(), gtin)) return
+  nameForGtin(gtin)
+    .then((n) => n && setAutoName(gtin, n))
+    .catch(() => {})
+}
+
+/** 前に読んだ履歴で薬品名が空の物も、履歴を開いたときに順に調べて入れる（1回に30件まで） */
+let backfilling = false
+async function backfillNames() {
+  if (backfilling) return
+  backfilling = true
+  try {
+    const gtins = scanHistory
+      .get()
+      .filter((x) => !x.memo)
+      .map((x) => x.gtin)
+      .slice(0, 30)
+    for (const g of gtins) {
+      const n = await nameForGtin(g).catch(() => null)
+      if (n) setAutoName(g, n)
+    }
+  } finally {
+    backfilling = false
+  }
+}
+
 const dateFmt = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 export function HistoryPage() {
@@ -272,6 +302,9 @@ export function HistoryPage() {
   const nav = useNav()
   const [query, setQuery] = useState('')
   const filtered = query ? items.filter((x) => matchesSearch(x.memo + ' ' + x.gtin, query)) : items
+  useEffect(() => {
+    backfillNames()
+  }, [])
   return (
     <Page title="履歴">
       <label class="search">
