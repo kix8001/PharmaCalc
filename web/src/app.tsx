@@ -12,6 +12,7 @@ import {
   ChevronUp,
   BadgePercent,
   BadgeJapaneseYen,
+  FileHeart,
   Hourglass,
   CirclePlus,
   CircleMinus,
@@ -63,6 +64,7 @@ import { HistoryPage, ScanPage } from './barcode/scan'
 import { PillCountPage } from './pill/pillView'
 import { OtcPage, SenteiPage } from './otc/otcViews'
 import { LimitsPage } from './limits/limits'
+import { RmpPage } from './rmp/rmp'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -162,13 +164,23 @@ const items: CalcItem[] = [
   },
   { id: 'fee', title: '薬剤料・窓口負担', short: '負担金', subtitle: '薬価から点数（五捨五超入）と窓口負担', keywords: '点数 薬価 負担 窓口 お金 五捨五超入 保険', icon: JapaneseYen, group: 'insurance', page: () => <FeePage /> },
   { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
+  {
+    id: 'rmp',
+    title: '患者向けRMP資材',
+    short: 'RMP資材',
+    subtitle: 'バーコードや名前で、RMP（医薬品リスク管理計画）の患者向け資材（PDF）を探す',
+    keywords: 'rmp リスク管理計画 患者向け資材 資材 pdf 冊子 カード 指導箋 安全性 バーコード',
+    icon: FileHeart,
+    group: 'tools',
+    page: () => <RmpPage />,
+  },
   { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
 ]
 const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */

@@ -8,6 +8,7 @@ import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { OtcBadge } from '../otc/otcViews'
 import { LimitBadge } from '../limits/limits'
+import { RmpBadge } from '../rmp/rmp'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
 import { nameForGtin } from '../otc/otcData'
 
@@ -329,6 +330,7 @@ export function ScanPage() {
               <LabeledRow label="GTIN" value={result.gtin} />
               <OtcBadge gtin={result.gtin} />
               <LimitBadge gtin={result.gtin} />
+              <RmpBadge gtin={result.gtin} />
               {result.expiry && <LabeledRow label="有効期限" value={result.expiry} />}
               {result.lot && <LabeledRow label="ロット" value={result.lot} />}
               {result.quantity && <LabeledRow label="数量" value={result.quantity} />}

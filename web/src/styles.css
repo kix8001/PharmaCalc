@@ -275,3 +275,15 @@ a.row { text-decoration: none; }
 .zoom-chip.on { background: rgba(255,255,255,.92); color: #000; }
 .cam-switch { position: absolute; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(0,0,0,.55); color: #fff; font-size: 14px; font-weight: 600; }
 .limit-line { color: var(--orange); font-weight: 600; }
+.rmp-tags { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.rmp-tag { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.rmp-tag.inj { background: #e7eaf8; color: #4b5bb0; }
+.rmp-tag.onc { background: var(--orange-soft); color: var(--orange); }
+.rmp-tag.part { background: var(--accent-soft); color: var(--accent); }
+.rmp-star-on { color: #d99a00; fill: #d99a00; vertical-align: -2px; }
+.rmp-pdf { vertical-align: -3px; color: var(--accent); }
+.rmp-scope { display: block; }
+.rmp-scope b { font-size: 11px; color: #fff; background: var(--sub); border-radius: 3px; padding: 0 5px; margin-right: 4px; }
+.rmp-scope.in b { background: var(--accent); }
+.rmp-scope.part b { background: var(--orange); }
+.rmp-scope.out { color: var(--sub); }

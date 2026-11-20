@@ -3,7 +3,7 @@
 ## 概要
 薬剤師向けの電卓アプリ「薬剤師電卓」。社内（ハローナビ https://helloph.co.jp の利用者）向け。
 - 版は3つ：**Web 版**（`web/`、iPhone の利用者はこれを使う。Concrete CMS のパッケージ `concrete/pharmacalc` でハローナビの /pharmacalc に配信）、**Android 版**（`android/`、Kotlin + Jetpack Compose、minSdk 29、`app.pharmacalc.android`。APK を /pharmacalc/android.apk で配る）、**iOS 版**（`PharmaCalc/`、SwiftUI、iOS 16 以上、`app.pharmacalc.ios`。社内配布には使っていないが、そのまま残して作り続けてよい）。
-- **2026年11月20日から iOS 版・Android 版は開発を一旦停止**（ユーザーの指示）。新しい機能・修正は Web 版だけに入れ、iOS・Android のコードと版の番号は触らない。再開の指示があったら、それまでに Web 版に入れた変更を移植する（停止後の Web の変更：履歴の薬品名の自動入力＝1.4.5、カメラの倍率 1×〜4× とタップでピント合わせ直し＝1.4.6、背面カメラの自動選択（camera2 0 優先）と切り替えボタン＝1.4.7、下のタブ名を「メインメニュー」「添付文書」に＝1.4.8、投与日数制限チェック＝1.5.0）。
+- **2026年11月20日から iOS 版・Android 版は開発を一旦停止**（ユーザーの指示）。新しい機能・修正は Web 版だけに入れ、iOS・Android のコードと版の番号は触らない。再開の指示があったら、それまでに Web 版に入れた変更を移植する（停止後の Web の変更：履歴の薬品名の自動入力＝1.4.5、カメラの倍率 1×〜4× とタップでピント合わせ直し＝1.4.6、背面カメラの自動選択（camera2 0 優先）と切り替えボタン＝1.4.7、下のタブ名を「メインメニュー」「添付文書」に＝1.4.8、投与日数制限チェック＝1.5.0、患者向けRMP資材＝1.6.0）。
 - **機能は3つでそろえる。とくに Web 版は必ず並行して作る**（iOS・Android に機能を足したり直したりしたら、同じ変更を必ず Web 版にも入れる）。
 - ユーザーへの説明・UI文言・コードコメント・コミットメッセージは日本語。
 - 利用者向けマニュアル：https://claude.ai/artifact/4jcXo5xqVXBD46rbvqjzJq （機能を変えたら合わせて直す）
@@ -25,6 +25,7 @@
 - `OTC/`：OTC類似薬チェック（令和9年3月1日施行の「OTC類似薬の一部保険外療養」＝薬剤費の4分の1の別途の負担）。データは3つの版で共通の `data/otc.json`（`tools/make_otc.py` で作る。元は `tools/otc_src/` の厚労省の xlsx 3つ（対象医薬品リスト・効能効果／傷病名リスト・妊婦等リスト）と MEDIS の医薬品HOTコードマスター（販売包装単位コード付版。www2.medis.or.jp から取得。マスター本体はリポジトリに置かない））。GTIN→製品は、箱（販売包装単位）のコードなら otc.json の box 表で端末の中だけで分かる。PTPシート（調剤包装単位）のコードは公開のマスターに無いので PMDA の bookSearch/01/{GTIN} の転送先（添付文書番号）→ iyakuDetail/{番号} の HTML から同じ先頭7桁の YJコードを拾う（錠と細粒など複数のことがある）。Web はブラウザから PMDA に直接行けないので、Concrete のパッケージの /pharmacalc/pmda-yj/{GTIN} が代わりに問い合わせる（30日キャッシュ）。特別の料金＝価格の4分の1×投薬全量を10円単位に丸める（5円未満切り捨て・5円以上切り上げ・10円未満は10円）。バーコード画面の読み取り結果にも判定を出す
 - 選定療養チェック（長期収載品の選定療養。令和8年6月から価格差の2分の1、消費税10%を加える）も `OTC/` にある（`OTCKind`／Android `OtcKind`／Web `Kind` で画面を切り替える）。対象医薬品リストは `tools/sentei_src/` の xlsx を make_otc.py が otc.json の `sentei` に入れる（差し替えるときは xlsx を1つだけ置く）。OTC類似薬でもある薬は、OTC類似薬の別途の負担の対象なら選定療養はかからない。バーコード画面には両方の判定を出す。後発医薬品などを読むと、YJコードの先頭9桁（成分・剤形・規格）が同じ長期収載品を「選定療養の対象」として一緒に出す（`senteiBrands`）
 - 投与日数制限チェック（Web 版だけ。`web/src/limits/limits.tsx`）：`data/limits.json` を `tools/make_limits.py` で作る（告示第107号 第十 二 の30日・90日の成分の一覧はツールに文言どおり書いてある。規制区分・効能・効果は PMDA の電子添文 XML の RegulatoryClassificationCode・IndicationsOrEfficacy。薬効分類 11・12・22・81・82 の成分＝YJ7 ごと。XML の無い古い製品の規制区分はツールの KNOWN）。上限＝内用・外用・注射ごとに30日・90日の一覧の成分名で「始まる」成分→その日数、ほかの麻薬・向精神薬→14日。新医薬品の14日は判定しない。同じ適応症（効能・効果の見出し語 INDICATIONS）で上限の無い成分を並べる。バーコード画面にも上限の1行を出す（`LimitBadge`）
+- 患者向けRMP資材（Web 版だけ。`web/src/rmp/rmp.tsx`）：`data/rmp.json` はユーザーがハローナビ用に別に作った HTML ブロック（`tools/rmp_src/`、PMDA「RMP提出品目一覧」2026-11-12取得、311品目）の DATA をそのまま入れた物。並びは rmp.tsx の Row 型。PDF の URL・注射剤・抗がん剤・品目名の短縮（label）は元の HTML ブロックと同じ手順。検索（ひらがな可）、注射剤・抗悪性腫瘍薬の表示切替、登録（localStorage `rmpFavorites`）。バーコードは販売名が一致する品目、無ければ同じ YJ7 の品目。バーコード画面にも資材へのボタン（`RmpBadge`）。データを新しくするときは、新しい HTML ブロックから DATA を取り出して rmp.json を作り直す
 - `Barcode/`：`ScanScreen`／`HistoryScreen` が本体（タブでは `ScanView`／`HistoryView` が NavigationStack で包む。ホームのタイルからは本体を直接開く）。AVFoundation でGS1データバー等を読む `Scanner`、`GS1` 解析、PMDA電子添文URL、読み取り履歴
 - 計算式は画面のフッターに必ず表示する。SwiftUI の `View.Body` と衝突するので型名に `Body` を使わない。
 
