@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { FileText, Flashlight, FlashlightOff, Search, Trash2 } from 'lucide-preact'
+import { FileText, Flashlight, FlashlightOff, Search, SwitchCamera, Trash2 } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { ButtonRow, LabeledRow, Page, Section, Toggle, WarningRow, openExternal } from '../ui/components'
@@ -27,6 +27,31 @@ const readerOptions: ReaderOptions = {
 export const autoOpenStore = persistedStore<boolean>('autoOpen', true)
 /** カメラの倍率（ズームできる端末だけ。0＝まだ選んでいない→2倍で始める） */
 const zoomStore = persistedStore<number>('cameraZoom', 0)
+/** 選んだ背面カメラ（deviceId。空＝自動で選ぶ） */
+const cameraStore = persistedStore<string>('cameraDevice', '')
+
+interface CamInfo {
+  id: string
+  label: string
+}
+
+/** 背面のカメラの一覧（許可を得たあとでないと名前が分からない） */
+async function backCameras(): Promise<CamInfo[]> {
+  const all = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput')
+  const back = all.filter((d) => /back|rear|environment|背面|後面/i.test(d.label))
+  return (back.length ? back : all).map((d) => ({ id: d.deviceId, label: d.label }))
+}
+
+/**
+ * 自動で選ぶカメラ。Android の Chrome では背面カメラが何台も並び、近くにピントが合わない物（超広角・望遠など）が
+ * 選ばれることがあるので、メインのカメラ（名前が「camera2 0」や「camera 0」）を優先する
+ */
+function preferredCamera(cams: CamInfo[]): string | null {
+  const saved = cameraStore.get()
+  if (saved && cams.some((c) => c.id === saved)) return saved
+  const main = cams.find((c) => /camera2? 0\b/i.test(c.label))
+  return main ? main.id : null
+}
 
 type CamState = 'starting' | 'running' | 'denied' | 'unsupported' | 'error'
 
@@ -39,6 +64,11 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   /** ズームできる範囲（できない端末は null） */
   const [zoomMax, setZoomMax] = useState<number | null>(null)
   const [zoom, setZoomState] = useState(1)
+  /** 背面カメラの一覧と、いま使っている物 */
+  const [cams, setCams] = useState<CamInfo[]>([])
+  const [camId, setCamId] = useState('')
+  /** カメラを切り替えたら作り直す */
+  const [restart, setRestart] = useState(0)
   const track = useRef<MediaStreamTrack | null>(null)
   const onCodeRef = useRef(onCode)
   onCodeRef.current = onCode
@@ -60,14 +90,29 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         setState('unsupported')
         return
       }
+      const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        })
+        const saved = cameraStore.get()
+        stream = await navigator.mediaDevices
+          .getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...size } : { facingMode: { ideal: 'environment' }, ...size } })
+          .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...size } }))
       } catch (e) {
         setState((e as DOMException)?.name === 'NotAllowedError' ? 'denied' : 'error')
         return
+      }
+      // 背面カメラが何台もあるときは、メインのカメラに替える
+      try {
+        const list = await backCameras()
+        setCams(list)
+        const cur = stream.getVideoTracks()[0]?.getSettings().deviceId ?? ''
+        const want = preferredCamera(list)
+        if (want && want !== cur && !stop) {
+          stream.getTracks().forEach((t) => t.stop())
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { deviceId: { exact: want }, ...size } })
+        }
+        setCamId(stream.getVideoTracks()[0]?.getSettings().deviceId ?? '')
+      } catch {
+        /* 一覧が取れない端末は、そのままのカメラで */
       }
       if (stop) {
         stream.getTracks().forEach((t) => t.stop())
@@ -144,7 +189,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       setZoomMax(null)
       setState('starting')
     }
-  }, [on])
+  }, [on, restart])
 
   const toggleTorch = async () => {
     const t = track.current
@@ -167,6 +212,13 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       setZoomMax(null)
     }
   }
+  /** 次の背面カメラに切り替える（選んだ物は次も使う） */
+  const switchCamera = () => {
+    if (cams.length < 2) return
+    const i = cams.findIndex((c) => c.id === camId)
+    cameraStore.set(cams[(i + 1) % cams.length].id)
+    setRestart((x) => x + 1)
+  }
   /** 映像を押したら、ピントを合わせ直す */
   const refocus = async () => {
     const t = track.current
@@ -179,7 +231,8 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       /* ピント合わせができない端末 */
     }
   }
-  return { video, state, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus }
+  const camNo = cams.findIndex((c) => c.id === camId) + 1
+  return { video, state, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus, camCount: cams.length, camNo, switchCamera }
 }
 
 /** 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める */
@@ -200,6 +253,11 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
     <div class="camera">
       <video ref={cam.video} playsInline muted autoPlay onClick={cam.refocus} />
       {cam.state === 'running' && <div class="scan-frame" aria-hidden="true" />}
+      {cam.state === 'running' && cam.camCount > 1 && (
+        <button class="cam-switch" onClick={cam.switchCamera} aria-label="カメラを切り替える">
+          <SwitchCamera size={18} /> カメラ {cam.camNo || 1}/{cam.camCount}
+        </button>
+      )}
       {cam.state === 'running' && cam.zoomMax && (
         <div class="zoom-chips">
           {[1, 2, 3, 4]
@@ -289,7 +347,7 @@ export function ScanPage() {
           )}
         </Section>
       )}
-      <Section footer="PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、枠いっぱいに写すと読みやすくなります。ピントが合わないときは、倍率を2×か3×にして少し離すか、映像を押してピントを合わせ直してください。">
+      <Section footer="PTPシートのGS1データバー、箱のGS1-128・JANコードに対応しています。PTPのバーコードは小さいので、枠いっぱいに写すと読みやすくなります。ピントが合わないときは、倍率を2×か3×にして少し離すか、映像を押してピントを合わせ直してください。それでもぼやけるときは、右上の「カメラ」で別のカメラに切り替えてください（選んだカメラは次も使います）。">
         <Toggle label="読み取ったらすぐ添付文書を開く" value={autoOpen} onChange={(v) => autoOpenStore.set(v)} />
       </Section>
       <Section header="手入力">

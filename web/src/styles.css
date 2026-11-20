@@ -273,3 +273,4 @@ a.row { text-decoration: none; }
 .zoom-chips { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 8px; }
 .zoom-chip { min-width: 44px; min-height: 36px; padding: 0 10px; border-radius: 18px; background: rgba(0,0,0,.55); color: #fff; font-size: 15px; font-weight: 600; }
 .zoom-chip.on { background: rgba(255,255,255,.92); color: #000; }
+.cam-switch { position: absolute; top: 10px; right: 10px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(0,0,0,.55); color: #fff; font-size: 14px; font-weight: 600; }
