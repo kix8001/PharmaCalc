@@ -320,3 +320,18 @@ a.row { text-decoration: none; }
 .scan-chip.none { color: var(--faint); background: var(--fill); border-color: var(--line); }
 .scan-chip.kiso { color: var(--exempt); background: var(--card); border-color: var(--exempt); }
 .scan-brand { margin-top: 8px; font-size: 15px; line-height: 1.45; }
+/* 調剤・保管の注意（粉砕・分割・一包化・遮光・温度・湿気） */
+.hd-wrap { padding: 0 12px 6px; }
+.hd-title { padding: 2px 4px 6px; }
+.hd-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.hd-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 9px; border-radius: 9px; border: 1.5px solid; text-align: left; min-height: 48px; }
+.hd-t { font-size: 12px; line-height: 1.2; }
+.hd-v { font-size: 13px; font-weight: 800; line-height: 1.25; }
+.hd-tile.yes { background: var(--orange-soft); border-color: var(--orange); }
+.hd-tile.yes .hd-t { color: var(--sub); }
+.hd-tile.yes .hd-v { color: var(--orange); }
+.hd-tile.no { background: var(--fill); border-color: var(--line); }
+.hd-tile.no .hd-t, .hd-tile.no .hd-v { color: var(--faint); }
+.hd-tile.no .hd-v { font-weight: 700; }
+.hd-q { line-height: 1.6; }
+.hd-src { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--sub); border-radius: 4px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }

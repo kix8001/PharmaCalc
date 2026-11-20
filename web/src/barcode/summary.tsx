@@ -9,6 +9,7 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
+import { HandlingDetailPage, HandlingTiles, handlingFor, loadHandling, type HandlingDoc } from './handling'
 
 /** 4つの判定の1つ。yes＝該当あり（オレンジの「！」）、no＝該当なし（グレー） */
 interface Tile {
@@ -25,12 +26,13 @@ interface Summary {
   tiles: Tile[]
   rmp: RmpItem[]
   generic: GenericInfo | null
+  handling: HandlingDoc | null
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
 async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summary> {
-  const [r, otc, lim, gen] = await Promise.all([lookupGtin(gtin), loadOtc(), loadLimits(), loadGeneric()])
-  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null }
+  const [r, otc, lim, gen, hd] = await Promise.all([lookupGtin(gtin), loadOtc(), loadLimits(), loadGeneric(), loadHandling()])
+  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null }
   const yj = r.yj
   const names = [...new Set(yj.map((y) => productName(otc, y)))]
 
@@ -68,7 +70,7 @@ async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summa
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
@@ -151,6 +153,7 @@ export function ScanSummary({ gtin, memo, detail }: { gtin: string; memo: string
         <>
           {s.generic && <GenericRow g={s.generic} />}
           <Tiles tiles={s.tiles} />
+          {s.handling && <HandlingTiles h={s.handling} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} name={name} gtin={gtin} />)} />}
         </>
       )}
       <div class="scan-btns">
