@@ -9,7 +9,8 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
-import { infoFor, loadInfo, type InfoItem } from './info'
+import { diffText, figUrls, infoFor, loadInfo, type InfoItem } from './info'
+import type { GenericData } from './generic'
 import { HandlingDetailPage, HandlingTiles, handlingFor, ifFor, loadHandling, loadIf, type HandlingDoc, type IfDoc } from './handling'
 
 /** 4つの判定の1つ。yes＝該当あり（オレンジの「！」）、no＝該当なし（グレー） */
@@ -32,7 +33,15 @@ interface Summary {
   /** 添付文書を開く URL */
   doc: string
   /** 製品ごとの YJ コード・薬価・識別コード */
-  products: { yj: string; name: string; info: InfoItem }[]
+  products: Product[]
+}
+
+interface Product {
+  yj: string
+  name: string
+  info: InfoItem
+  /** 薬価を比べる相手（ジェネリックなら先発品、先発品なら最安のジェネリック） */
+  cmp?: { label: string; name: string; price: string }
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
@@ -77,7 +86,7 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: productName(otc, y), info: infoFor(inf, y) })) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: productName(otc, y), info: infoFor(inf, y), cmp: compareTo(gen, inf, y) })) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
@@ -109,11 +118,31 @@ function GenericRow({ g }: { g: GenericInfo }) {
   )
 }
 
+/** 薬価を比べる相手。ジェネリック→先発品（規格・剤形が同じとき）、先発品・準先発品→最安のジェネリック */
+function compareTo(gen: GenericData, inf: Awaited<ReturnType<typeof loadInfo>>, yj: string): Product['cmp'] {
+  const u = gen.u9?.[yj.slice(0, 9)]
+  const g = gen.items[yj] ?? (u ? gen.items[u] : undefined)
+  const own = infoFor(inf, yj)
+  if (g?.k === 'G' && g.b?.length && !g.o) {
+    const b = g.b[0]
+    const p = inf.bp[b]
+    return p ? { label: '先発品', name: gen.names[b] ?? b, price: p } : undefined
+  }
+  if ((g?.k === 'B' || g?.k === 'Q') && own.c) return { label: '最安のジェネリック', name: own.c[0], price: own.c[1] }
+  return undefined
+}
+
 /** 添付文書の URL：コードを読んだときはそのコードで、薬品名で選んだときは箱のコード、無ければ PMDA の成分の一覧 */
 function docUrl(otc: Awaited<ReturnType<typeof loadOtc>>, gtin: string | undefined, yj: string[]): string {
   if (gtin) return PMDA.url(gtin)
   const g = gtinForYj(otc, yj[0])
   return g ? PMDA.url(g) : `https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${yj[0].slice(0, 7)}`
+}
+
+/** 「60mg1錠」→「1錠あたり」、「10%1g」→「1gあたり」 */
+function unitLabel(spec?: string): string {
+  const m = spec && /([\d.]*)([^\d.]+)$/.exec(spec)
+  return m ? `${m[1] && m[1] !== '1' ? m[1] : '1'}${m[2]}あたり` : ''
 }
 
 /** 判定のアイコン（2列×2段） */
@@ -168,10 +197,32 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
               <span class="sub">薬価</span>
               <span>{p.info.p ? `${p.info.p}円${p.info.s ? `（${p.info.s}）` : ''}` : '—'}</span>
             </div>
+            {p.cmp && p.info.p && (
+              <div class="scan-prod-row">
+                <span class="sub">差額</span>
+                <span>
+                  {p.cmp.label === '先発品' ? (
+                    <b class="price-diff">先発品より{diffText(Number(p.info.p), Number(p.cmp.price), unitLabel(p.info.s))}</b>
+                  ) : (
+                    <b class="price-diff">最安のジェネリックは{diffText(Number(p.cmp.price), Number(p.info.p), unitLabel(p.info.s))}</b>
+                  )}
+                  <span class="small sub" style={{ display: 'block' }}>
+                    {p.cmp.name} {p.cmp.price}円
+                  </span>
+                </span>
+              </div>
+            )}
             <div class="scan-prod-row">
               <span class="sub">識別コード</span>
-              <span>{p.info.i ?? <span class="sub">添付文書の図を参照</span>}</span>
+              <span>{p.info.i ?? <span class="sub">{figUrls(p.info.f).length ? '下の図を参照' : '添付文書の図を参照'}</span>}</span>
             </div>
+            {figUrls(p.info.f).length > 0 && (
+              <div class="scan-figs" aria-label="錠剤の図（表・裏・横）">
+                {figUrls(p.info.f).map((u) => (
+                  <img src={u} alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -25,6 +25,8 @@ def fmt_price(p):
 
 # 薬価
 price = {}
+pname = {}
+expiring = set()  # 経過措置で使えなくなる品目（最安のジェネリックに選ばない）
 by9 = {}
 for f in sorted(glob.glob(os.path.join(HERE, "generic_src", "tp*_0[123]_*.xlsx"))):
     ws = openpyxl.load_workbook(f, read_only=True).worksheets[0]
@@ -34,6 +36,9 @@ for f in sorted(glob.glob(os.path.join(HERE, "generic_src", "tp*_0[123]_*.xlsx")
         yj = str(r[1]).strip()
         rec = {"p": fmt_price(float(r[12])), "s": nk(r[3])}
         price[yj] = rec
+        pname[yj] = unicodedata.normalize("NFKC", str(r[7] or "")).strip()
+        if r[13]:
+            expiring.add(yj)
         by9.setdefault(yj[:9], set()).add((rec["p"], rec["s"]))
 p9 = {k: {"p": list(v)[0][0], "s": list(v)[0][1]} for k, v in by9.items() if len(v) == 1}
 
@@ -68,23 +73,75 @@ for d in CACHES:
             if codes and yj not in idc:
                 idc[yj] = " / ".join(codes)[:60]
 
+# 錠剤の図（性状の表の表・裏・横の画像。PMDA の SimpleImageGIF で開く）。今の添付文書（GeneralList に載っている物）だけ
+current = set()
+for d in CACHES:
+    for f in glob.glob(os.path.join(d, "*.html")):
+        current.update(re.findall(r"\d{6}_\d{7}[0-9A-Z]\d{4}_\d_\d+", open(f, encoding="utf-8", errors="ignore").read()))
+fig = {}
+for d in CACHES:
+    for f in glob.glob(os.path.join(d, "*.zip")):
+        doc = os.path.basename(f)[:-4]
+        if doc not in current:
+            continue
+        try:
+            z = zipfile.ZipFile(f)
+            s2 = z.read([n for n in z.namelist() if n.endswith(".xml")][0]).decode("utf-8", "ignore")
+        except Exception:
+            continue
+        brands = {m.group(1): m.group(2) for m in re.finditer(r'<DetailBrandName id="([^"]+)">.*?<YJCode>([0-9A-Z]{12})</YJCode>', s2, re.S)}
+        for m in re.finditer(r'<PropertyForBrand ref="([^"]+)">(.*?)</PropertyForBrand>', s2, re.S):
+            yj = brands.get(m.group(1))
+            sh = re.search(r"<Shape>(.*?)</Shape>", m.group(2), re.S)
+            if not yj or yj in fig or not sh:
+                continue
+            g = re.findall(r'gfname="([^"]+)\.gif"', sh.group(1))[:3]
+            if g:
+                # 画像の名前は「添付文書番号_figNN」がふつう。その形なら番号だけ持つ
+                fig[yj] = [doc] + [x[len(doc) + 1:] if x.startswith(doc + "_") else "!" + x for x in g]
+
+# 先発品（準先発品を含む）→ 同じ成分・規格・剤形のジェネリックで薬価がいちばん安い物（経過措置の品目は除く）
+gen = json.load(open(os.path.join(HERE, "..", "data", "generic.json"), encoding="utf-8"))
+def is_od(n):
+    return bool(re.search(r"OD|口腔内崩壊|D錠|ODフィルム|ゼリー", n))
+
+
+cheap = {}
+for yj, g in gen["items"].items():
+    if g.get("k") != "G" or g.get("o") or yj not in price or yj in expiring:
+        continue
+    for b in g.get("b", []):
+        # 口腔内崩壊錠（OD・D錠）同士、ふつうの錠同士で比べる
+        if is_od(pname[yj]) != is_od(pname.get(b, "")):
+            continue
+        p = float(price[yj]["p"])
+        if b not in cheap or p < cheap[b][1] or (p == cheap[b][1] and pname[yj] < cheap[b][0]):
+            cheap[b] = (pname[yj], p)
+
 out = {}
-for yj in set(price) | set(idc):
+for yj in set(price) | set(idc) | set(fig):
     rec = {}
     if yj in price:
         rec.update(price[yj])
     if yj in idc:
         rec["i"] = idc[yj]
+    if yj in fig:
+        rec["f"] = fig[yj]
+    if yj in cheap:
+        rec["c"] = [cheap[yj][0], fmt_price(cheap[yj][1])]
     out[yj] = rec
 # 統一名収載の製品：一覧に無い YJ は先頭9桁で薬価を引く（識別コードだけある製品にも足す）
 for yj, rec in out.items():
     if "p" not in rec and yj[:9] in p9:
         rec.update(p9[yj[:9]])
+# ジェネリックの比べる相手：先発品の薬価（generic.json の b の1つめ。規格違い・剤形違いは比べない）
+bp = {b: price[b]["p"] for g in gen["items"].values() if g.get("k") == "G" and not g.get("o") for b in g.get("b", [])[:1] if b in price}
 data = {
+    "bp": bp,
     "source": "薬価：厚生労働省「薬価基準収載品目リスト」（令和8年11月13日適用）。識別コード：PMDA 医療用医薬品の電子添文（性状）",
     "items": out,
     "p9": p9,
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-print("薬価", len(price), "識別コード", len(idc), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
+print("薬価", len(price), "識別コード", len(idc), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
