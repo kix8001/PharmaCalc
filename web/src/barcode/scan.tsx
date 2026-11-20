@@ -59,6 +59,12 @@ type CamState = 'starting' | 'running' | 'denied' | 'stopped' | 'unsupported' | 
 
 /** このページで一度でもカメラが動いたか（動いたあとに断られたら「再開」のボタンを出す） */
 let startedOnce = false
+/** 「タップしてカメラを再開」で、押した流れの中で取ったカメラの映像（次の起動でそのまま使う） */
+let pendingStream: MediaStream | null = null
+const SIZE = { width: { ideal: 1920 }, height: { ideal: 1080 } }
+
+/** iPhone・iPad（ホーム画面のアプリは、アプリを離れて戻るとカメラを断ることがある） */
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
 /** カメラの映像を少しずつ読み取る */
 export function useScanner(onCode: (s: string) => void, paused: boolean, on: boolean) {
@@ -89,6 +95,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     let last = ''
     let lastAt = 0
     let frame = 0
+    let wasHidden = false
 
     let tries = 0
     let retryTimer = 0
@@ -97,10 +104,12 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         setState('unsupported')
         return
       }
-      const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
+      const size = SIZE
       try {
         const saved = cameraStore.get()
-        stream = await navigator.mediaDevices
+        const got = pendingStream
+        pendingStream = null
+        stream = got && got.getVideoTracks()[0]?.readyState === 'live' ? got : await navigator.mediaDevices
           .getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...size } : { facingMode: { ideal: 'environment' }, ...size } })
           .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...size } }))
       } catch (e) {
@@ -165,7 +174,14 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     async function loop() {
       if (stop) return
       const v = video.current
-      if (v && v.videoWidth > 0 && !pausedRef.current) {
+      // 隠れている間は読まない。戻ってきたら、同じコードはしばらく読み直さない（添付文書が何度も開かないように）
+      if (document.hidden) {
+        wasHidden = true
+      } else if (wasHidden) {
+        wasHidden = false
+        lastAt = Date.now() + 5000
+      }
+      if (v && v.videoWidth > 0 && !pausedRef.current && !document.hidden) {
         // 1回おきに「枠の中（真ん中の横長の部分）」と「映像全体」を読む。
         // 枠の中だけだとPTPの小さいバーコードが読みやすく、全体なら箱の横長のバーコードがはみ出しても読める
         const vw = v.videoWidth, vh = v.videoHeight
@@ -195,7 +211,17 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
 
     if (!on) return
     start()
+    // iPhone では、アプリを離れても映像を止めない（止めると戻ったときにカメラを断られる）。
+    // 戻ったら映像を動かし直し、映像が切れていたら起動し直す
+    const onShow = () => {
+      if (document.hidden || stop) return
+      const t = stream?.getVideoTracks()[0]
+      if (!t || t.readyState === 'ended') setRestart((x) => x + 1)
+      else video.current?.play().catch(() => {})
+    }
+    if (isIOS) document.addEventListener('visibilitychange', onShow)
     return () => {
+      document.removeEventListener('visibilitychange', onShow)
       stop = true
       clearTimeout(timer)
       clearTimeout(retryTimer)
@@ -238,9 +264,13 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   /** 押したらカメラを起動し直す（iPhone は画面を押した流れでないとカメラを許可しないことがある） */
   const resume = () => {
     setState('starting')
+    const saved = cameraStore.get()
     navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
-      .then((s) => s.getTracks().forEach((t) => t.stop()))
+      ?.getUserMedia({ audio: false, video: saved ? { deviceId: { exact: saved }, ...SIZE } : { facingMode: { ideal: 'environment' }, ...SIZE } })
+      .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, ...SIZE } }))
+      .then((st) => {
+        pendingStream = st
+      })
       .catch(() => {})
       .finally(() => setRestart((x) => x + 1))
   }
@@ -260,7 +290,10 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   return { video, state, resume, torch, torchOK, toggleTorch, zoom, zoomMax, setZoom, refocus, camCount: cams.length, camNo, switchCamera }
 }
 
-/** 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める */
+/**
+ * 画面が見えていないとき（別のタブ・別の画面・アプリを離れたとき）はカメラを止める。
+ * ただし iPhone では、アプリを離れたときは止めない（止めると戻ったときにカメラを断られ、アプリを終了するまで使えなくなるため）
+ */
 export function useCameraOn() {
   const visible = useVisible()
   const [pageShown, setPageShown] = useState(!document.hidden)
@@ -269,7 +302,7 @@ export function useCameraOn() {
     document.addEventListener('visibilitychange', f)
     return () => document.removeEventListener('visibilitychange', f)
   }, [])
-  return visible && pageShown
+  return visible && (isIOS || pageShown)
 }
 
 /** カメラの映像と読み取り枠 */
