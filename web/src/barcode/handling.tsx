@@ -1,7 +1,6 @@
 // 調剤・保管の注意（粉砕・分割・一包化・遮光・温度・湿気）。data/handling.json（tools/make_handling.py で PMDA の電子添文から作る）
 import { BookOpen, FileText } from 'lucide-preact'
 import { Page, Section, openExternal } from '../ui/components'
-import { PMDA } from './gs1'
 
 export interface HandlingDoc {
   /** 貯法 */
@@ -146,7 +145,7 @@ export function HandlingTiles({ h, f, onOpen }: { h: HandlingDoc; f?: IfDoc | nu
 }
 
 /** 根拠の文をまとめた画面 */
-export function HandlingDetailPage({ h, f, name, gtin }: { h: HandlingDoc; f?: (IfDoc & { url: string }) | null; name: string; gtin?: string }) {
+export function HandlingDetailPage({ h, f, name, doc }: { h: HandlingDoc; f?: (IfDoc & { url: string }) | null; name: string; doc?: string }) {
   const tiles = handlingTiles(h, f)
   const q = h.q ?? []
   return (
@@ -208,9 +207,9 @@ export function HandlingDetailPage({ h, f, name, gtin }: { h: HandlingDoc; f?: (
         </Section>
       )}
       <Section footer="添付文書（電子添文）の貯法・用法及び用量に関連する注意・適用上の注意・取扱い上の注意・性状から、粉砕・分割・一包化・遮光・温度・湿気に触れた文を抜き出しています。「記載なし」は添付文書に書いていないという意味で、可能という意味ではありません。インタビューフォームの粉砕後・無包装の安定性の試験は含みません。">
-        {gtin && (
+        {doc && (
           <div class="row" style={{ display: 'block' }}>
-            <button class="primary-btn" onClick={() => openExternal(PMDA.url(gtin))}>
+            <button class="primary-btn" onClick={() => openExternal(doc)}>
               <FileText size={20} /> 添付文書を開く
             </button>
           </div>

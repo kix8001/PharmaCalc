@@ -136,7 +136,7 @@ export function otcFee(yen: number): number {
 }
 
 export type Lookup =
-  | { kind: 'found'; yj: string[]; via: 'box' | 'pmda' }
+  | { kind: 'found'; yj: string[]; via: 'box' | 'pmda' | 'name' }
   | { kind: 'notFound' }
   | { kind: 'offline' }
 
@@ -203,4 +203,29 @@ export function searchProducts(d: OtcData, q: string, kind: Kind = 'otc', limit 
   for (const [yj, s] of d.index) if (isTarget(d, kind, yj) && s.includes(k)) hits.push(yj)
   for (const [yj, s] of d.index) if (!isTarget(d, kind, yj) && s.includes(k)) hits.push(yj)
   return hits.slice(0, limit)
+}
+
+/** 薬品名の候補（スキャン画面の「薬品名で探す」）。名前の頭が合う物を先に、ひらがな・カタカナどちらでも */
+export function suggestProducts(d: OtcData, q: string, limit = 12): string[] {
+  const k = searchKey(q.trim())
+  if (!k) return []
+  const head: string[] = []
+  const mid: string[] = []
+  for (const [yj, s] of d.index) {
+    const n = searchKey(productName(d, yj))
+    if (n.startsWith(k)) head.push(yj)
+    else if (s.includes(k)) mid.push(yj)
+  }
+  const byName = (a: string, b: string) => productName(d, a).localeCompare(productName(d, b), 'ja')
+  return [...head.sort(byName), ...mid.sort(byName)].slice(0, limit)
+}
+
+let gtinOfYj: Map<string, string> | null = null
+/** YJ コードから箱のコード（GTIN）を1つ（添付文書を開くのに使う）。無ければ null */
+export function gtinForYj(d: OtcData, yj: string): string | null {
+  if (!gtinOfYj) {
+    gtinOfYj = new Map()
+    for (const [g, y] of Object.entries(d.box)) if (!gtinOfYj.has(y)) gtinOfYj.set(y, g)
+  }
+  return gtinOfYj.get(yj) ?? null
 }

@@ -8,7 +8,7 @@ import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { ScanSummary } from './summary'
 import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
-import { nameForGtin } from '../otc/otcData'
+import { loadOtc, nameForGtin, productName, suggestProducts, type OtcData } from '../otc/otcData'
 
 // バーコードを読む部品（zxing-cpp の WebAssembly 版）は、このサイトに置いた物を使う（外部のサーバーから読まない）
 prepareZXingModule({
@@ -365,10 +365,13 @@ export function ScanPage() {
   const history = useStore(scanHistory)
   const [result, setResult] = useState<GS1Result | null>(null)
   const [manual, setManual] = useState('')
+  /** 薬品名で選んだ製品 */
+  const [picked, setPicked] = useState<{ yj: string; name: string } | null>(null)
 
   const handle = (code: string) => {
     const r = parseGS1(code)
     setResult(r)
+    setPicked(null)
     try {
       navigator.vibrate?.(30)
     } catch {
@@ -392,6 +395,17 @@ export function ScanPage() {
       }
     >
       <CameraBox cam={cam} />
+      <NameSearch
+        onPick={(yj, name) => {
+          setPicked({ yj, name })
+          setResult(null)
+        }}
+      />
+      {picked && (
+        <Section header="検索結果">
+          <ScanSummary yj={[picked.yj]} memo={picked.name} detail={`YJコード ${picked.yj}`} />
+        </Section>
+      )}
       {result && (
         <Section header="読み取り結果">
           {result.gtin ? (
@@ -441,6 +455,55 @@ export function ScanPage() {
         </ButtonRow>
       </Section>
     </Page>
+  )
+}
+
+/** 薬品名で探す窓（入力すると候補が出る。選ぶとスキャンと同じ結果を出す） */
+function NameSearch({ onPick }: { onPick: (yj: string, name: string) => void }) {
+  const [q, setQ] = useState('')
+  const [otc, setOtc] = useState<OtcData | null>(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    loadOtc().then(setOtc).catch(() => {})
+  }, [])
+  const list = otc && q.trim() ? suggestProducts(otc, q) : []
+  const pick = (yj: string) => {
+    if (!otc) return
+    const n = productName(otc, yj)
+    onPick(yj, n)
+    setQ(n)
+    setOpen(false)
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  }
+  return (
+    <Section header="薬品名で探す">
+      <div class="row name-search">
+        <Search size={18} class="sub" />
+        <input
+          class="text-input"
+          type="search"
+          enterKeyHint="search"
+          autocomplete="off"
+          placeholder="薬品名（ひらがな可。例：ろきそにん）"
+          value={q}
+          onInput={(e) => {
+            setQ((e.target as HTMLInputElement).value)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && list[0]) pick(list[0])
+          }}
+        />
+      </div>
+      {open &&
+        list.map((yj) => (
+          <button class="row suggest" onClick={() => pick(yj)}>
+            {productName(otc!, yj)}
+          </button>
+        ))}
+      {open && otc && q.trim() && !list.length && <div class="row small sub">見つかりませんでした</div>}
+    </Section>
   )
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { FileHeart, FileText } from 'lucide-preact'
 import { openExternal } from '../ui/components'
 import { useNav } from '../ui/nav'
-import { loadOtc, lookupGtin, productName, senteiBrands, type Lookup } from '../otc/otcData'
+import { gtinForYj, loadOtc, lookupGtin, productName, senteiBrands, type Lookup } from '../otc/otcData'
 import { OtcDetailPage } from '../otc/otcViews'
 import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
@@ -28,12 +28,15 @@ interface Summary {
   generic: GenericInfo | null
   handling: HandlingDoc | null
   iff: (IfDoc & { url: string }) | null
+  /** 添付文書を開く URL */
+  doc: string
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
-async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summary> {
-  const [r, otc, lim, gen, hd, ifd] = await Promise.all([lookupGtin(gtin), loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf()])
-  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null }
+async function summarize(gtin: string | undefined, yjs: string[] | undefined, push: (el: VNode) => void): Promise<Summary> {
+  const look: Promise<Lookup> = yjs ? Promise.resolve({ kind: 'found', yj: yjs, via: 'name' }) : lookupGtin(gtin!)
+  const [r, otc, lim, gen, hd, ifd] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf()])
+  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null, doc: gtin ? PMDA.url(gtin) : '' }
   const yj = r.yj
   const names = [...new Set(yj.map((y) => productName(otc, y)))]
 
@@ -71,7 +74,7 @@ async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summa
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
@@ -103,6 +106,13 @@ function GenericRow({ g }: { g: GenericInfo }) {
   )
 }
 
+/** 添付文書の URL：コードを読んだときはそのコードで、薬品名で選んだときは箱のコード、無ければ PMDA の成分の一覧 */
+function docUrl(otc: Awaited<ReturnType<typeof loadOtc>>, gtin: string | undefined, yj: string[]): string {
+  if (gtin) return PMDA.url(gtin)
+  const g = gtinForYj(otc, yj[0])
+  return g ? PMDA.url(g) : `https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${yj[0].slice(0, 7)}`
+}
+
 /** 判定のアイコン（2列×2段） */
 function Tiles({ tiles }: { tiles: Tile[] }) {
   return (
@@ -123,19 +133,20 @@ function Tiles({ tiles }: { tiles: Tile[] }) {
 }
 
 /** スキャン画面の読み取り結果：薬品名・判定のアイコン・添付文書と患者向けRMP資材を開くボタン */
-export function ScanSummary({ gtin, memo, detail }: { gtin: string; memo: string; detail: string }) {
+/** gtin（読み取ったコード）か yj（薬品名で選んだ製品）のどちらかを渡す */
+export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: string[]; memo: string; detail: string }) {
   const nav = useNav()
   const [s, setS] = useState<Summary | null>(null)
   useEffect(() => {
     let alive = true
     setS(null)
-    summarize(gtin, (el) => nav.push(el))
+    summarize(gtin, yj, (el) => nav.push(el))
       .then((x) => alive && setS(x))
       .catch(() => {})
     return () => {
       alive = false
     }
-  }, [gtin])
+  }, [gtin, yj?.join()])
 
   const name = memo || s?.name || ''
   return (
@@ -154,11 +165,11 @@ export function ScanSummary({ gtin, memo, detail }: { gtin: string; memo: string
         <>
           {s.generic && <GenericRow g={s.generic} />}
           <Tiles tiles={s.tiles} />
-          {s.handling && <HandlingTiles h={s.handling} f={s.iff} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} f={s.iff} name={name} gtin={gtin} />)} />}
+          {s.handling && <HandlingTiles h={s.handling} f={s.iff} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} f={s.iff} name={name} doc={s.doc} />)} />}
         </>
       )}
       <div class="scan-btns">
-        <button class="primary-btn" onClick={() => openExternal(PMDA.url(gtin))}>
+        <button class="primary-btn" disabled={!s?.doc} onClick={() => s?.doc && openExternal(s.doc)}>
           <FileText size={20} /> 添付文書を開く
         </button>
         {s?.rmp.map((i) =>
