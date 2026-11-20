@@ -7,6 +7,7 @@
 - **機能は3つでそろえる。とくに Web 版は必ず並行して作る**（iOS・Android に機能を足したり直したりしたら、同じ変更を必ず Web 版にも入れる）。
 - ユーザーへの説明・UI文言・コードコメント・コミットメッセージは日本語。
 - 利用者向けマニュアル：https://claude.ai/artifact/4jcXo5xqVXBD46rbvqjzJq （機能を変えたら合わせて直す）
+- 図解マニュアル（画面写真と番号の印、Web 版 1.7.0 時点）：https://claude.ai/artifact/BRMr71YC2w2K1ZVBdwPy1X 。画面写真は Playwright で Web 版を撮った物（`vite preview` を開き、箱の GTIN を手入力して結果を出す。カメラの映像は見本の絵に差し替え）。機能や画面を変えたら撮り直して直す
 
 ## ビルド
 - ローカルに Xcode は無い。プロジェクトは XcodeGen の `project.yml` から生成する（`.xcodeproj` はコミットしない）。
