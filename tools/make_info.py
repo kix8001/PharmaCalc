@@ -164,8 +164,23 @@ for b, (n, p) in list(cheap.items()):
         if ex:
             cheap[b] = (ex[0], p)
 
+# 経過措置（製品ごと）：診療報酬情報提供サービスの医薬品マスター（tools/generic_src/y_*.zip。34列目＝経過措置年月日）。
+# 薬価基準の一覧は一般名でまとめて載る後発品の行しか無いので、各社の製品（「トーワ」など）の経過措置はこちらで分かる。
+# 製品名（全角→半角）で突き合わせる
+import csv, io
+keika = {}
+for zf in sorted(glob.glob(os.path.join(HERE, "generic_src", "y_*.zip")))[-1:]:
+    z = zipfile.ZipFile(zf)
+    raw = z.read([n for n in z.namelist() if n.lower().endswith(".csv")][0]).decode("cp932", "ignore")
+    for r in csv.reader(io.StringIO(raw)):
+        if len(r) > 34 and re.fullmatch(r"20\d{6}", r[33] or ""):
+            y, mo, da = int(r[33][:4]), int(r[33][4:6]), int(r[33][6:8])
+            keika[nk(r[34] or r[4])] = f"令和{y - 2018}年{mo}月{da}日"
+otc_all = json.load(open(os.path.join(HERE, "..", "data", "otc.json"), encoding="utf-8"))["names"]
+xmap = {yj: keika[nk(n)] for yj, n in otc_all.items() if nk(n) in keika}
+
 out = {}
-for yj in set(price) | set(idc) | set(fig) | set(look):
+for yj in set(price) | set(idc) | set(fig) | set(look) | set(xmap):
     rec = {}
     if yj in price:
         rec.update(price[yj])
@@ -175,6 +190,8 @@ for yj in set(price) | set(idc) | set(fig) | set(look):
         rec["f"] = fig[yj]
     if yj in look:
         rec.update(look[yj])
+    if yj in xmap and "x" not in rec:
+        rec["x"] = xmap[yj]
     if yj in cheap:
         rec["c"] = [cheap[yj][0], fmt_price(cheap[yj][1])]
     out[yj] = rec
@@ -186,7 +203,7 @@ for k9, u in gen.get("u9", {}).items():
 # 統一名収載の製品：一覧に無い YJ は先頭9桁で薬価を引く（識別コードだけある製品にも足す）
 for yj, rec in out.items():
     if "p" not in rec and yj[:9] in p9:
-        rec.update(p9[yj[:9]])
+        rec.update({k: v for k, v in p9[yj[:9]].items() if k != "x"})
 # ジェネリックの比べる相手：先発品の薬価（generic.json の b の1つめ。規格違い・剤形違いは比べない）
 bp = {b: price[b]["p"] for g in gen["items"].values() if g.get("k") == "G" and not g.get("o") for b in g.get("b", [])[:1] if b in price}
 data = {
@@ -197,4 +214,4 @@ data = {
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-print("薬価", len(price), "識別コード", len(idc), "外観", len(look), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
+print("経過措置（マスター）", len(keika), "→製品", len(xmap), "薬価", len(price), "識別コード", len(idc), "外観", len(look), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
