@@ -17,6 +17,8 @@ export interface GenericData {
   source: string
   items: Record<string, GenericItem>
   names: Record<string, string>
+  /** 統一名収載の製品用：YJ コードの先頭9桁 → 一覧の行の YJ（空なら先発品・後発品の区分の無い行） */
+  u9: Record<string, string>
 }
 
 let genericPromise: Promise<GenericData> | null = null
@@ -40,7 +42,14 @@ export interface GenericInfo {
 
 /** 読み取った製品の YJ コード（複数のこともある）から区分を出す。分からなければ null */
 export function genericInfo(d: GenericData, yjs: string[]): GenericInfo | null {
-  const recs = yjs.map((y) => d.items[y]).filter(Boolean) as GenericItem[]
+  // 製品ごとの YJ が一覧に無い（統一名収載の）製品は、先頭9桁が同じ一覧の行で判定する
+  const recs = yjs
+    .map((y) => {
+      if (d.items[y]) return d.items[y]
+      const u = d.u9?.[y.slice(0, 9)]
+      return u === undefined ? undefined : u ? d.items[u] ?? {} : {}
+    })
+    .filter(Boolean) as GenericItem[]
   if (!recs.length) return null
   const r = recs.find((x) => x.k) ?? recs[0]
   const kiso = recs.find((x) => x.s)?.s ?? ''

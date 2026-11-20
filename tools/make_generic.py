@@ -79,6 +79,10 @@ for yj, it in items.items():
         brands_any.setdefault(key(yj, it, False), []).append(yj)
         brands_form.setdefault(key(yj, it, False, False), []).append(yj)
 
+def is_od(name):
+    return bool(re.search(r"OD|口腔内崩壊|D錠|ODフィルム|ゼリー", name))
+
+
 out_items = {}
 n_gen = n_gen_brand = n_gen_other = 0
 for yj, it in items.items():
@@ -98,6 +102,10 @@ for yj, it in items.items():
         if not b:
             b = brands_form.get(key(yj, it, False, False), [])
             other = 2 if b else 0
+        if len(b) > 1:
+            # 口腔内崩壊錠（OD錠・D錠）同士、ふつうの錠同士を優先する
+            same = [x for x in b if is_od(items[x]["name"]) == is_od(it["name"])]
+            b = same or b
         if b:
             n_gen_brand += 1
             n_gen_other += 1 if other else 0
@@ -109,6 +117,22 @@ for yj, it in items.items():
     if rec:
         out_items[yj] = rec
 
+# 統一名収載（「ファモチジン20mg口腔内崩壊錠」のように一般名で1行にまとめて載る後発品など）の製品は、
+# 製品ごとの YJ コードが一覧に無い。YJ コードの先頭9桁（成分・剤形・規格）→ 一覧の行（後発品を優先）を引けるようにする。
+# 値が空なら先発品・後発品の区分の無い行（古い薬など）。先頭9桁が先発品の行だけのときは載せない（判定しない）
+u9 = {}
+for yj, it in items.items():
+    k = it["kind"]
+    if k in ("brand", "quasi"):
+        continue
+    cur = u9.get(yj[:9])
+    rec = out_items.get(yj, {})
+    if k == "generic":
+        if cur is None or cur == "" or (not out_items[cur].get("b") and rec.get("b")):
+            u9[yj[:9]] = yj
+    elif cur is None:
+        u9[yj[:9]] = yj if yj in out_items else ""
+
 names = {}
 for yj, rec in out_items.items():
     for b in rec.get("b", []):
@@ -118,6 +142,7 @@ out = {
     "source": "厚生労働省「薬価基準収載品目リスト及び後発医薬品に関する情報」（令和8年11月13日適用）、令和8年度薬価基準改定の概要 別添３ 基礎的医薬品対象品一覧",
     "items": out_items,
     "names": names,
+    "u9": u9,
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
