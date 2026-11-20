@@ -359,8 +359,8 @@ function AboutPage() {
 }
 
 const tabs = [
-  { id: 'calc', label: '計算', icon: Calculator, root: () => <HomePage /> },
-  { id: 'scan', label: 'バーコード', icon: ScanBarcode, root: () => <ScanPage /> },
+  { id: 'calc', label: 'メインメニュー', icon: Calculator, root: () => <HomePage /> },
+  { id: 'scan', label: '添付文書', icon: ScanBarcode, root: () => <ScanPage /> },
   { id: 'history', label: '履歴', icon: Clock, root: () => <HistoryPage /> },
   { id: 'about', label: '情報', icon: Info, root: () => <AboutPage /> },
 ]
