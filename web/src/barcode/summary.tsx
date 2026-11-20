@@ -121,8 +121,8 @@ function GenericRow({ g, cmp }: { g: GenericInfo; cmp?: Product['cmp'] }) {
         </div>
       )}
       {g.kind !== '後発品' && cmp && (
-        <div class="scan-brand">
-          <span class="sub">ジェネリック（例）：</span>
+        <div class="scan-brand scan-brand-ex">
+          <span class="sub">GE（例）：</span>
           <b>{cmp.name}</b> <span>{cmp.price}円</span>
         </div>
       )}
@@ -175,6 +175,8 @@ function Tiles({ tiles }: { tiles: Tile[] }) {
 export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: string[]; memo: string; detail: string }) {
   const nav = useNav()
   const [s, setS] = useState<Summary | null>(null)
+  /** 錠剤の図を大きく見る */
+  const [zoom, setZoom] = useState<{ name: string; urls: string[] } | null>(null)
   useEffect(() => {
     let alive = true
     setS(null)
@@ -189,6 +191,19 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
   const name = memo || s?.name || ''
   return (
     <div class="scan-card">
+      {zoom && (
+        <div class="fig-zoom" role="dialog" aria-label="錠剤の図" onClick={() => setZoom(null)}>
+          <div class="fig-zoom-box">
+            <div class="fig-zoom-title">{zoom.name}</div>
+            <div class="fig-zoom-imgs">
+              {zoom.urls.map((u) => (
+                <img src={u} alt="" referrerpolicy="no-referrer" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+              ))}
+            </div>
+            <div class="small sub">表・裏・横（添付文書の図）。どこかを押すと閉じます</div>
+          </div>
+        </div>
+      )}
       <div class="scan-head">
         <div class="scan-name">{name || (s ? '薬品名が分かりませんでした' : '調べています…')}</div>
         <div class="small sub">{detail}</div>
@@ -210,9 +225,16 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
               </div>
             )}
             {figUrls(p.info.f).length > 0 && (
-              <div class="scan-figs" aria-label="錠剤の図（表・裏・横）">
+              <div class="scan-figs" aria-label="錠剤の図（表・裏・横）。押すと大きく">
                 {figUrls(p.info.f).map((u) => (
-                  <img src={u} alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+                  <img
+                    src={u}
+                    alt=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    onClick={() => setZoom({ name: p.name, urls: figUrls(p.info.f) })}
+                    onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+                  />
                 ))}
               </div>
             )}

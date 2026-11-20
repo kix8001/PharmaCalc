@@ -369,3 +369,13 @@ a.row { text-decoration: none; }
 .scan-figs img { height: 44px; width: auto; background: #fff; border-radius: 6px; border: 1px solid var(--line); padding: 3px; }
 /* 薬品名の候補は多いときスクロール */
 .name-suggest-list { max-height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* GE（例）の行は少し小さく */
+.scan-brand-ex { font-size: 13px; margin-top: 6px; }
+/* 錠剤の図：押すと大きく */
+.scan-figs img { cursor: zoom-in; }
+.fig-zoom { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; padding: 16px; animation: figin 0.15s ease-out; }
+@keyframes figin { from { opacity: 0; } to { opacity: 1; } }
+.fig-zoom-box { background: var(--card); border-radius: 16px; padding: 16px; max-width: 520px; width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
+.fig-zoom-title { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+.fig-zoom-imgs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-bottom: 10px; }
+.fig-zoom-imgs img { height: 120px; width: auto; max-width: 100%; image-rendering: auto; background: #fff; border-radius: 10px; border: 1px solid var(--line); padding: 6px; }
