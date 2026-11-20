@@ -179,8 +179,13 @@ for zf in sorted(glob.glob(os.path.join(HERE, "generic_src", "y_*.zip")))[-1:]:
 otc_all = json.load(open(os.path.join(HERE, "..", "data", "otc.json"), encoding="utf-8"))["names"]
 xmap = {yj: keika[nk(n)] for yj, n in otc_all.items() if nk(n) in keika}
 
+# メーカーのお知らせによる経過措置の予定（data/keika_extra.json。手で足す）
+ex_src = json.load(open(os.path.join(HERE, "..", "data", "keika_extra.json"), encoding="utf-8"))["items"]
+ex_by = {nk(e["name"]): e for e in ex_src}
+extra = {yj: ex_by[nk(n)] for yj, n in otc_all.items() if nk(n) in ex_by}
+
 out = {}
-for yj in set(price) | set(idc) | set(fig) | set(look) | set(xmap):
+for yj in set(price) | set(idc) | set(fig) | set(look) | set(xmap) | set(extra):
     rec = {}
     if yj in price:
         rec.update(price[yj])
@@ -192,6 +197,10 @@ for yj in set(price) | set(idc) | set(fig) | set(look) | set(xmap):
         rec.update(look[yj])
     if yj in xmap and "x" not in rec:
         rec["x"] = xmap[yj]
+    if yj in extra and "x" not in rec:
+        # メーカーのお知らせによる予定（xs=1、xl=お知らせ、xk=在庫終了予定）
+        e = extra[yj]
+        rec.update({"x": e["until"], "xs": 1, "xl": e.get("url", ""), **({"xk": e["stock"]} if e.get("stock") else {})})
     if yj in cheap:
         rec["c"] = [cheap[yj][0], fmt_price(cheap[yj][1])]
     out[yj] = rec
@@ -214,4 +223,4 @@ data = {
 }
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-print("経過措置（マスター）", len(keika), "→製品", len(xmap), "薬価", len(price), "識別コード", len(idc), "外観", len(look), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")
+print("経過措置（マスター）", len(keika), "→製品", len(xmap), "予定（お知らせ）", len(extra), "薬価", len(price), "識別コード", len(idc), "外観", len(look), "図", len(fig), "最安", len(cheap), "製品", len(out), "9桁", len(p9), os.path.getsize(OUT) // 1024, "KB")

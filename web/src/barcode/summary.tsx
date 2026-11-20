@@ -223,7 +223,24 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
             {p.info.x && (
               <div class="scan-prod-row">
                 <span class="sub">経過措置</span>
-                <b class="keika">経過措置品（{p.info.x}まで）</b>
+                {p.info.xs ? (
+                  <span>
+                    <b class="keika">経過措置の予定（{p.info.x}まで）</b>
+                    <span class="small sub" style={{ display: 'block' }}>
+                      販売中止のお知らせによる予定{p.info.xk ? `・在庫終了 ${p.info.xk}予定` : ''}
+                      {p.info.xl && (
+                        <>
+                          {' '}
+                          <a href={p.info.xl} onClick={(e) => (e.preventDefault(), openExternal(p.info.xl!))}>
+                            お知らせを開く
+                          </a>
+                        </>
+                      )}
+                    </span>
+                  </span>
+                ) : (
+                  <b class="keika">経過措置品（{p.info.x}まで）</b>
+                )}
               </div>
             )}
             {p.info.i && (

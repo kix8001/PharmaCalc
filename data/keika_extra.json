@@ -1,0 +1,8 @@
+{
+  "_説明": "メーカーの「販売中止のお知らせ」などで分かった経過措置の予定（厚労省の医薬品マスターに期限が入る前の物）。name は製品名（全角・半角どちらでも）、until は経過措置期間満了の予定、stock は在庫終了予定、url はお知らせ。tools/make_info.py が info.json の x（xs=1 で予定）に入れる。マスターに期限が入ったらそちらが優先",
+  "items": [
+    { "name": "リシノプリル錠5mg「トーワ」", "until": "令和9年3月末", "stock": "2026年12月", "url": "https://med.towayakuhin.co.jp/medical/product/fileloader.php?id=82891&t=4" },
+    { "name": "リシノプリル錠10mg「トーワ」", "until": "令和9年3月末", "stock": "2027年3月", "url": "https://med.towayakuhin.co.jp/medical/product/fileloader.php?id=82891&t=4" },
+    { "name": "リシノプリル錠20mg「トーワ」", "until": "令和9年3月末", "stock": "2027年1月", "url": "https://med.towayakuhin.co.jp/medical/product/fileloader.php?id=82891&t=4" }
+  ]
+}
