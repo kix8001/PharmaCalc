@@ -36,6 +36,15 @@ COMBO_30 = [("メペンゾラート", "フェノバルビタール"), ("プロ�
 LIST_90 = ["ジアゼパム", "ニトラゼパム", "フェノバルビタール", "クロナゼパム", "クロバザム"]  # 内服薬
 COMBO_90 = [("フェニトイン", "フェノバルビタール")]
 
+# 電子添文の XML が無い古い製品の規制区分（PMDA の XML から取れないので、ここに書く）
+KNOWN = {
+    "フルジアゼパム": ["6"], "フルトプラゼパム": ["6"], "アモバルビタール": ["5"], "セコバルビタールナトリウム": ["4"],
+    "メタンフェタミン塩酸塩": ["7"], "プロキシフィリン・エフェドリン配合剤": ["6"], "タペンタドール塩酸塩": ["3"],
+    "アヘンアルカロイド塩酸塩": ["3"], "エチルモルヒネ塩酸塩水和物": ["3"], "複方オキシコドン": ["3"], "アヘンアルカロイド・アトロピン": ["3"],
+    "アヘンアルカロイド・スコポラミン": ["3"], "弱アヘンアルカロイド・スコポラミン": ["3"], "複方オキシコドン・アトロピン": ["3"],
+    "モルヒネ・アトロピン": ["3"], "コカイン塩酸塩": ["3"],
+}
+
 REG = {"3": "麻薬", "4": "第一種向精神薬", "5": "第二種向精神薬", "6": "第三種向精神薬", "7": "覚醒剤", "8": "覚醒剤原料"}
 
 # 同じ適応症の「日数制限のない薬」を探すときの、効能・効果の見出し語（効能・効果にこの語を含む薬どうしを同じ適応症とみなす）
@@ -67,6 +76,9 @@ def text(x):
 def insert(yj7):
     """その成分（YJの先頭7桁）の電子添文 XML を1つ読み、規制区分・一般名・効能・効果を返す"""
     gl = get("https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/" + yj7, yj7 + ".html").decode("utf-8", "ignore")
+    # 一覧のページの題名が成分名（配合剤は「〜配合剤」）
+    t = re.search(r"<title>\s*([^<]*)", gl)
+    title = t.group(1).strip() if t else ""
     ids = sorted(set(re.findall(r"\d{6}_\d{7}[0-9A-Z]\d{4}_\d_\d+", gl)), key=lambda i: (i.split("_")[1][:7] != yj7, i))
     for i in ids[:6]:
         raw = get("https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetXML/" + i, i + ".zip")
@@ -78,10 +90,12 @@ def insert(yj7):
         blk = re.search(r"<RegulatoryClassification>.*?</RegulatoryClassification>", s, re.S)
         codes = re.findall(r"<RegulatoryClassificationCode>(\d+)<", blk.group(0)) if blk else []
         gen = re.search(r"<GeneralName>(.*?)</GeneralName>", s, re.S)
-        ind = re.search(r"<IndicationsOrEfficacy>(.*?)</IndicationsOrEfficacy>", s, re.S)
+        ind = re.search(r"<IndicationsOrEfficacy[ >](.*?)</IndicationsOrEfficacy>", s, re.S)
         g = text(gen.group(1)) if gen else ""
         g = re.sub(r"[（(][A-Za-z][^）)]*[）)]", "", g).strip()
-        return {"codes": codes, "ing": g, "ind": text(ind.group(1)) if ind else ""}
+        return {"codes": codes, "ing": title or g, "gen": g, "ind": text(ind.group(1)) if ind else ""}
+    if title in KNOWN:
+        return {"codes": KNOWN[title], "ing": title, "gen": title, "ind": ""}
     return None
 
 
@@ -95,7 +109,10 @@ def limit(info, yj7):
     reg = [REG[c] for c in info["codes"] if c in REG]
     if not reg:
         return 0, ""
-    ing, r = info["ing"], route(yj7)
+    ing, r = info["ing"] + "・" + info["gen"], route(yj7)
+    # 成分ごとに分け、告示の成分名で「始まる」物だけを当てる（エチルモルヒネをモルヒネ、フルジアゼパムをジアゼパムと取り違えない）
+    toks = [t.strip() for t in re.split(r"[・、,]", ing) if t.strip()]
+    has = lambda x: any(t.startswith(x) for t in toks)
     if r == "内用":
         for a, b in COMBO_30:
             if a in ing and b in ing:
@@ -104,11 +121,11 @@ def limit(info, yj7):
             if a in ing and b in ing:
                 return 90, "告示 第十 二 (三)（配合剤）"
     for x in LIST_30[r]:
-        if x in ing:
+        if has(x):
             return 30, "告示 第十 二 (二) " + {"内用": "イ 内服薬", "外用": "ロ 外用薬", "注射": "ハ 注射薬"}[r]
     if r == "内用":
         for x in LIST_90:
-            if x in ing and not any(y in ing and y != x for y in LIST_30["内用"]):
+            if has(x):
                 return 90, "告示 第十 二 (三) 内服薬"
     if "麻薬" in reg or any("向精神薬" in x for x in reg):
         return 14, "告示 第十 二 (一) " + ("イ 麻薬" if "麻薬" in reg else "ロ 向精神薬")

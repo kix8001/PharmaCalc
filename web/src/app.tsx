@@ -12,6 +12,7 @@ import {
   ChevronUp,
   BadgePercent,
   BadgeJapaneseYen,
+  Hourglass,
   CirclePlus,
   CircleMinus,
   ClipboardList,
@@ -61,6 +62,7 @@ import { RenalDrugsPage } from './renal/renalDrugs'
 import { HistoryPage, ScanPage } from './barcode/scan'
 import { PillCountPage } from './pill/pillView'
 import { OtcPage, SenteiPage } from './otc/otcViews'
+import { LimitsPage } from './limits/limits'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -148,6 +150,16 @@ const items: CalcItem[] = [
     group: 'insurance',
     page: () => <SenteiPage />,
   },
+  {
+    id: 'limits',
+    title: '投与日数制限チェック',
+    short: '日数制限',
+    subtitle: 'バーコードや名前で、向精神薬・麻薬などの1回の投与日数の上限（14・30・90日）と、同じ適応症で上限のない薬を調べる',
+    keywords: '投与日数 処方日数 日数制限 14日 30日 90日 向精神薬 麻薬 睡眠薬 眠剤 抗不安薬 てんかん 告示 バーコード',
+    icon: Hourglass,
+    group: 'insurance',
+    page: () => <LimitsPage />,
+  },
   { id: 'fee', title: '薬剤料・窓口負担', short: '負担金', subtitle: '薬価から点数（五捨五超入）と窓口負担', keywords: '点数 薬価 負担 窓口 お金 五捨五超入 保険', icon: JapaneseYen, group: 'insurance', page: () => <FeePage /> },
   { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
   { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
@@ -156,7 +168,7 @@ const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */
