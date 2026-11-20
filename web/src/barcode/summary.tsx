@@ -8,6 +8,7 @@ import { OtcDetailPage } from '../otc/otcViews'
 import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
+import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 
 /** 4つの判定の1つ。yes＝該当あり（オレンジの「！」）、no＝該当なし（グレー） */
 interface Tile {
@@ -23,12 +24,13 @@ interface Summary {
   name: string
   tiles: Tile[]
   rmp: RmpItem[]
+  generic: GenericInfo | null
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
 async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summary> {
-  const [r, otc, lim] = await Promise.all([lookupGtin(gtin), loadOtc(), loadLimits()])
-  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [] }
+  const [r, otc, lim, gen] = await Promise.all([lookupGtin(gtin), loadOtc(), loadLimits(), loadGeneric()])
+  if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null }
   const yj = r.yj
   const names = [...new Set(yj.map((y) => productName(otc, y)))]
 
@@ -66,7 +68,36 @@ async function summarize(gtin: string, push: (el: VNode) => void): Promise<Summa
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj) }
+}
+
+/** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
+function GenericRow({ g }: { g: GenericInfo }) {
+  return (
+    <div class="scan-gen">
+      <div class="scan-chips">
+        {g.kind && <span class={'scan-chip ' + (g.kind === '後発品' ? 'gen' : 'brand')}>{g.kind === '後発品' ? '後発品（ジェネリック）' : g.kind}</span>}
+        {g.hasGeneric !== undefined && (
+          <span class={'scan-chip ' + (g.hasGeneric ? 'has' : 'none')}>{g.hasGeneric ? 'ジェネリックあり' : 'ジェネリックなし'}</span>
+        )}
+        {!g.kind && <span class="scan-chip none">先発品・後発品の区分なし</span>}
+        {g.kiso && <span class="scan-chip kiso">基礎的医薬品（{g.kiso}）</span>}
+      </div>
+      {g.kind === '後発品' && (
+        <div class="scan-brand">
+          <span class="sub">先発品：</span>
+          {g.brands.length ? (
+            <>
+              <b>{g.brands.join('、')}</b>
+              {g.brandNote && <span class="sub">（{g.brandNote}）</span>}
+            </>
+          ) : (
+            <span class="sub">なし（先発品が無い、または薬価基準に無い）</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** 判定のアイコン（2列×2段） */
@@ -117,7 +148,10 @@ export function ScanSummary({ gtin, memo, detail }: { gtin: string; memo: string
           {s.lookup.kind === 'offline' ? '製品を調べられませんでした（電波を確かめてください）。' : 'このコードの医療用医薬品が見つかりませんでした。'}
         </div>
       ) : (
-        <Tiles tiles={s.tiles} />
+        <>
+          {s.generic && <GenericRow g={s.generic} />}
+          <Tiles tiles={s.tiles} />
+        </>
       )}
       <div class="scan-btns">
         <button class="primary-btn" onClick={() => openExternal(PMDA.url(gtin))}>

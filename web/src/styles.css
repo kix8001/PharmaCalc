@@ -310,3 +310,13 @@ a.row { text-decoration: none; }
 .scan-tile.no .scan-tile-v { font-weight: 700; }
 .scan-btns { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px 14px; }
 .scan-mat-t { text-align: center; margin-top: 4px; }
+/* 先発品・後発品・準先発品・基礎的医薬品 */
+.scan-gen { padding: 6px 16px 0; }
+.scan-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.scan-chip { font-size: 13px; font-weight: 700; line-height: 1; padding: 6px 10px; border-radius: 14px; border: 1.5px solid; }
+.scan-chip.brand { color: #fff; background: var(--accent); border-color: var(--accent); }
+.scan-chip.gen { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.scan-chip.has { color: var(--accent); background: var(--card); border-color: var(--accent); }
+.scan-chip.none { color: var(--faint); background: var(--fill); border-color: var(--line); }
+.scan-chip.kiso { color: var(--exempt); background: var(--card); border-color: var(--exempt); }
+.scan-brand { margin-top: 8px; font-size: 15px; line-height: 1.45; }
