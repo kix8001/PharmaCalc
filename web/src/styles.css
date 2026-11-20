@@ -380,3 +380,13 @@ a.row { text-decoration: none; }
 .fig-zoom-imgs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-bottom: 10px; }
 .fig-zoom-imgs img { height: 120px; width: auto; max-width: 100%; image-rendering: auto; background: #fff; border-radius: 10px; border: 1px solid var(--line); padding: 6px; }
 .keika { color: var(--orange); }
+/* ロット番号から使用期限 */
+.lot { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.lot-title { font-weight: 700; font-size: 15px; }
+.lot-input .text-input { width: 100%; font-size: 17px; letter-spacing: 0.05em; }
+.lot-note, .lot-msg { text-align: center; }
+.lot-msg { color: var(--accent); }
+.lot-contact { display: flex; flex-direction: column; gap: 6px; }
+.lot-desk { font-weight: 700; font-size: 14px; }
+.lot-tel { text-decoration: none; }
+.lot-input .text-input { text-transform: uppercase; }

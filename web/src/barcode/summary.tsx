@@ -8,6 +8,7 @@ import { OtcDetailPage } from '../otc/otcViews'
 import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
+import { LotLookup } from './lot'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
 import type { GenericData } from './generic'
@@ -276,6 +277,7 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
           </button>
         )}
         {s && s.lookup.kind === 'found' && !s.iff && <div class="small sub scan-mat-t">PMDA の製品の一覧が開きます。目的の製品の「インタビューフォーム」を押してください。</div>}
+        {s && s.lookup.kind === 'found' && <LotLookup yj={(s.lookup as { yj: string[] }).yj} name={name} />}
         {s?.rmp.map((i) =>
           i.mats.map((m) => (
             <div class="scan-mat">
