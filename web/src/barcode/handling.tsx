@@ -55,8 +55,9 @@ export function ifFor(d: IfData, yjs: string[]): (IfDoc & { url: string }) | nul
   }
   return null
 }
-const IF_NG = /粉砕不可|粉砕しない|粉砕は避け|粉砕を避け|推奨しない|勧められない|失われる/
-const SUSP_NG = /対象外|不適|適さない|推奨しない|できない|失われ/
+const IF_NG = /粉砕不可|不可能|不可で|不可と|粉砕しない|粉砕は避け|粉砕を避け|失われる/
+const NOT_REC = /推奨しない|推奨されない|勧められない/
+const SUSP_NG = /対象外|不適|適さない|できない|失われ/
 
 /** 読み取った製品の YJ コードから添付文書の記載を探す（最初に見つかったもの） */
 export function handlingFor(d: HandlingData, yjs: string[]): HandlingDoc | null {
@@ -74,6 +75,9 @@ export interface HTile {
 }
 
 const has = (h: HandlingDoc, f: string) => !!h.f?.includes(f)
+/** 一包化・分包を「避ける」「しない」とはっきり書いてある */
+const packNg = (h: HandlingDoc) =>
+  !!h.q?.some(([, s]) => /(一包化|分包)[^。]{0,20}(避け|しない|しないこと|不可)|(取り出さない|取り出さず)/.test(s))
 
 /** 6つの目印 */
 export function handlingTiles(h: HandlingDoc, f?: IfDoc | null): HTile[] {
@@ -87,12 +91,14 @@ export function handlingTiles(h: HandlingDoc, f?: IfDoc | null): HTile[] {
         ? '不可の記載'
         : f?.c && IF_NG.test(f.c)
           ? '不可（IF）'
+          : f?.c && NOT_REC.test(f.c)
+            ? '非推奨（IF）'
           : form
             ? `注意（${form}）`
             : f?.c
-              ? 'IFにデータ'
+              ? 'IFに記載'
               : '記載なし',
-      yes: has(h, 'crush') || !!form || !!(f?.c && IF_NG.test(f.c)),
+      yes: has(h, 'crush') || !!form || !!(f?.c && (IF_NG.test(f.c) || NOT_REC.test(f.c))),
       info: !!f?.c,
     },
     {
@@ -101,12 +107,12 @@ export function handlingTiles(h: HandlingDoc, f?: IfDoc | null): HTile[] {
       value: has(h, 'split') ? '不可の記載' : form ? `注意（${form}）` : h.sc ? '割線あり' : '記載なし',
       yes: has(h, 'split') || !!form,
     },
-    { key: 'pack', title: '一包化', value: has(h, 'pack') ? '注意の記載' : f?.s ? 'IFに無包装データ' : '記載なし', yes: has(h, 'pack'), info: !!f?.s },
+    { key: 'pack', title: '一包化', value: has(h, 'pack') ? (packNg(h) ? '不可の記載' : '注意の記載') : f?.s ? 'IFに無包装の記載' : '記載なし', yes: has(h, 'pack'), info: !!f?.s },
     { key: 'light', title: '遮光', value: has(h, 'light') ? (/遮光/.test(st) ? '遮光保存' : '開封後など') : '記載なし', yes: has(h, 'light') },
     { key: 'temp', title: '温度', value: has(h, 'temp') ? st.replace(/、?室温保存$/, '') || '注意' : st ? '室温' : '記載なし', yes: has(h, 'temp') },
     { key: 'moist', title: '湿気', value: has(h, 'moist') ? '注意の記載' : '記載なし', yes: has(h, 'moist') },
     ...(f?.k
-      ? [{ key: 'susp', title: '簡易懸濁', value: SUSP_NG.test(f.k) ? '不適（IF）' : 'IFにデータ', yes: SUSP_NG.test(f.k), info: true }]
+      ? [{ key: 'susp', title: '簡易懸濁', value: SUSP_NG.test(f.k) ? '不適（IF）' : NOT_REC.test(f.k) ? '非推奨（IF）' : 'IFに記載', yes: SUSP_NG.test(f.k) || NOT_REC.test(f.k), info: true }]
       : []),
   ]
 }
@@ -216,7 +222,7 @@ function IfRow({ title, text }: { title: string; text: string }) {
   return (
     <div class="row hd-q" style={{ display: 'block' }}>
       <span class="hd-src">{title}</span>
-      {text}
+      {text === '*' ? <span class="sub">記載あり（表などのため抜き出せません。PDF で確かめてください）</span> : text}
     </div>
   )
 }

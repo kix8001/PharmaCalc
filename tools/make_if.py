@@ -65,6 +65,8 @@ def block(t, start, ends, n):
     e = min([x.start() for x in (re.search(p, rest) for p in ends) if x] + [len(rest)])
     s = re.sub(r"\n\s*-\s*\d+\s*-\s*\n|\n\s*－\d+－\s*\n", "\n", rest[:e])
     s = re.sub(r"\s*\n\s*", " ", s).strip()
+    # PDF の改行・字間で入った日本語の間の空白を取る
+    s = re.sub(r"(?<=[^\x00-\x7F]) (?=[^\x00-\x7F])", "", s)
     s = re.sub(r"\s*-\s*\d+\s*-\s*[A-Z0-9-]*", " ", s).strip()
     return "" if NONE.match(s) else clip(s, n)
 
@@ -105,6 +107,47 @@ def one(u):
     return rec
 
 
+def doc_yjs():
+    """添付文書（{会社}_{YJ}）→ その文書に載っている製品の YJ（同じ IF が複数の規格をまとめていることが多い）"""
+    import zipfile
+    out = {}
+    for d in GL:
+        for f in glob.glob(os.path.join(d, "*.zip")):
+            key = "_".join(os.path.basename(f).split("_")[:2])
+            try:
+                z = zipfile.ZipFile(f)
+                x = z.read([n for n in z.namelist() if n.endswith(".xml")][0]).decode("utf-8", "ignore")
+            except Exception:
+                continue
+            out.setdefault(key, set()).update(re.findall(r"<YJCode>([0-9A-Z]{12})</YJCode>", x))
+    return out
+
+
+# 結果を言っている文（目的・方法の文は除く）
+RESULT = re.compile(r"(変化(は)?(なし|なく|認められ|あり)|変化が|規格内|規格外|規格に適合|適合した|低下|着色|変色|分解物|推奨(さ)?れない|推奨しない|勧められない|不可|できない|避け|対象外|崩壊・?懸濁した|崩壊し|懸濁し(た|なかった)|通過(した|しなかった|性は良好|性に問題)|問題(は)?な|閉塞|適[12]|不適|照会|参照|含量の低下|残存率)")
+SKIP = re.compile(r"(目的|試験方法|方法[:：]|使用器具|吸い取|ディスペンサー|シリンジ|ピストン|プランジャー|往復|放置し|放置後|操作を|を参考に|に従い評価|について、温度、湿度及び光)")
+
+
+def short(v, n):
+    """結果を言っている文だけを残して短くする。無ければ "*"（IF に記載はあるが抜き出せない）"""
+    if not v:
+        return v
+    v = re.sub(r"(?<=[^\x00-\x7F]) (?=[^\x00-\x7F])", "", v)
+    v = re.split(r"\s*(?:XIII|ⅩⅢ)\s*[-.．]\s*2|2\s*[.．]\s*その他の関連資料", v)[0].strip()
+    sents = [x.strip() for x in re.split(r"(?<=[。．])\s*", v) if x.strip()]
+    pick = [x for x in sents if RESULT.search(x) and not SKIP.search(x)]
+    if not pick:
+        if re.search(r"該当資料なし", v) and len(v) < 60:
+            return ""
+        return "*"
+    out = ""
+    for x in dict.fromkeys(pick):
+        if out and len(out) + len(x) > n:
+            break
+        out += x
+    return out if len(out) <= n + 40 else out[: n - 1] + "…"
+
+
 def main():
     links = if_links()
     urls = sorted(set(links.values()))
@@ -114,12 +157,21 @@ def main():
             for n, _ in enumerate(ex.map(one, urls)):
                 if n % 200 == 0:
                     print(n, "/", len(urls), flush=True)
+    # 同じ添付文書の規格違いの製品にも同じ IF をつける
+    dy = doc_yjs()
+    for u in set(links.values()):
+        key = "_".join(os.path.basename(u).split("_")[:2])
+        for yj in dy.get(key, ()):
+            if not "4" <= yj[4] <= "6":
+                links.setdefault(yj, u)
     docs, idx, by_yj = [], {}, {}
     for yj, u in sorted(links.items()):
         cf = os.path.join(CACHE, os.path.basename(u).replace(".pdf", "") + ".json")
         if not os.path.exists(cf):
             continue
         rec = json.load(open(cf))
+        rec = {k: short(v, {"c": 220, "k": 160, "s": 160}[k]) for k, v in rec.items()}
+        rec = {k: v for k, v in rec.items() if v}
         rec["u"] = u.replace("https://www.info.pmda.go.jp/go/interview/", "")
         key = json.dumps(rec, ensure_ascii=False, sort_keys=True)
         if key not in idx:
