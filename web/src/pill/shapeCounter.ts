@@ -330,6 +330,10 @@ export function measureSample(rgba: Uint8ClampedArray, W: number, H: number, r: 
   return { L, W: Wd, angle: ang, color: [med(cr), med(cg), med(cb)] }
 }
 
+/** 調整用：理由つきで落とした候補を集める（ふだんは null） */
+export let DEBUG: { x: number; y: number; why: string; v: number }[] | null = null
+export const setDebug = (d: typeof DEBUG) => (DEBUG = d)
+
 const NT = 18 // 向きの数（10°ずつ）
 
 /**
@@ -422,7 +426,7 @@ export function analyzeOblong(
   if (!cands.length) return empty
   cands.sort((p, q) => q.v - p.v)
   const ref = cands[Math.min(cands.length - 1, 4)].v // 強い山（5番目）を基準に
-  const minV = ref * (0.55 - 0.3 * (sensitivity - 0.5))
+  const minV = ref * (0.45 - 0.3 * (sensitivity - 0.5))
   // 強い順に、すでに採った錠剤の中に入る物は除く
   const taken: { x: number; y: number; t: number; v: number }[] = []
   const inside = (x: number, y: number, c: { x: number; y: number; t: number }, shrink: number) => {
@@ -435,18 +439,36 @@ export function analyzeOblong(
     return ax * ax + across * across < er * er
   }
   for (const c of cands) {
-    if (c.v < minV) break
+    if (c.v < minV * (DEBUG ? 0.6 : 1)) break
     const x = c.i % w, y = (c.i / w) | 0, t = bestT[c.i]
     const me = { x, y, t, v: c.v }
-    if (taken.some((o) => inside(x, y, o, 0.85) || inside(o.x, o.y, me, 0.85))) continue
-    if (!outlineOk(e, x, y, t, a, r, cosT, sinT)) continue
-    if (!contrastOk(rgb, x, y, t, a, r, cosT, sinT)) continue
-    if (size.color && !colorOk(rgb, x, y, t, a, r, cosT, sinT, size.color, sensitivity)) continue
+    const why = (s: string) => DEBUG && DEBUG.push({ x: x0 + (x + 0.5) * k, y: y0 + (y + 0.5) * k, why: s, v: c.v / ref })
+    if (c.v < minV) {
+      why('weak')
+      continue
+    }
+    // 採った錠剤と重なる物、中心どうしが幅の0.75倍より近い物（2錠の隙間に乗った物）は除く
+    if (taken.some((o) => inside(x, y, o, 1) || inside(o.x, o.y, me, 1) || (o.x - x) ** 2 + (o.y - y) ** 2 < (1.5 * r) ** 2)) {
+      if (c.v >= minV) why('nms')
+      continue
+    }
+    if (!outlineOk(e, x, y, t, a, r, cosT, sinT)) {
+      why('outline')
+      continue
+    }
+    if (!contrastOk(rgb, x, y, t, a, r, cosT, sinT, size.color)) {
+      why('contrast')
+      continue
+    }
+    if (size.color && !colorOk(rgb, x, y, t, a, r, cosT, sinT, size.color, sensitivity)) {
+      why('color')
+      continue
+    }
     taken.push(me)
   }
   // 離れてぽつんとあり、票も弱い物はトレーの傷・反射とみなす（1錠だけ離れて置かれた錠剤は輪郭が全部見えるので票が強い）
   const far = (L * 1.6) ** 2
-  const kept = taken.filter((c) => c.v >= ref * 0.75 || taken.some((o) => o !== c && (o.x - c.x) ** 2 + (o.y - c.y) ** 2 < far))
+  const kept = taken.filter((c) => c.v >= ref * 0.75 || taken.some((o) => o !== c && o.v >= ref * 0.7 && (o.x - c.x) ** 2 + (o.y - c.y) ** 2 < far))
   taken.length = 0
   taken.push(...kept)
   return {
@@ -459,7 +481,7 @@ export function analyzeOblong(
  * 縁のすぐ内側とすぐ外側の明るさの差が、ぐるりと同じ向きか（錠剤は周りの隙間・影より明るい、または暗い）。
  * トレーの傷や反射は向きがばらばら
  */
-function contrastOk(rgb: Plane[], x: number, y: number, t: number, a: number, r: number, cosT: number[], sinT: number[]): boolean {
+function contrastOk(rgb: Plane[], x: number, y: number, t: number, a: number, r: number, cosT: number[], sinT: number[], col?: [number, number, number]): boolean {
   const ux = cosT[t], uy = sinT[t]
   const w = rgb[0].w, h = rgb[0].h
   const gray = (px: number, py: number) => {
@@ -479,11 +501,18 @@ function contrastOk(rgb: Plane[], x: number, y: number, t: number, a: number, r:
     const nx = nx0 * ux - ny0 * uy, ny = nx0 * uy + ny0 * ux
     const vi = gray(px - nx * din, py - ny * din), vo = gray(px + nx * dout, py + ny * dout)
     if (isNaN(vi) || isNaN(vo)) continue
+    // すぐ外がとなりの錠剤（見本の色）なら、隙間が無いだけなので数えない
+    if (col) {
+      const xi = Math.round(px + nx * dout), yi = Math.round(py + ny * dout)
+      const k2 = yi * w + xi
+      const dc = Math.hypot(rgb[0].v[k2] - col[0], rgb[1].v[k2] - col[1], rgb[2].v[k2] - col[2])
+      if (dc < 30 && Math.abs(vi - vo) <= 5) continue
+    }
     tot++
     if (vi - vo > 5) pos++
     else if (vo - vi > 5) neg++
   }
-  return tot >= 10 && Math.max(pos, neg) >= tot * 0.5
+  return tot >= 6 && Math.max(pos, neg) >= tot * 0.5
 }
 
 /** 中の色が見本の錠剤の色に近く、むらが少ないか（トレーの反射・傷を除く） */
@@ -506,6 +535,22 @@ function colorOk(rgb: Plane[], x: number, y: number, t: number, a: number, r: nu
       n++
     }
   if (n < 10) return false
+  // 中心（隙間に乗っていないか）
+  {
+    const xi = Math.round(x), yi = Math.round(y)
+    let cd = 0
+    for (let c = 0; c < 3; c++) {
+      let m = 0, cnt = 0
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const px = Math.min(w - 1, Math.max(0, xi + dx)), py = Math.min(h - 1, Math.max(0, yi + dy))
+          m += rgb[c].v[py * w + px]
+          cnt++
+        }
+      cd += (m / cnt - col[c]) ** 2
+    }
+    if (Math.sqrt(cd) > 50 + 40 * (sens - 0.5)) return false
+  }
   let dist = 0, sd = 0
   for (let c = 0; c < 3; c++) {
     const m = s[c] / n
