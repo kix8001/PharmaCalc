@@ -48,6 +48,9 @@ export function PillCountPage() {
   const [expected, setExpected] = useState('')
   const [roi, setRoi] = useState<Rect | null>(null)
   const [selecting, setSelecting] = useState(false)
+  /** 楕円・長い錠剤：見本の1錠を囲んだ四角（大きさと色を覚える）。sampling は囲んでいる最中 */
+  const [sample, setSample] = useState<Rect | null>(null)
+  const [sampling, setSampling] = useState(false)
   const [error, setError] = useState('')
   const camIn = useRef<HTMLInputElement>(null)
   const shape = useStore(shapeStore)
@@ -58,8 +61,16 @@ export function PillCountPage() {
 
   useEffect(() => () => prepared && URL.revokeObjectURL(prepared.url), [prepared])
 
-  const analyze = (p: Prepared | null = prepared, area: Rect | null = roi, s = sensitivity, sh = shape) => {
+  const analyze = (p: Prepared | null = prepared, area: Rect | null = roi, s = sensitivity, sh = shape, sm: Rect | null = sample) => {
     if (!p) return
+    // 楕円・長い錠剤は、見本の1錠を囲んでから数える
+    if (sh === 'any' && !sm) {
+      setMarkers([])
+      setBusy(false)
+      setSampling(true)
+      return
+    }
+    setSampling(false)
     setBusy(true)
     const id = ++jobSeq
     job.current = id
@@ -74,7 +85,7 @@ export function PillCountPage() {
       setBusy(false)
       setError('数えられませんでした。もう一度撮ってください。')
     }
-    w.postMessage({ rgba: p.rgba.slice(), width: p.width, height: p.height, sensitivity: s, roi: area, job: id, shape: sh })
+    w.postMessage({ rgba: p.rgba.slice(), width: p.width, height: p.height, sensitivity: s, roi: area, job: id, shape: sh, sample: sm })
   }
 
   const load = async (file: File | undefined) => {
@@ -84,10 +95,11 @@ export function PillCountPage() {
     setMarkers([])
     setRoi(null)
     setSelecting(false)
+    setSample(null)
     try {
       const p = await prepare(file)
       setPrepared(p)
-      analyze(p, null)
+      analyze(p, null, sensitivity, shape, null)
     } catch {
       setBusy(false)
       setError('写真を読み込めませんでした。')
@@ -143,7 +155,9 @@ export function PillCountPage() {
         <>
           <Section
             footer={
-              selecting ? (
+              sampling ? (
+                <span style={{ color: 'var(--orange)' }}>数える錠剤のうち、ほかと離れている1錠を、指でなぞって四角でぴったり囲んでください（大きさと色を覚えます）。</span>
+              ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
                 '緑の点が自動で数えた錠剤です。点をタップすると消え、点のない錠剤をタップすると追加します（青の点）。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
@@ -156,9 +170,15 @@ export function PillCountPage() {
               setMarkers={setMarkers}
               radius={radius}
               roi={roi}
-              selecting={selecting}
+              selecting={selecting || sampling}
               busy={busy}
               onSelect={(r) => {
+                if (sampling) {
+                  setSample(r)
+                  setSampling(false)
+                  analyze(prepared, roi, sensitivity, shape, r)
+                  return
+                }
                 setRoi(r)
                 setSelecting(false)
                 analyze(prepared, r)
@@ -171,6 +191,9 @@ export function PillCountPage() {
             {e != null && e > 0 && !busy && (e === total ? <OkRow>予定数と一致しています</OkRow> : <WarningRow>{total > e ? `予定より${total - e}錠多い` : `予定より${e - total}錠足りない`}</WarningRow>)}
           </Section>
           <Section>
+            {shape === 'any' && (
+              <ButtonRow onClick={() => setSampling((s) => !s)}>{sampling ? '囲むのをやめる' : '見本の1錠を囲み直す'}</ButtonRow>
+            )}
             <ButtonRow icon={<Crop size={20} />} onClick={() => setSelecting((s) => !s)}>
               {selecting ? '範囲の指定をやめる' : '数える範囲を指定'}
             </ButtonRow>

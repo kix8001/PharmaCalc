@@ -23,13 +23,13 @@ export interface Rect {
   h: number
 }
 
-interface Plane {
+export interface Plane {
   w: number
   h: number
   v: Float32Array
 }
 
-interface Edges {
+export interface Edges {
   w: number
   h: number
   xs: Int32Array
@@ -242,7 +242,7 @@ function circleCount(e: Edges, r: number, lo: number, hi: number): number {
 // ---- 部品 ----
 
 /** 3×3 の平均（縁は端の値をくり返す） */
-function box3(p: Plane): Plane {
+export function box3(p: Plane): Plane {
   const { w, h, v } = p
   const t = new Float32Array(w * h)
   for (let y = 0; y < h; y++) {
@@ -260,7 +260,7 @@ function box3(p: Plane): Plane {
 }
 
 /** k×k の平均で縮小 */
-function downscale(p: Plane, k: number): Plane {
+export function downscale(p: Plane, k: number): Plane {
   const w = Math.floor(p.w / k), h = Math.floor(p.h / k)
   const o = new Float32Array(w * h)
   const inv = 1 / (k * k)
@@ -278,7 +278,7 @@ function downscale(p: Plane, k: number): Plane {
 }
 
 /** RGB それぞれをぼかして Sobel をかけ、いちばん強い勾配を採用。上位1%の強さの frac（通常25%、薄い輪郭用は10%）以上を輪郭とする */
-function edges(rgb: Plane[], blur: number, frac: number): Edges {
+export function edges(rgb: Plane[], blur: number, frac: number): Edges {
   const w = rgb[0].w, h = rgb[0].h, n = w * h
   const bgx = new Float32Array(n), bgy = new Float32Array(n), bm = new Float32Array(n)
   for (const ch of rgb) {
@@ -393,7 +393,7 @@ function ringCheck(x: number, y: number, R: number, e: Edges, lo: number, hi: nu
 }
 
 /** 0〜1 の分位点（ヒストグラムで近似） */
-function percentile(v: Float32Array, q: number): number {
+export function percentile(v: Float32Array, q: number): number {
   let mx = 0
   for (let i = 0; i < v.length; i++) if (v[i] > mx) mx = v[i]
   if (mx <= 0) return 0
