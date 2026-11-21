@@ -400,8 +400,9 @@ a.row { text-decoration: none; }
 .ident-fig img { max-width: 52px; max-height: 40px; background: #fff; border-radius: 4px; }
 .ident-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.4; }
 /* 情報の画面のロゴ（白地のロゴなので、暗い表示でも白い板に載せる） */
-.about-logo { margin: 16px 16px 8px; padding: 14px 18px; background: #fff; border-radius: 14px; text-align: center; }
-.about-logo img { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+.about-logo { margin: 16px 16px 8px; padding: 14px 16px; background: #fff; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.about-icon { width: 64px; height: 64px; flex: none; border-radius: 14px; }
+.about-name { flex: 1; min-width: 0; max-width: 340px; height: auto; display: block; }
 /* スケール：選ぶ行・点数・抗コリン薬 */
 .choice-row { width: 100%; gap: 10px; text-align: left; align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
 .choice-row.on { background: var(--accent-soft, rgba(14, 124, 134, 0.1)); }

@@ -402,7 +402,8 @@ function AboutPage() {
   return (
     <Page title="情報">
       <div class="about-logo">
-        <img src="./logo.png" alt="メドスキャン" />
+        <img class="about-icon" src="./icon-192.png" alt="" />
+        <img class="about-name" src="./logo.png" alt="メドスキャン" />
       </div>
       <Section>
         <LabeledRow label="バージョン" value={`${__APP_VERSION__}（Web版）`} />
