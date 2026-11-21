@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 defined('C5_EXECUTE') or die('Access Denied.');
 
 /**
- * 薬剤師電卓（Web版）を /pharmacalc で配信するパッケージ。
+ * メドスキャン（旧名：薬剤師電卓。Web版）を /pharmacalc で配信するパッケージ。
  * サイトにログインしている人だけが開ける。app/ フォルダに Web 版のビルド一式（web/dist）が入る。
  * apk/PharmaCalc.apk を置くと、Android 版のアプリを /pharmacalc/android.apk で配る。
  */
@@ -20,7 +20,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.16.3';
+    protected $pkgVersion = '1.17.0';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
@@ -38,7 +38,7 @@ class Controller extends Package
 
     public function getPackageName()
     {
-        return t('薬剤師電卓');
+        return t('メドスキャン');
     }
 
     public function getPackageDescription()

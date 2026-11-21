@@ -399,3 +399,6 @@ a.row { text-decoration: none; }
 .ident-fig { flex: none; width: 52px; height: 40px; display: grid; place-items: center; }
 .ident-fig img { max-width: 52px; max-height: 40px; background: #fff; border-radius: 4px; }
 .ident-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.4; }
+/* 情報の画面のロゴ（白地のロゴなので、暗い表示でも白い板に載せる） */
+.about-logo { margin: 16px 16px 8px; padding: 14px 18px; background: #fff; border-radius: 14px; text-align: center; }
+.about-logo img { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { FileText, Flashlight, FlashlightOff, Search, SwitchCamera, Trash2 } from 'lucide-preact'
+import { Flashlight, FlashlightOff, Search, SwitchCamera, Trash2 } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { ButtonRow, LabeledRow, Page, Section, WarningRow, openExternal } from '../ui/components'
@@ -534,10 +534,6 @@ export function HistoryPage() {
               <span class="small sub num">{it.gtin}</span>
               <span class="small sub">{dateFmt.format(new Date(it.date))}</span>
             </button>
-            <button class="ped-doc" aria-label="添付文書を開く" onClick={() => openExternal(PMDA.url(it.gtin))}>
-              <FileText size={20} />
-              <span>添付文書</span>
-            </button>
           </div>
         ))}
       </Section>
@@ -559,8 +555,15 @@ function HistoryDetailPage({ id }: { id: string }) {
     )
   }
   return (
-    <Page title="履歴の詳細">
-      <Section footer="薬品名を入れておくと、次に読み取ったときにも表示されます">
+    <Page title="読み取り結果">
+      <Section header="読み取り結果">
+        <ScanSummary
+          gtin={item.gtin}
+          memo={item.memo}
+          detail={[`GTIN ${item.gtin}`, item.expiry && `有効期限 ${item.expiry}`, item.lot && `ロット ${item.lot}`].filter(Boolean).join('・')}
+        />
+      </Section>
+      <Section header="薬品名（メモ）" footer="薬品名を入れておくと、次に読み取ったときにも表示されます">
         <div class="row">
           <input
             class="text-input"
@@ -580,9 +583,6 @@ function HistoryDetailPage({ id }: { id: string }) {
         <LabeledRow label="読み取り日時" value={dateFmt.format(new Date(item.date))} />
       </Section>
       <Section>
-        <ButtonRow icon={<FileText size={20} />} onClick={() => openExternal(PMDA.url(item.gtin))}>
-          添付文書を開く
-        </ButtonRow>
         <ButtonRow
           danger
           icon={<Trash2 size={20} />}

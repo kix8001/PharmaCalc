@@ -44,12 +44,11 @@ import {
   Utensils,
   Wind,
 } from 'lucide-preact'
-import { ButtonRow, ClearCtx, LabeledRow, LinkRow, Page, Section, openExternal, toast } from './ui/components'
+import { ButtonRow, ClearCtx, LabeledRow, Page, Section, openExternal, toast } from './ui/components'
 import { clearPatient } from './core/patient'
 import { Stack, useNav } from './ui/nav'
 import { matchesSearch } from './core/format'
 import { persistedStore, useStore } from './core/store'
-import { PatientPage, PatientSummaryLabel } from './calc/patient'
 import { BodyPage, RenalPage } from './calc/renal'
 import { AgePage, CyclePage, EndDatePage, NextVisitPage, ValidityPage } from './calc/days'
 import { RemainingPage, SheetPage, UnevenPage } from './calc/quantity'
@@ -252,18 +251,13 @@ function HomePage() {
 
   const filtered = items.filter((c) => matchesSearch(c.title + c.subtitle + c.keywords + c.short, query))
   return (
-    <Page title="薬剤師電卓">
+    <Page title="メドスキャン">
       <label class="search">
         <Search size={18} />
         <input type="search" placeholder="計算を探す" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} />
       </label>
       {query.trim() === '' ? (
         <>
-          <Section header="患者情報（全計算で共通）">
-            <LinkRow onClick={() => nav.push(<PatientPage />)}>
-              <PatientSummaryLabel />
-            </LinkRow>
-          </Section>
           <Section
             header={
               <>
@@ -365,6 +359,9 @@ function TileEditPage() {
 function AboutPage() {
   return (
     <Page title="情報">
+      <div class="about-logo">
+        <img src="./logo.png" alt="メドスキャン" />
+      </div>
       <Section>
         <LabeledRow label="バージョン" value={`${__APP_VERSION__}（Web版）`} />
       </Section>

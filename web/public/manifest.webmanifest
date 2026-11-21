@@ -1,6 +1,6 @@
 {
-  "name": "薬剤師電卓",
-  "short_name": "薬剤師電卓",
+  "name": "メドスキャン",
+  "short_name": "メドスキャン",
   "description": "腎機能・日数・余り・小児用量・錠剤カウント・バーコードから添付文書",
   "lang": "ja",
   "start_url": "./index.html",
