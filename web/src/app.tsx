@@ -50,6 +50,7 @@ import {
   Heart,
   HeartPulse,
   Siren,
+  NotebookPen,
 } from 'lucide-preact'
 import { ButtonRow, ClearCtx, LabeledRow, Page, Section, openExternal, toast } from './ui/components'
 import { clearPatient } from './core/patient'
@@ -72,6 +73,7 @@ import { PillCountPage } from './pill/pillView'
 import { OtcPage, SenteiPage } from './otc/otcViews'
 import { LimitsPage } from './limits/limits'
 import { NewDrugPage } from './newdrug/newdrug'
+import { WarfarinPage } from './warfarin/warfarin'
 import { AnticholinergicPage, Chads2Page, Cha2ds2VascPage, FastPage, HasBledPage, JcsPage, NaranjoPage, NyhaPage } from './calc/scales'
 import { RmpPage } from './rmp/rmp'
 import { IdentPage } from './barcode/ident'
@@ -184,6 +186,16 @@ const items: CalcItem[] = [
     page: () => <NewDrugPage />,
   },
   { id: 'fee', title: '薬剤料・窓口負担', short: '負担金', subtitle: '薬価から点数（五捨五超入）と窓口負担', keywords: '点数 薬価 負担 窓口 お金 五捨五超入 保険', icon: JapaneseYen, group: 'insurance', page: () => <FeePage /> },
+  {
+    id: 'warfarin',
+    title: 'ワルファリン（ワーファリン手帳）',
+    short: 'ワルファリン',
+    subtitle: 'PT-INR の目標域と判定・相互作用（添付文書）・食事と生活・服薬指導のチェック',
+    keywords: 'ワルファリン ワーファリン warfarin pt-inr inr 抗凝固 相互作用 併用禁忌 併用注意 納豆 ビタミンk 手帳 出血',
+    icon: NotebookPen,
+    group: 'dose',
+    page: () => <WarfarinPage />,
+  },
   { id: 'jcs', title: 'JCS（ジャパン・コーマ・スケール）', short: 'JCS', subtitle: '意識レベル 0〜300、R・I・A', keywords: 'jcs 意識 意識障害 昏睡 3-3-9 スケール', icon: Brain, group: 'scale', page: () => <JcsPage /> },
   { id: 'nyha', title: 'NYHA心機能分類', short: 'NYHA', subtitle: '心不全の自覚症状 I〜IV度', keywords: 'nyha 心不全 心機能 分類 スケール', icon: HeartPulse, group: 'scale', page: () => <NyhaPage /> },
   { id: 'chads2', title: 'CHADS2スコア', short: 'CHADS2', subtitle: '心房細動の脳梗塞のリスク', keywords: 'chads2 心房細動 af 脳梗塞 抗凝固 doac ワルファリン スコア', icon: Activity, group: 'scale', page: () => <Chads2Page /> },
