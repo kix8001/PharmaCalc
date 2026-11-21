@@ -356,6 +356,20 @@ function TileEditPage() {
   )
 }
 
+/** アプリの再起動：新しい版があるか確かめてから読み込み直す（新しい版が入れば main.tsx の controllerchange でも読み込み直す） */
+async function restartApp() {
+  toast('再起動しています…')
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration()
+    await Promise.race([reg?.update(), new Promise((r) => setTimeout(r, 3000))])
+    // 新しい版を入れている途中なら、入り終わるのを少し待つ
+    if (reg?.installing) await new Promise((r) => setTimeout(r, 1500))
+  } catch {
+    /* 電波が無いときなどはそのまま読み込み直す */
+  }
+  location.reload()
+}
+
 function AboutPage() {
   return (
     <Page title="情報">
@@ -364,6 +378,11 @@ function AboutPage() {
       </div>
       <Section>
         <LabeledRow label="バージョン" value={`${__APP_VERSION__}（Web版）`} />
+      </Section>
+      <Section footer="動きがおかしいときや、新しい版にしたいときに押してください。新しい版があれば入れてから起動し直します（入力中の内容は消えます）。">
+        <ButtonRow icon={<RefreshCw size={20} />} onClick={restartApp}>
+          アプリを再起動
+        </ButtonRow>
       </Section>
       <Section header="クレジット">
         <LabeledRow label="開発" value="学術・社内広報室" />
