@@ -402,3 +402,22 @@ a.row { text-decoration: none; }
 /* 情報の画面のロゴ（白地のロゴなので、暗い表示でも白い板に載せる） */
 .about-logo { margin: 16px 16px 8px; padding: 14px 18px; background: #fff; border-radius: 14px; text-align: center; }
 .about-logo img { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+/* スケール：選ぶ行・点数・抗コリン薬 */
+.choice-row { width: 100%; gap: 10px; text-align: left; align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
+.choice-row.on { background: var(--accent-soft, rgba(14, 124, 134, 0.1)); }
+.choice-mark { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--sep, #c7c7cc); display: flex; align-items: center; justify-content: center; color: #fff; margin-top: 1px; }
+.choice-row.on .choice-mark { background: var(--accent); border-color: var(--accent); }
+.choice-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.scale-item { display: flex; align-items: baseline; gap: 8px; }
+.scale-pts { flex: none; font-size: 12px; color: var(--sub); }
+.ac-row { width: 100%; gap: 10px; text-align: left; }
+.ac-row.on { background: var(--accent-soft, rgba(14, 124, 134, 0.1)); }
+.ac-picked { gap: 10px; }
+.ac-name { flex: 1; }
+.ac-score { flex: none; width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
+.ac-score.s3 { background: #d93025; }
+.ac-score.s2 { background: #ef8a17; }
+.ac-score.s1 { background: #9aa0a6; }
+.fast-alert { color: var(--red, #d93025); font-weight: 700; display: block; }
+.nd-lift { display: flex; flex-direction: column; align-items: flex-end; flex: none; text-align: right; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: right; cursor: pointer; }

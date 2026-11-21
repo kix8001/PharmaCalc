@@ -186,7 +186,7 @@ export function LimitsPage() {
       )}
       <Section header="投与日数の上限（告示）" footer={d ? `${d.lim.source}をもとに判定しています（データ作成 ${d.lim.made}）。` : undefined}>
         <div class="row small" style={{ display: 'block' }}>
-          <b>14日分まで</b>：麻薬・向精神薬（下の30日・90日の物を除く）、新医薬品（薬価収載の翌月から1年。このアプリでは判定しません）
+          <b>14日分まで</b>：麻薬・向精神薬（下の30日・90日の物を除く）、新医薬品（薬価収載の翌月から1年。メインメニューの「新薬の処方日数制限」とスキャンの結果で分かります）
         </div>
         <div class="row small" style={{ display: 'block' }}>
           <b>30日分まで</b>：ゾルピデム・トリアゾラム・ブロチゾラム・エチゾラム・アルプラゾラムなどの内服薬、フェンタニル・モルヒネの外用薬など

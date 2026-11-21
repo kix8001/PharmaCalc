@@ -12,6 +12,7 @@ import { LotLookup } from './lot'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
 import type { GenericData } from './generic'
+import { NewDrugDetailPage, isActive, loadNewDrugs, newDrugText, type NewDrug } from '../newdrug/newdrug'
 import { HandlingDetailPage, HandlingTiles, handlingFor, ifFor, loadHandling, loadIf, type HandlingDoc, type IfDoc } from './handling'
 
 /** 4つの判定の1つ。yes＝該当あり（オレンジの「！」）、no＝該当なし（グレー） */
@@ -43,15 +44,20 @@ interface Product {
   info: InfoItem
   /** 薬価を比べる相手（ジェネリックなら先発品、先発品なら最安のジェネリック） */
   cmp?: { label: string; name: string; price: string }
+  /** 新医薬品の処方日数制限（14日ルール） */
+  nd?: NewDrug
 }
 
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
 async function summarize(gtin: string | undefined, yjs: string[] | undefined, push: (el: VNode) => void): Promise<Summary> {
   const look: Promise<Lookup> = yjs ? Promise.resolve({ kind: 'found', yj: yjs, via: 'name' }) : lookupGtin(gtin!)
-  const [r, otc, lim, gen, hd, ifd, inf] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf(), loadInfo()])
+  const [r, otc, lim, gen, hd, ifd, inf, nd] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf(), loadInfo(), loadNewDrugs()])
   if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null, doc: gtin ? PMDA.url(gtin) : '', products: [] }
   const yj = r.yj
-  const names = [...new Set(yj.map((y) => productName(otc, y)))]
+  // 新しく収載された薬は製品名の表に無いことがあるので、新薬のデータの品名で補う
+  const pname = (y: string) => (otc.names[y] || !nd.items[y] ? productName(otc, y) : nd.items[y].m)
+  const names = [...new Set(yj.map(pname))]
+  const ndx = yj.map((y) => ({ y, x: nd.items[y] })).find((v) => v.x && isActive(v.x))
 
   const otcYj = yj.find((y) => otc.targets[y])
   const senteiYj = yj.find((y) => otc.sentei[y])
@@ -74,12 +80,20 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
       yes: !!senteiYj || !!brandOf,
       open: () => push(<OtcDetailPage yj={senteiYj ?? brandOf?.[0] ?? yj[0]} kind="sentei" />),
     },
-    {
-      title: '投与日数',
-      value: lim0 ? `${lim0.g!.days}日まで` : '上限なし',
-      yes: !!lim0,
-      open: () => push(<LimitDetailPage yj={lim0?.y ?? yj[0]} />),
-    },
+    // 新医薬品の14日ルールのほうが短ければ、そちらを出す
+    ndx && (!lim0 || ndx.x.n < lim0.g!.days)
+      ? {
+          title: '投与日数',
+          value: `${ndx.x.n}日まで（新薬）`,
+          yes: true,
+          open: () => push(<NewDrugDetailPage yj={ndx.y} x={ndx.x} />),
+        }
+      : {
+          title: '投与日数',
+          value: lim0 ? `${lim0.g!.days}日まで` : '上限なし',
+          yes: !!lim0,
+          open: () => push(<LimitDetailPage yj={lim0?.y ?? yj[0]} />),
+        },
     {
       title: 'RMP資材',
       value: mats ? `あり（${mats}件）` : 'なし',
@@ -87,7 +101,7 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: productName(otc, y), info: infoFor(inf, y), cmp: compareTo(gen, inf, y) })) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: pname(y), info: infoFor(inf, y), cmp: compareTo(gen, inf, y), nd: nd.items[y] })) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
@@ -241,6 +255,14 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
                 ) : (
                   <b class="keika">経過措置品（{p.info.x}まで）</b>
                 )}
+              </div>
+            )}
+            {p.nd && (
+              <div class="scan-prod-row">
+                <span class="sub">新薬の制限</span>
+                <button class="link-btn" onClick={() => nav.push(<NewDrugDetailPage yj={p.yj} x={p.nd!} />)}>
+                  {isActive(p.nd) ? <b class="keika">{newDrugText(p.nd)}</b> : <span>{newDrugText(p.nd)}</span>}
+                </button>
               </div>
             )}
             {p.info.i && (
