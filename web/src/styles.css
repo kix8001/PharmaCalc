@@ -419,6 +419,7 @@ a.row { text-decoration: none; }
 .ac-score.s3 { background: #d93025; }
 .ac-score.s2 { background: #ef8a17; }
 .ac-score.s1 { background: #9aa0a6; }
-.fast-alert { color: var(--red, #d93025); font-weight: 700; display: block; }
+.scale-read { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 10px; padding-bottom: 10px; }
+.fast-key { color: var(--red); font-size: 1.15em; }
 .nd-lift { display: flex; flex-direction: column; align-items: flex-end; flex: none; text-align: right; }
 .link-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: right; cursor: pointer; }

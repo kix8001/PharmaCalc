@@ -1,8 +1,8 @@
 // スケール・スコア：JCS・NYHA・CHADS2・CHA2DS2-VASc・HAS-BLED・日本版抗コリン薬リスクスケール・Naranjo・FAST
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
-import { Check, Minus, Phone, Plus, Search, X } from 'lucide-preact'
-import { ButtonRow, Page, ResultRow, Section, Toggle, openExternal } from '../ui/components'
+import { Check, Minus, Plus, Search, X } from 'lucide-preact'
+import { ButtonRow, Page, ResultRow, Section, Toggle } from '../ui/components'
 import { matchesSearch } from '../core/format'
 
 /** 1つを選ぶ行（説明つき） */
@@ -97,20 +97,17 @@ const NYHA: [string, string][] = [
 ]
 
 export function NyhaPage() {
-  const [v, setV] = useState('')
   return (
     <Page title="NYHA心機能分類">
-      {v && (
-        <Section>
-          <ResultRow title="NYHA" value={v} color="orange" />
-        </Section>
-      )}
       <Section
-        header="自覚症状から選ぶ"
+        header="心不全の自覚症状による分類"
         footer="II度は、身体活動に軽度の制限がある IIs（slight）と中等度の制限がある IIm（moderate）に分けることがあります。（NYHA：ニューヨーク心臓協会）"
       >
         {NYHA.map(([k, d]) => (
-          <Choice on={v === k} onClick={() => setV(k)} title={k} desc={d} />
+          <div class="row scale-read">
+            <b>{k}</b>
+            <span>{d}</span>
+          </div>
         ))}
       </Section>
     </Page>
@@ -389,50 +386,30 @@ export function NaranjoPage() {
 
 /* ───────── FAST ───────── */
 
+/** 読むだけの1行（見出しと説明） */
+const FAST: [string, string, string][] = [
+  ['F', 'Face：顔のゆがみ', '「イー」と笑うと、片側の口元が下がる'],
+  ['A', 'Arm：腕のまひ', '両腕を前に上げて目を閉じると、片方が下がる'],
+  ['S', 'Speech：言葉の障害', 'ろれつが回らない、言葉が出ない、話が分からない'],
+  ['T', 'Time：発症時刻', '1つでもあれば脳卒中の疑い。すぐに救急車を呼び、症状が出た時刻（最後に元気だった時刻）を伝える'],
+]
+
 export function FastPage() {
-  const [f, setF] = useState(false)
-  const [a, setA] = useState(false)
-  const [s, setS] = useState(false)
-  const [t, setT] = useState<Date | null>(null)
-  const [, tick] = useState(0)
-  useEffect(() => {
-    if (!t) return
-    const id = setInterval(() => tick((x) => x + 1), 30000)
-    return () => clearInterval(id)
-  }, [t])
-  const any = f || a || s
-  const mins = t ? Math.floor((Date.now() - t.getTime()) / 60000) : 0
   return (
     <Page title="FAST">
       <Section
-        header="1つでもあれば脳卒中の疑い"
+        header="脳卒中のサイン"
         footer="脳梗塞は発症から早いほど治療（血栓を溶かす薬・カテーテル治療）の効果が高く、使える時間に限りがあります。症状が消えても一過性脳虚血発作（TIA）のことがあるので受診を。"
       >
-        <Toggle label={<span class="scale-item"><span><b>F</b>ace：顔のゆがみ<span class="small sub" style={{ display: 'block' }}>「イー」と笑うと、片側の口元が下がる</span></span></span>} value={f} onChange={setF} />
-        <Toggle label={<span class="scale-item"><span><b>A</b>rm：腕のまひ<span class="small sub" style={{ display: 'block' }}>両腕を前に上げて目を閉じると、片方が下がる</span></span></span>} value={a} onChange={setA} />
-        <Toggle label={<span class="scale-item"><span><b>S</b>peech：言葉の障害<span class="small sub" style={{ display: 'block' }}>ろれつが回らない、言葉が出ない、話が分からない</span></span></span>} value={s} onChange={setS} />
-      </Section>
-      {any && (
-        <Section header="T：Time（時間）">
-          <div class="row fast-alert">脳卒中の疑い。すぐに119番。症状が出た時刻（最後に元気だった時刻）を伝えてください。</div>
-          <ButtonRow icon={<Phone size={20} />} onClick={() => openExternal('tel:119')}>
-            119番に電話する
-          </ButtonRow>
-        </Section>
-      )}
-      <Section header="症状が出た時刻（最後に元気だった時刻）" footer="分からないときは「最後に元気だったのを見た時刻」を伝えます。">
-        {t ? (
-          <div class="row select-row">
-            <span>
-              {t.getHours()}時{String(t.getMinutes()).padStart(2, '0')}分
-            </span>
-            <span class="sub">{mins < 60 ? `${mins}分前` : `${Math.floor(mins / 60)}時間${mins % 60}分前`}</span>
+        {FAST.map(([k, t, d]) => (
+          <div class="row scale-read">
+            <b>
+              <span class="fast-key">{k}</span>
+              {t.slice(1)}
+            </b>
+            <span>{d}</span>
           </div>
-        ) : (
-          <div class="row sub">記録していません</div>
-        )}
-        <ButtonRow onClick={() => setT(new Date())}>今の時刻を記録</ButtonRow>
-        {t && <ButtonRow onClick={() => setT(null)}>記録を消す</ButtonRow>}
+        ))}
       </Section>
       <Section header="参考：BE-FAST" footer="FAST に B（Balance：急なめまい・ふらつき、まっすぐ歩けない）と E（Eyes：急に片目が見えない、物が二重に見える、視野が欠ける）を足して、見逃しを減らす方法もあります。">
         <></>

@@ -191,7 +191,7 @@ const items: CalcItem[] = [
   { id: 'hasbled', title: 'HAS-BLEDスコア', short: 'HAS-BLED', subtitle: '抗凝固療法中の出血のリスク', keywords: 'has-bled hasbled 出血 抗凝固 doac ワルファリン スコア', icon: Droplets, group: 'scale', page: () => <HasBledPage /> },
   { id: 'anticholinergic', title: '日本版抗コリン薬リスクスケール', short: '抗コリン', subtitle: '158薬物のスコア（1〜3）と服用中の薬の合計', keywords: '抗コリン 抗コリン薬 リスクスケール 老年薬学会 高齢者 認知機能 せん妄 ポリファーマシー スコア', icon: Pill, group: 'scale', page: () => <AnticholinergicPage /> },
   { id: 'naranjo', title: 'Naranjo評価スケール', short: 'Naranjo', subtitle: '副作用と薬の因果関係（10問）', keywords: 'naranjo ナランホ 副作用 因果関係 有害事象 スケール', icon: ClipboardCheck, group: 'scale', page: () => <NaranjoPage /> },
-  { id: 'fast', title: 'FAST（脳卒中のサイン）', short: 'FAST', subtitle: '顔・腕・言葉、発症時刻と119番', keywords: 'fast 脳卒中 脳梗塞 救急 119 befast', icon: Siren, group: 'scale', page: () => <FastPage /> },
+  { id: 'fast', title: 'FAST（脳卒中のサイン）', short: 'FAST', subtitle: '顔・腕・言葉・時間（脳卒中を疑うサイン）', keywords: 'fast 脳卒中 脳梗塞 救急 119 befast', icon: Siren, group: 'scale', page: () => <FastPage /> },
   { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
   {
     id: 'rmp',
@@ -219,7 +219,7 @@ const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'newDrug']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'newDrug', 'nyha', 'fast']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */
