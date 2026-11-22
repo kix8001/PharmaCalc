@@ -257,9 +257,22 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     openBackCamera(SIZE, saved)
       .then((st) => {
         pendingStream = st
+        setRestart((x) => x + 1)
       })
-      .catch(() => {})
-      .finally(() => setRestart((x) => x + 1))
+      .catch((e) => {
+        // iPhone のホーム画面のアプリは、一度カメラを断ると、読み込み直すまで何度頼んでも断る。
+        // 押されたら、この画面（薬剤検索）を開いたまま読み込み直す（読み込み直すとカメラの許可をもう一度聞く）
+        if ((e as DOMException)?.name === 'NotAllowedError') {
+          try {
+            sessionStorage.setItem('reopenTab', 'scan')
+          } catch {
+            /* 保存できなくても読み込み直す */
+          }
+          location.reload()
+          return
+        }
+        setRestart((x) => x + 1)
+      })
   }
   /** 映像を押したら、ピントを合わせ直す */
   const refocus = async () => {
@@ -317,7 +330,7 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
       {cam.state !== 'running' && (
         <div class="camera-msg">
           {cam.state === 'starting' && 'カメラを起動しています…'}
-          {cam.state === 'denied' && 'カメラの使用が許可されていません。ブラウザの設定で、このサイトのカメラを許可してください。'}
+          {cam.state === 'denied' && 'カメラが使えません。下のボタンを押して「許可」を選んでください。'}
           {cam.state === 'stopped' && 'カメラが止まりました。'}
           {(cam.state === 'stopped' || cam.state === 'denied' || cam.state === 'error') && (
             <button class="cam-resume" onClick={cam.resume}>

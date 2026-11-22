@@ -467,9 +467,19 @@ const tabs = [
 ]
 
 export function App() {
-  const [tab, setTab] = useState('calc')
+  // カメラを使い直すために読み込み直したときは、薬剤検索の画面を開く（barcode/scan.tsx の resume）
+  const [first] = useState(() => {
+    try {
+      const t = sessionStorage.getItem('reopenTab')
+      sessionStorage.removeItem('reopenTab')
+      return t || 'calc'
+    } catch {
+      return 'calc'
+    }
+  })
+  const [tab, setTab] = useState(first)
   // バーコードのタブは開いたときに初めて作る（カメラをいきなり起動しないため）
-  const [opened, setOpened] = useState<Set<string>>(new Set(['calc']))
+  const [opened, setOpened] = useState<Set<string>>(new Set(['calc', first]))
   return (
     <div class="app">
       <div class="tab-content">
