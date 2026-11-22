@@ -82,7 +82,9 @@ for d in CACHES:
                 mm = re.search(r"識別(コード|記号)\s*[:：]?\s*([^\n]{1,40})", t)
                 if mm:
                     codes = [mm.group(2).strip()]
-            codes = [c for c in dict.fromkeys(codes) if c and c not in ("-", "－", "なし")]
+            # 識別コードの欄が「なし」「－」＝刻印の無い錠剤（外観の n=1）
+            nocode = bool(codes) and all(re.sub(r"[※注）)\s]", "", c) in ("-", "－", "―", "――", "なし") for c in codes)
+            codes = [c for c in dict.fromkeys(codes) if c and re.sub(r"[※注）)\s]", "", c) not in ("-", "－", "―", "――", "なし")]
             if not codes and yj in IMG_IDC:
                 codes = [IMG_IDC[yj]]
             if codes and yj not in idc:
@@ -112,6 +114,8 @@ for d in CACHES:
                 shape = "c" if "カプセル" in fmt else "o" if lng or "楕円" in fmt or "長円" in fmt else "r" if dia and "錠" in fmt + "錠" else ""
                 if shape:
                     rec["h"] = shape
+                if nocode:
+                    rec["n"] = 1
                 if rec:
                     look[yj] = rec
 

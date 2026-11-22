@@ -20,6 +20,8 @@ export interface InfoItem {
   m?: string
   z?: string
   h?: string
+  /** 1＝添付文書の識別コードの欄が「なし」「－」（刻印の無い錠剤） */
+  n?: number
   /** 先発品：薬価がいちばん安いジェネリック [名前, 薬価] */
   c?: [string, string]
 }

@@ -50,12 +50,16 @@ export function IdentPage() {
   const [colors, setColors] = useState<string[]>([])
   const [shape, setShape] = useState('')
   const [score, setScore] = useState(false)
+  const [noCode, setNoCode] = useState(false)
+  const [size, setSize] = useState('')
   useEffect(() => {
     Promise.all([loadOtc(), loadInfo()]).then(([otc, inf]) => setData({ otc, items: inf.items }))
   }, [])
 
   const q = norm(code)
-  const active = q.length > 0 || colors.length > 0 || !!shape || score
+  // 大きさ（直径・長径、mm）。±0.5mm で当てる
+  const mm = parseFloat(size.normalize('NFKC'))
+  const active = q.length > 0 || colors.length > 0 || !!shape || score || noCode || mm > 0
   let hits: Hit[] = []
   let total = 0
   if (data && active) {
@@ -68,12 +72,18 @@ export function IdentPage() {
       if (cs.length && !(it.k && cs.some(([, , re]) => re.test(it.k!)))) continue
       if (shape && it.h !== shape) continue
       if (score && !(it.m && /割線/.test(it.m))) continue
+      // 刻印なし：識別コードの欄が「なし」の物と、刻印の文字のデータが無い物（図・写真だけの物も含む）
+      if (noCode && (it.i || !(it.h || /錠|カプセル/.test(it.m ?? '')))) continue
+      if (mm > 0) {
+        const z = parseFloat((it.z ?? '').replace(/^[^0-9]*/, ''))
+        if (!(Math.abs(z - mm) <= 0.5)) continue
+      }
       if (!q && !it.i && !it.k && !it.h) continue
       total++
       hits.push({ yj, name: productName(data.otc, yj), info: it, byName })
     }
     // 刻印が「ちょうど同じ」物を先に、刻印で当たった物、製品名で当たった物の順。その中は名前の順
-    const rank = (h: Hit) => (q && norm(h.info.i ?? '') === q ? 0 : h.byName ? 2 : 1)
+    const rank = (h: Hit) => (q && norm(h.info.i ?? '') === q ? 0 : h.byName ? 2 : noCode && !h.info.n ? 1.5 : 1)
     hits.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'ja'))
     hits = hits.slice(0, 60)
   }
@@ -115,6 +125,15 @@ export function IdentPage() {
           <button class={'ident-chip' + (score ? ' on' : '')} onClick={() => setScore(!score)}>
             割線あり
           </button>
+          <button class={'ident-chip' + (noCode ? ' on' : '')} onClick={() => setNoCode(!noCode)}>
+            刻印なし
+          </button>
+        </div>
+      </Section>
+      <Section header="大きさ（直径・長径）" footer="ものさしで測った長さ（mm）。±0.5mm の物を出します。">
+        <div class="row name-search">
+          <input class="text-input" type="text" inputMode="decimal" autocomplete="off" placeholder="例：7.5" value={size} onInput={(e) => setSize((e.target as HTMLInputElement).value)} />
+          <span class="sub">mm</span>
         </div>
       </Section>
       {!data && active && (
@@ -125,7 +144,7 @@ export function IdentPage() {
       {data && active && (
         <Section
           header={total > hits.length ? `${total}件（はじめの${hits.length}件）` : `${total}件`}
-          footer="刻印・色・形は添付文書の「性状」の文から探しています。刻印が図・写真の中にしか無い薬は、刻印の英数字では見つかりません（錠剤に印字された製品名なら探せます）。そのときは色・形で絞るか、PMDA の医薬品検索で探してください。"
+          footer="刻印・色・形は添付文書の「性状」の文から探しています。「刻印なし」は、添付文書に識別コード「なし」とある薬（先に並べる）と、刻印の文字のデータが無い薬（図・写真の中には刻印や印字があることも）を出します。刻印が図・写真の中にしか無い薬は、刻印の英数字では見つかりません（錠剤に印字された製品名なら探せます）。そのときは色・形で絞るか、PMDA の医薬品検索で探してください。"
         >
           {hits.map((h) => (
             <button class="row ident-hit" onClick={() => open(h)}>
@@ -134,7 +153,7 @@ export function IdentPage() {
               </span>
               <span class="ident-txt">
                 <b>{h.name}</b>
-                <span class="small sub">{[h.info.i && `刻印 ${h.info.i}`, h.byName && '製品名で一致（刻印は図・写真のみ）', h.info.k, h.info.z].filter(Boolean).join('・')}</span>
+                <span class="small sub">{[h.info.i && `刻印 ${h.info.i}`, h.byName && '製品名で一致（刻印は図・写真のみ）', h.info.n && '刻印なし', h.info.k, h.info.z].filter(Boolean).join('・')}</span>
               </span>
             </button>
           ))}
