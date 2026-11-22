@@ -47,10 +47,11 @@ def para(el):
             out.append(e.text)
         for c in e:
             t = local(c.tag)
-            if t in ("HeaderRef",):
-                pass
+            if t.endswith("Ref"):
+                out.append("\x00")
             elif t == "Sup":
-                out.append("".join(c.itertext()))
+                # 上付きの数字は上付きの文字に（m2 → m²）
+                out.append("".join(c.itertext()).translate(str.maketrans("0123456789+-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻")))
             elif t == "Sub":
                 out.append("".join(c.itertext()))
             else:
@@ -59,7 +60,13 @@ def para(el):
                 out.append(c.tail)
 
     walk(el)
-    return norm("".join(out))
+    x = "".join(out)
+    # 参照の番号（HeaderRef）は省くので、その間の「,」「、」や「[○○参照]」の括弧も一緒に消す
+    R = r"\x00(?:[\s,，、及びとおよ]*\x00)*"
+    x = re.sub(r"[\[［(（]\s*" + R + r"\s*(?:参照)?\s*[\]］)）]", "", x)
+    x = re.sub(R + r"\s*参照", "", x)
+    x = re.sub(r"[\s,，、]*" + R + r"[\s,，]*", "", x)
+    return norm(x.replace("\x00", ""))
 
 
 def render(el, depth, lines, in_item=False):
