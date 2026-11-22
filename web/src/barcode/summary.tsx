@@ -10,6 +10,7 @@ import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { LotLookup } from './lot'
 import { LabelRows } from './label'
+import { GediffBadge, gediffFor, loadAg, loadGediff, type GediffGroup, type GediffProduct } from './gediff'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
 import type { GenericData } from './generic'
@@ -37,6 +38,10 @@ interface Summary {
   doc: string
   /** 製品ごとの YJ コード・薬価・識別コード */
   products: Product[]
+  /** 先発品と効能効果に違いのある後発品のリストに載っていれば、その成分と製品 */
+  gd?: { g: GediffGroup; p: GediffProduct } | null
+  /** オーソライズド・ジェネリック（AG）なら、インタビューフォームの記載 */
+  ag?: string
 }
 
 interface Product {
@@ -52,7 +57,7 @@ interface Product {
 /** 読み取ったコードから、OTC類似薬・選定療養・投与日数・RMP資材の判定をまとめて出す */
 async function summarize(gtin: string | undefined, yjs: string[] | undefined, push: (el: VNode) => void): Promise<Summary> {
   const look: Promise<Lookup> = yjs ? Promise.resolve({ kind: 'found', yj: yjs, via: 'name' }) : lookupGtin(gtin!)
-  const [r, otc, lim, gen, hd, ifd, inf, nd] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf(), loadInfo(), loadNewDrugs()])
+  const [r, otc, lim, gen, hd, ifd, inf, nd, gdd, agd] = await Promise.all([look, loadOtc(), loadLimits(), loadGeneric(), loadHandling(), loadIf(), loadInfo(), loadNewDrugs(), loadGediff(), loadAg()])
   if (r.kind !== 'found') return { lookup: r, name: '', tiles: [], rmp: [], generic: null, handling: null, iff: null, doc: gtin ? PMDA.url(gtin) : '', products: [] }
   const yj = r.yj
   // 新しく収載された薬は製品名の表に無いことがあるので、新薬のデータの品名で補う
@@ -102,21 +107,27 @@ async function summarize(gtin: string | undefined, yjs: string[] | undefined, pu
       open: rmp.length ? () => push(<RmpDetailPage id={rmp[0].id} />) : undefined,
     },
   ]
-  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: pname(y), info: infoFor(inf, y), cmp: compareTo(gen, inf, y), nd: nd.items[y] })) }
+  return { lookup: r, name: names.length > 1 ? `${names[0]} ほか` : names[0] ?? '', tiles, rmp, generic: genericInfo(gen, yj), handling: handlingFor(hd, yj) ?? (ifFor(ifd, yj) ? {} : null), iff: ifFor(ifd, yj), doc: docUrl(otc, gtin, yj), products: yj.slice(0, 4).map((y) => ({ yj: y, name: pname(y), info: infoFor(inf, y), cmp: compareTo(gen, inf, y), nd: nd.items[y] })), gd: gediffFor(gdd, yj), ag: yj.map((y) => agd[y]).find(Boolean) }
 }
 
 /** 先発品・準先発品・後発品（ジェネリック）・基礎的医薬品の区分 */
-function GenericRow({ g, cmp }: { g: GenericInfo; cmp?: Product['cmp'] }) {
+function GenericRow({ g, cmp, ag }: { g: GenericInfo; cmp?: Product['cmp']; ag?: string }) {
   return (
     <div class="scan-gen">
       <div class="scan-chips">
         {g.kind && <span class={'scan-chip ' + (g.kind === '後発品' ? 'gen' : 'brand')}>{g.kind === '後発品' ? '後発品（ジェネリック）' : g.kind}</span>}
+        {ag && (
+          <span class="scan-chip ag" title={ag}>
+            AG（オーソライズド・ジェネリック）
+          </span>
+        )}
         {g.hasGeneric !== undefined && (
           <span class={'scan-chip ' + (g.hasGeneric ? 'has' : 'none')}>{g.hasGeneric ? 'ジェネリックあり' : 'ジェネリックなし'}</span>
         )}
         {!g.kind && <span class="scan-chip none">先発品・後発品の区分なし</span>}
         {g.kiso && <span class="scan-chip kiso">基礎的医薬品（{g.kiso}）</span>}
       </div>
+      {ag && <div class="small sub scan-ag">AG：{ag}</div>}
       {g.kind === '後発品' && (
         <div class="scan-brand">
           <span class="sub">先発品：</span>
@@ -297,7 +308,8 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
         </div>
       ) : (
         <>
-          {s.generic && <GenericRow g={s.generic} cmp={s.products[0]?.cmp} />}
+          {s.generic && <GenericRow g={s.generic} cmp={s.products[0]?.cmp} ag={s.ag} />}
+          {s.gd && <GediffBadge g={s.gd.g} p={s.gd.p} />}
           <Tiles tiles={s.tiles} />
           {s.handling && <HandlingTiles h={s.handling} f={s.iff} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} f={s.iff} name={name} doc={s.doc} />)} />}
         </>

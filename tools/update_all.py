@@ -15,6 +15,8 @@
 #   ・診療報酬情報提供サービスの医薬品マスター（generic_src/y_*.zip）
 #   ・MEDIS の HOTコードマスター（make_otc.py がその場で取る）
 #   ・中医協の新医薬品の資料（make_newdrug.py）
+#   ・日本ジェネリック製薬協会の「効能効果、用法用量等に違いのある後発医薬品リスト」（make_gediff.py）
+#   ・AG（make_if.py が IF の「オーソライズド・ジェネリック」の記載から data/ag.json を作る）
 # 手で置き替える元データ（変わったときだけ）：OTC類似薬のリスト（otc_src）、選定療養のリスト（sentei_src）、
 #   基礎的医薬品（generic_src/*基礎的医薬品*）、RMP資材（rmp_src。ユーザーから新しい HTML ブロックをもらう）
 import datetime, glob, io, json, os, re, shutil, subprocess, sys, urllib.request, zipfile
@@ -196,6 +198,7 @@ STEPS = [
     ("cache", clear_caches),
     ("otc", lambda: run("tools/make_otc.py")),
     ("generic", lambda: run("tools/make_generic.py")),
+    ("gediff", lambda: run("tools/make_gediff.py")),
     ("handling", lambda: run("tools/make_handling.py", "fetch")),
     ("limits", lambda: run("tools/make_limits.py")),
     ("if", lambda: run("tools/make_if.py", "fetch")),

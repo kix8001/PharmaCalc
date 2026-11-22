@@ -320,6 +320,18 @@ a.row { text-decoration: none; }
 .scan-chip.none { color: var(--faint); background: var(--fill); border-color: var(--line); }
 .scan-chip.kiso { color: var(--exempt); background: var(--card); border-color: var(--exempt); }
 .scan-brand { margin-top: 8px; font-size: 15px; line-height: 1.45; }
+.scan-chip.ag { color: #fff; background: #0e7c86; border-color: #0e7c86; }
+.scan-ag { margin-top: 6px; line-height: 1.4; }
+/* 効能効果に違いのある後発品 */
+.gediff-badge { display: flex; align-items: center; gap: 8px; width: calc(100% - 24px); margin: 10px 12px 0; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); text-align: left; }
+.gediff-badge.warn { border-color: var(--orange); background: var(--orange-soft); }
+.gediff-badge.warn b { color: var(--orange); }
+.gediff-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gediff-prod { display: flex; align-items: center; gap: 8px; text-align: left; }
+.gediff-prod .scan-chip { font-size: 11px; padding: 3px 7px; margin-right: 4px; }
+.gediff-prod.cur { background: var(--accent-soft); }
+.gediff-mark { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.gediff-mark.none { color: var(--orange); }
 /* 調剤・保管の注意（粉砕・分割・一包化・遮光・温度・湿気） */
 .hd-wrap { padding: 0 12px 6px; }
 .hd-title { padding: 2px 4px 6px; }

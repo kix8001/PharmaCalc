@@ -50,6 +50,7 @@ import {
   HeartPulse,
   Siren,
   NotebookPen,
+  GitCompare,
 } from 'lucide-preact'
 import { ButtonRow, ClearCtx, LabeledRow, Page, Section, openExternal, toast } from './ui/components'
 import { clearPatient } from './core/patient'
@@ -77,6 +78,7 @@ import { InstallBanner, InstallInfo } from './ui/install'
 import { AnticholinergicPage, Chads2Page, Cha2ds2VascPage, FastPage, HasBledPage, JcsPage, NaranjoPage, NyhaPage } from './calc/scales'
 import { RmpPage } from './rmp/rmp'
 import { IdentPage } from './barcode/ident'
+import { GediffPage } from './barcode/gediff'
 import { PMDA } from './barcode/gs1'
 
 /** 計算の分類（タイルの色） */
@@ -223,12 +225,22 @@ const items: CalcItem[] = [
     group: 'tools',
     page: () => <IdentPage />,
   },
+  {
+    id: 'gediff',
+    title: '効能効果に違いのあるジェネリック',
+    short: '効能の違い',
+    subtitle: '先発品にある効能効果・用法が無い後発品（ジェネリック）の一覧',
+    keywords: 'ジェネリック 後発品 先発品 効能 効果 適応 用法 用量 違い 差 ag オーソライズド',
+    icon: GitCompare,
+    group: 'tools',
+    page: () => <GediffPage />,
+  },
 ]
 const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'newDrug', 'nyha', 'fast']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'gediff', 'newDrug', 'nyha', 'fast']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */

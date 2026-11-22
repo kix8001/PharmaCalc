@@ -83,14 +83,35 @@ def extract(txt, lay):
     # 無包装状態の安定性（一包化の判断材料）。表は文字にすると崩れるので、見出しの下の文をそのまま短く
     stab = block(t, r"無包装(状態)?(で|に)?(おける|の)?安定性[^\n]*", [r"\n\s*[(（]\d+[)）]\s*\S", r"\n\s*\d+\s*[.．]\s*\S", r"\n\s*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]"], 300)
     bad = lambda v: not v or len(re.sub(r"[.．·・…\s\d]", "", v)) < 4
-    return {k: v for k, v in (("c", crush), ("k", susp), ("s", stab)) if not bad(v)}
+    rec = {k: v for k, v in (("c", crush), ("k", susp), ("s", stab)) if not bad(v)}
+    # オーソライズド・ジェネリック（AG）：IF の開発の経緯などに「…と原薬、添加剤及び製法等が同一のオーソライズド・ジェネリックである」とある物
+    a = ag_sentence(t)
+    if a:
+        rec["a"] = a
+    rec["_ag"] = 1  # AG を調べ済み
+    return rec
 
 
-def one(u):
+def ag_sentence(t):
+    c = re.sub(r"\s+", "", t)
+    for m in re.finditer(r"オーソライズド[・･]?ジェネリック|オーソライズドジェネリック", c):
+        st = max(c.rfind("。", 0, m.start()), m.start() - 200) + 1
+        en = c.find("。", m.end())
+        sent = c[st : en + 1 if en >= 0 and en - m.end() < 200 else m.end() + 60]
+        if re.search(r"ではない|ではありません|該当しない", sent):
+            continue
+        return clip(sent, 200)
+    return ""
+
+
+def one(u, need_ag=False):
     name = os.path.basename(u).replace(".pdf", "")
     cf = os.path.join(CACHE, name + ".json")
     if os.path.exists(cf):
-        return json.load(open(cf))
+        rec = json.load(open(cf))
+        # AG を調べる前に作ったキャッシュは、ag モードのときだけ取り直す
+        if not need_ag or rec.get("_ag"):
+            return rec
     with tempfile.TemporaryDirectory() as td:
         pdf = os.path.join(td, "a.pdf")
         time.sleep(0.3)
@@ -157,6 +178,15 @@ def main():
             for n, _ in enumerate(ex.map(one, urls)):
                 if n % 200 == 0:
                     print(n, "/", len(urls), flush=True)
+    if len(sys.argv) > 1 and sys.argv[1] == "ag":
+        # 後発品の IF だけ、AG を調べていない物を取り直す（キャッシュを消さずに AG を足すとき用）
+        gen = json.load(open(os.path.join(HERE, "..", "data", "generic.json"), encoding="utf-8"))["items"]
+        gu = sorted({u for yj, u in links.items() if gen.get(yj, {}).get("k") == "G"})
+        print("後発品の IF", len(gu), flush=True)
+        with ThreadPoolExecutor(6) as ex:
+            for n, _ in enumerate(ex.map(lambda u: one(u, True), gu)):
+                if n % 200 == 0:
+                    print(n, "/", len(gu), flush=True)
     # 同じ添付文書の規格違いの製品にも同じ IF をつける
     dy = doc_yjs()
     for u in set(links.values()):
@@ -164,13 +194,15 @@ def main():
         for yj in dy.get(key, ()):
             if not "4" <= yj[4] <= "6":
                 links.setdefault(yj, u)
-    docs, idx, by_yj = [], {}, {}
+    docs, idx, by_yj, ag = [], {}, {}, {}
     for yj, u in sorted(links.items()):
         cf = os.path.join(CACHE, os.path.basename(u).replace(".pdf", "") + ".json")
         if not os.path.exists(cf):
             continue
         rec = json.load(open(cf))
-        rec = {k: short(v, {"c": 220, "k": 160, "s": 160}[k]) for k, v in rec.items()}
+        if rec.get("a"):
+            ag[yj] = rec["a"]
+        rec = {k: short(v, {"c": 220, "k": 160, "s": 160}[k]) for k, v in rec.items() if k in ("c", "k", "s")}
         rec = {k: v for k, v in rec.items() if v}
         rec["u"] = u.replace("https://www.info.pmda.go.jp/go/interview/", "")
         key = json.dumps(rec, ensure_ascii=False, sort_keys=True)
@@ -181,6 +213,12 @@ def main():
     out = {"source": "PMDA 掲載のインタビューフォーム（" + time.strftime("%Y年%m月%d日") + "取得）", "base": "https://www.info.pmda.go.jp/go/interview/", "docs": docs, "yj": by_yj}
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    # AG（後発品だけ。先発品の IF の「AG を販売」などの文は使わない）
+    gen = json.load(open(os.path.join(HERE, "..", "data", "generic.json"), encoding="utf-8"))["items"]
+    ag = {yj: v for yj, v in sorted(ag.items()) if gen.get(yj, {}).get("k") == "G"}
+    with open(os.path.join(HERE, "..", "data", "ag.json"), "w", encoding="utf-8") as f:
+        json.dump({"source": "各社のインタビューフォーム（オーソライズド・ジェネリックである旨の記載）", "yj": ag}, f, ensure_ascii=False, separators=(",", ":"))
+    print("AG", len(ag))
     n = lambda k: sum(1 for d in docs if k in d)
     print("製品", len(by_yj), "IF", len(docs), "粉砕", n("c"), "懸濁", n("k"), "無包装", n("s"), os.path.getsize(OUT) // 1024, "KB")
 
