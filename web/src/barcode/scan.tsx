@@ -69,6 +69,9 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
     let lastAt = 0
     let frame = 0
     let wasHidden = false
+    /** 最後に読み取った（または読み取りを始めた）時刻。20秒たったら探す回数を減らす（節電） */
+    let activeAt = Date.now()
+    let wasPaused = false
 
     let tries = 0
     let retryTimer = 0
@@ -152,6 +155,12 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         wasHidden = false
         lastAt = Date.now() + 5000
       }
+      // 休み（結果を見ている間）から戻ったら、また速く探す
+      if (pausedRef.current) wasPaused = true
+      else if (wasPaused) {
+        wasPaused = false
+        activeAt = Date.now()
+      }
       if (v && v.videoWidth > 0 && !pausedRef.current && !document.hidden) {
         // 1回おきに「枠の中（真ん中の横長の部分）」と「映像全体」を読む。
         // 枠の中だけだとPTPの小さいバーコードが読みやすく、全体なら箱の横長のバーコードがはみ出しても読める
@@ -185,6 +194,7 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
           const hit = res.find((r) => r.isValid && r.text)
           if (hit) {
             const now = Date.now()
+            activeAt = now
             if (hit.text !== last || now - lastAt > 3000) {
               last = hit.text
               lastAt = now
@@ -195,7 +205,9 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
           /* 1枚読めなくても続ける */
         }
       }
-      timer = window.setTimeout(loop, 120)
+      // ふだんは 0.12 秒ごと。20秒読み取りが無ければ 0.33 秒ごと、休み・画面が隠れている間は 0.5 秒ごと（節電）
+      const idle = pausedRef.current || document.hidden
+      timer = window.setTimeout(loop, idle ? 500 : Date.now() - activeAt > 20000 ? 330 : 120)
     }
 
     if (!on) return
@@ -353,6 +365,16 @@ export function ScanPage() {
   const [picked, setPicked] = useState<{ yj: string; name: string } | null>(null)
   /** 結果を出したら、カメラを細い帯（「他の薬をスキャン」）に縮める。カメラは止めず、読み取りだけ休む */
   const [folded, setFolded] = useState(false)
+  /** 帯にしてから1分たったらカメラを止める（節電）。帯を押せばまた動かす */
+  const [sleep, setSleep] = useState(false)
+  useEffect(() => {
+    if (!folded) {
+      setSleep(false)
+      return
+    }
+    const t = window.setTimeout(() => setSleep(true), 60000)
+    return () => clearTimeout(t)
+  }, [folded])
   /** 読み取るたびに増やす（薬品名で探すの窓を空にする合図） */
   const [scanNo, setScanNo] = useState(0)
   /** 帯に出す、読み取ったときのカメラの小さな絵 */
@@ -399,7 +421,8 @@ export function ScanPage() {
     addScan(r)
     fillName(r.gtin)
   }
-  const cam = useScanner(handle, folded, useCameraOn())
+  const camOn = useCameraOn()
+  const cam = useScanner(handle, folded, camOn && !sleep)
   camRef.current = cam
 
   return (
