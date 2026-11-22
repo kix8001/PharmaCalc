@@ -434,3 +434,12 @@ a.row { text-decoration: none; }
 .wf-eff.both, .wf-eff.other { background: var(--orange-soft); color: var(--orange); }
 .wf-eff.contra { background: var(--red); color: #fff; }
 .wf-life { gap: 12px; align-items: flex-start; }
+/* スキャンの結果：添付文書の項目 */
+.label-rows { margin: 12px 0 4px; border-top: 1px solid var(--line); }
+.label-head { padding: 8px 2px 4px; }
+.label-row { width: 100%; display: flex; align-items: center; gap: 8px; padding: 11px 2px; background: none; border: 0; border-bottom: 1px solid var(--line); font: inherit; color: inherit; text-align: left; }
+.label-row:disabled { opacity: 1; }
+.label-t { flex: 1; font-weight: 600; }
+.label-v { color: var(--sub); font-size: 14px; }
+.label-v.on { color: var(--orange); font-weight: 700; }
+.label-text { display: block; white-space: pre-wrap; line-height: 1.6; font-size: 15px; }

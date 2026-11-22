@@ -12,4 +12,11 @@ for (const f of readdirSync(out + '/app/assets')) {
   const p = out + '/app/assets/' + f
   if (/\.(js|css|wasm)$/.test(f) && statSync(p).size > 20000) writeFileSync(p + '.gz', gzipSync(readFileSync(p), { level: 9 }))
 }
+// 添付文書の項目（label/*.json）も圧縮した物を置く
+if (existsSync(out + '/app/label')) {
+  for (const f of readdirSync(out + '/app/label')) {
+    const p = out + '/app/label/' + f
+    if (f.endsWith('.json') && statSync(p).size > 20000) writeFileSync(p + '.gz', gzipSync(readFileSync(p), { level: 9 }))
+  }
+}
 console.log('作成しました:', out)

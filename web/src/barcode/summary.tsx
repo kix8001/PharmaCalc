@@ -9,6 +9,7 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { LotLookup } from './lot'
+import { LabelRows } from './label'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
 import type { GenericData } from './generic'
@@ -301,6 +302,7 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
           {s.handling && <HandlingTiles h={s.handling} f={s.iff} onOpen={() => nav.push(<HandlingDetailPage h={s.handling!} f={s.iff} name={name} doc={s.doc} />)} />}
         </>
       )}
+      {s && s.lookup.kind === 'found' && <LabelRows yj={s.lookup.yj} name={name} />}
       <div class="scan-btns">
         <button class="primary-btn" disabled={!s?.doc} onClick={() => s?.doc && openExternal(s.doc)}>
           <FileText size={20} /> 添付文書を開く
