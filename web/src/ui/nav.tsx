@@ -36,8 +36,15 @@ if (typeof window !== 'undefined') {
   })
 }
 
-export function Stack({ root, active }: { root: VNode; active: boolean }) {
+export function Stack({ root, active, home }: { root: VNode; active: boolean; home?: number }) {
   const [entries, setEntries] = useState<Entry[]>([])
+  const rootRef = useRef<HTMLDivElement>(null)
+  // 下のタブを押したとき（home が増えたとき）：最初の画面に戻り、いちばん上までスクロールする
+  useEffect(() => {
+    if (!home) return
+    if (entriesRef.current.length) setEntries([])
+    requestAnimationFrame(() => rootRef.current?.querySelector('.page-body')?.scrollTo({ top: 0, behavior: 'smooth' }))
+  }, [home])
   const entriesRef = useRef(entries)
   entriesRef.current = entries
 
@@ -71,7 +78,7 @@ export function Stack({ root, active }: { root: VNode; active: boolean }) {
   return (
     <>
       {all.map((e, i) => (
-        <Layer key={e.id} depth={i} top={i === all.length - 1} visible={active && i === all.length - 1} push={push} back={back}>
+        <Layer key={e.id} ref0={i === 0 ? rootRef : undefined} depth={i} top={i === all.length - 1} visible={active && i === all.length - 1} push={push} back={back}>
           {e.node}
         </Layer>
       ))}
@@ -79,10 +86,10 @@ export function Stack({ root, active }: { root: VNode; active: boolean }) {
   )
 }
 
-function Layer(props: { depth: number; top: boolean; visible: boolean; push: NavApi['push']; back: NavApi['back']; children: ComponentChildren }) {
+function Layer(props: { ref0?: { current: HTMLDivElement | null }; depth: number; top: boolean; visible: boolean; push: NavApi['push']; back: NavApi['back']; children: ComponentChildren }) {
   const api = useMemo(() => ({ push: props.push, back: props.back, depth: props.depth }), [props.push, props.back, props.depth])
   return (
-    <div class="layer" style={{ display: props.top ? 'flex' : 'none' }}>
+    <div class="layer" ref={props.ref0} style={{ display: props.top ? 'flex' : 'none' }}>
       <NavCtx.Provider value={api}>
         <VisibleCtx.Provider value={props.visible}>{props.children}</VisibleCtx.Provider>
       </NavCtx.Provider>

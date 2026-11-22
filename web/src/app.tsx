@@ -488,6 +488,8 @@ export function App() {
     }
   })
   const [tab, setTab] = useState(first)
+  /** メインメニューを押した回数（押すたびにホームの最初の画面・いちばん上に戻す） */
+  const [homeNo, setHomeNo] = useState(0)
   // バーコードのタブは開いたときに初めて作る（カメラをいきなり起動しないため）
   const [opened, setOpened] = useState<Set<string>>(new Set(['calc', first]))
   return (
@@ -496,7 +498,7 @@ export function App() {
         {tabs.map((t) =>
           opened.has(t.id) ? (
             <div class="tab-pane" style={{ display: t.id === tab ? 'block' : 'none' }}>
-              <Stack root={t.root()} active={t.id === tab} />
+              <Stack root={t.root()} active={t.id === tab} home={t.id === 'calc' ? homeNo : undefined} />
             </div>
           ) : null,
         )}
@@ -512,6 +514,7 @@ export function App() {
               onClick={() => {
                 setOpened((o) => new Set(o).add(t.id))
                 setTab(t.id)
+                if (t.id === 'calc') setHomeNo((n) => n + 1)
               }}
             >
               <I size={24} />
