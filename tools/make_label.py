@@ -240,6 +240,15 @@ for doc, s in picked:
             rec[k] = t
     if not rec:
         continue
+    # グレープフルーツ（ジュース）との相互作用：10.1 併用禁忌・10.2 併用注意の表の行（◆…）のうち「グレープフルーツ」を含む物
+    gf = []
+    for tag, kind in (("ContraIndicatedCombinations", "併用禁忌"), ("PrecautionsForCombinations", "併用注意")):
+        txt = section(root, tag)
+        for blk in re.split(r"\n(?=\s*◆)", txt):
+            if "グレープフルーツ" in blk:
+                gf.append("【" + kind + "】" + blk.strip().lstrip("◆ ").strip())
+    if gf:
+        rec["g"] = "\n".join(gf)
     # 投与期間の規定（「8週間までの投与」「2週間投与後…継続の必要性を検討」「漫然と投与しない」など）。
     # 効能関連注意・用法用量・用法用量関連注意・重要な基本的注意（8.）の文から拾う。検査の間隔の文は除く
     bp = section(root, "ImportantPrecautions")

@@ -22,6 +22,8 @@ export interface LabelDoc {
   /** 投与期間の規定（「8週間までの投与」など日数の書かれた文）と、日数は無いが「漫然と投与しない」の文 */
   t?: string
   tm?: string
+  /** グレープフルーツ（ジュース）との相互作用（10.1 併用禁忌・10.2 併用注意の行） */
+  g?: string
 }
 interface LabelFile {
   yj: Record<string, string>
@@ -134,6 +136,12 @@ export function LabelRows({ yj, name }: { yj: string[]; name: string }) {
     { t: '警告', v: d.w ? 'あり' : 'なし', on: !!d.w, go: d.w ? () => open('警告', [['警告', d.w]]) : undefined },
     { t: '禁忌', v: d.c ? 'あり' : 'なし', on: !!d.c, go: d.c ? () => open('禁忌', [['禁忌（次の患者には投与しないこと）', d.c]]) : undefined },
     { t: '併用禁忌', v: d.x ? 'あり' : 'なし', on: !!d.x, go: d.x ? () => open('併用禁忌', [['併用禁忌（併用しないこと）', d.x]]) : undefined },
+    {
+      t: 'グレープフルーツジュース',
+      v: d.g ? (d.g.includes('【併用禁忌】') ? 'あり（併用禁忌）' : 'あり') : 'なし',
+      on: !!d.g,
+      go: d.g ? () => open('グレープフルーツジュース', [['相互作用（添付文書の 10. 相互作用）', d.g]]) : undefined,
+    },
     {
       t: '腎機能の規定',
       v: d.r || d.rx ? 'あり' : 'なし',
