@@ -22,6 +22,32 @@ interface Entry {
 }
 
 let seq = 0
+
+/**
+ * iPhone のホーム画面のアプリで、ときどき画面の中のスクロールが固まる対策。
+ * ・キーボードを閉じたあと、画面全体がずれたまま残ることがある → 元の位置に戻す
+ * ・隠れていたスクロール部分が表に戻ったとき動かないことがある → overflow を一度切り替えて起こし直す
+ */
+export function wakeScroll() {
+  if (typeof window === 'undefined') return
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0)
+  document.querySelectorAll<HTMLElement>('.page-body').forEach((el) => {
+    if (!el.offsetParent) return
+    const top = el.scrollTop
+    el.style.overflowY = 'hidden'
+    void el.offsetHeight
+    el.style.overflowY = ''
+    el.scrollTop = top
+  })
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('focusout', () => setTimeout(wakeScroll, 120))
+  window.addEventListener('pageshow', () => setTimeout(wakeScroll, 0))
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(wakeScroll, 0)
+  })
+  window.visualViewport?.addEventListener('resize', () => setTimeout(wakeScroll, 120))
+}
 /** いま表示しているタブの「1つ戻る」（ブラウザ・Android の戻るボタン用） */
 let activePop: (() => boolean) | null = null
 let ignorePop = 0
@@ -43,7 +69,7 @@ export function Stack({ root, active, home }: { root: VNode; active: boolean; ho
   useEffect(() => {
     if (!home) return
     if (entriesRef.current.length) setEntries([])
-    requestAnimationFrame(() => rootRef.current?.querySelector('.page-body')?.scrollTo({ top: 0, behavior: 'smooth' }))
+    requestAnimationFrame(() => rootRef.current?.querySelector('.page-body')?.scrollTo({ top: 0 }))
   }, [home])
   const entriesRef = useRef(entries)
   entriesRef.current = entries
@@ -57,6 +83,10 @@ export function Stack({ root, active, home }: { root: VNode; active: boolean; ho
   useEffect(() => {
     if (active) activePop = popOne
   }, [active, popOne])
+  // タブを表に出したとき・画面を進めた／戻ったときに、スクロールを起こし直す
+  useEffect(() => {
+    if (active) requestAnimationFrame(wakeScroll)
+  }, [active, entries.length])
 
   const push = useCallback((node: VNode) => {
     setEntries((e) => [...e, { id: ++seq, node }])

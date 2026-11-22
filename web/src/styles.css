@@ -47,7 +47,7 @@
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; overscroll-behavior: none; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif;
   font-size: 16px; line-height: 1.45; overscroll-behavior: none;
@@ -63,7 +63,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .tab-pane { position: absolute; inset: 0; }
 .layer { position: absolute; inset: 0; flex-direction: column; }
 .page { display: flex; flex-direction: column; height: 100%; }
-.page-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 16px 32px; }
+.page-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 8px 16px 32px; }
 
 /* 上のバー */
 .bar {
@@ -353,7 +353,7 @@ a.row { text-decoration: none; }
 .shot-btn:disabled { opacity: 0.4; }
 .shot-btn:active { transform: translateX(-50%) scale(0.93); }
 /* 情報：更新の履歴（中だけスクロール） */
-.changelog { max-height: 340px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.changelog { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
 .changelog-row { padding: 10px 16px; border-bottom: 1px solid var(--line); }
 .changelog-row:last-child { border-bottom: 0; }
 .changelog-v { display: flex; gap: 10px; align-items: baseline; font-size: 15px; }
@@ -368,7 +368,7 @@ a.row { text-decoration: none; }
 .scan-figs { display: flex; gap: 8px; align-items: center; margin: 6px 0 2px 5.5em; padding-left: 10px; flex-wrap: wrap; }
 .scan-figs img { height: 44px; width: auto; background: #fff; border-radius: 6px; border: 1px solid var(--line); padding: 3px; }
 /* 薬品名の候補は多いときスクロール */
-.name-suggest-list { max-height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.name-suggest-list { max-height: 380px; overflow-y: auto; overscroll-behavior: contain; }
 /* GE（例）の行は少し小さく */
 .scan-brand-ex { font-size: 13px; margin-top: 6px; }
 /* 錠剤の図：押すと大きく */
@@ -468,6 +468,6 @@ div.install-steps { padding-left: 0; }
 .install-ic { vertical-align: -3px; color: var(--accent); }
 /* 錠剤カウント：見本の1錠を選ぶときの拡大表示 */
 .pill-zoom-wrap { position: relative; }
-.pill-zoom { overflow: auto; max-height: 65vh; background: #000; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.pill-zoom { overflow: auto; max-height: 65vh; background: #000; overscroll-behavior: contain; }
 .pill-zoom .pill-image { max-width: none; }
 .pill-zoom-btns { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
