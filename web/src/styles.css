@@ -450,3 +450,6 @@ a.row { text-decoration: none; }
 .cs-text b { font-size: 16px; }
 .cs-text span { font-size: 12px; color: #b9c6cc; }
 .cs-ic { color: #5ee0e8; flex: none; }
+/* カメラのすぐ下の小さな「カメラを縮める」ボタン */
+.cam-fold-row { display: flex; justify-content: flex-end; padding: 6px 16px 0; }
+.cam-fold { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card, transparent); color: var(--sub); font-size: 13px; }

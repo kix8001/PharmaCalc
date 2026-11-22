@@ -240,6 +240,35 @@ for doc, s in picked:
             rec[k] = t
     if not rec:
         continue
+    # 投与期間の規定（「8週間までの投与」「2週間投与後…継続の必要性を検討」「漫然と投与しない」など）。
+    # 効能関連注意・用法用量・用法用量関連注意・重要な基本的注意（8.）の文から拾う。検査の間隔の文は除く
+    bp = section(root, "ImportantPrecautions")
+    durs, loose = [], []
+    DUR = re.compile(r"([0-9０-９]+|一|二|三|四|六|十二)\s*(週間|日間|ヵ月|カ月|か月|ケ月|箇月|年間)")
+    for src, name in (("ip", "効能又は効果に関連する注意"), ("d", "用法及び用量"), ("dp", "用法及び用量に関連する注意"), (None, "重要な基本的注意")):
+        text = bp if src is None else rec.get(src, "")
+        for sent in re.split(r"(?<=。)|\n", text):
+            t = sent.strip().lstrip("・■ ").strip()
+            if not t:
+                continue
+            if (
+                DUR.search(t)
+                and re.search(r"(まで|以内|を超え|超える|限度|目安|投与後|使用後|服用後|継続|延長|長期|再投与|投与期間|治療期間|使用期間|休薬)", t)
+                and re.search(r"(投与|服用|使用|治療|内服)", t)
+                and not re.search(r"(検査|測定|モニタ|観察を十分|ごとに|毎に|保存|貯法|有効期間|経過した|経過後|妊娠|授乳|避妊|後発|臨床試験|試験において|試験では|患者を対象|発現し|発現する|あらわれ|回復|軽快)", t)
+            ):
+                line = "【" + name + "】" + t
+                if line not in durs:
+                    durs.append(line)
+            elif re.search(r"漫然", t):
+                line = "【" + name + "】" + t
+                if line not in loose:
+                    loose.append(line)
+    if durs:
+        rec["t"] = "\n".join(durs)
+    # 日数は書かれていないが「漫然と投与しない」とある物（一覧では「なし」の横に小さく出す）
+    if loose:
+        rec["tm"] = "\n".join(loose)
     # 警告・禁忌・用法用量・用法用量関連注意の中で腎機能・肝機能に触れた行（9.2・9.3 とは別に「ほかの項目」として出す）
     for key, rx in (("rx", r"(?<!副)腎|透析|クレアチニン|CCr|eGFR|Ccr"), ("hx", r"肝(?!炎ウイルス)|Child-Pugh")):
         hits = []

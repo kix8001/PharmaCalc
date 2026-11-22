@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { ChevronDown, Flashlight, FlashlightOff, ScanBarcode, Search, SwitchCamera, Trash2 } from 'lucide-preact'
+import { ChevronDown, ChevronUp, Flashlight, FlashlightOff, ScanBarcode, Search, SwitchCamera, Trash2 } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { ButtonRow, LabeledRow, Page, Section, WarningRow, openExternal } from '../ui/components'
@@ -424,6 +424,11 @@ export function ScanPage() {
       )}
       <div style={folded ? { display: 'none' } : undefined}>
         <CameraBox cam={cam} />
+        <div class="cam-fold-row">
+          <button class="cam-fold" onClick={fold}>
+            <ChevronUp size={16} /> カメラを縮める
+          </button>
+        </div>
       </div>
       <NameSearch
         onPick={(yj, name) => {

@@ -19,6 +19,9 @@ export interface LabelDoc {
   h?: string
   rx?: string
   hx?: string
+  /** 投与期間の規定（「8週間までの投与」など日数の書かれた文）と、日数は無いが「漫然と投与しない」の文 */
+  t?: string
+  tm?: string
 }
 interface LabelFile {
   yj: Record<string, string>
@@ -114,6 +117,19 @@ export function LabelRows({ yj, name }: { yj: string[]; name: string }) {
               ['用法及び用量に関連する注意', d.dp],
             ])
         : undefined,
+    },
+    {
+      t: '投与期間の規定',
+      v: d.t ? 'あり' : d.tm ? 'なし（漫然投与の注意あり）' : 'なし',
+      on: !!d.t,
+      go:
+        d.t || d.tm
+          ? () =>
+              open('投与期間の規定', [
+                ['投与期間・日数の記載', d.t],
+                ['漫然と投与しないこと（日数の記載なし）', d.tm],
+              ])
+          : undefined,
     },
     { t: '警告', v: d.w ? 'あり' : 'なし', on: !!d.w, go: d.w ? () => open('警告', [['警告', d.w]]) : undefined },
     { t: '禁忌', v: d.c ? 'あり' : 'なし', on: !!d.c, go: d.c ? () => open('禁忌', [['禁忌（次の患者には投与しないこと）', d.c]]) : undefined },
