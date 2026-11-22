@@ -86,7 +86,8 @@ for d in CACHES:
             # 識別コードの欄が「なし」「－」＝刻印の無い錠剤（外観の n=1）
             nocode = bool(codes) and all(re.sub(r"[※注）)\s]", "", c) in ("-", "－", "―", "――", "なし") for c in codes)
             codes = [c for c in dict.fromkeys(codes) if c and re.sub(r"[※注）)\s]", "", c) not in ("-", "－", "―", "――", "なし")]
-            if not codes and yj in IMG_IDC:
+            # （値が空＝画像を見たが記号だけで文字が無い物）
+            if not codes and IMG_IDC.get(yj):
                 codes = [IMG_IDC[yj]]
             if codes and yj not in idc:
                 idc[yj] = " / ".join(codes)[:60]

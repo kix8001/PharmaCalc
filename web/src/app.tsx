@@ -1,4 +1,5 @@
 import changelog from './changelog.json'
+import dataUpdated from '../../data/updated.json'
 import type { VNode } from 'preact'
 import type { LucideIcon } from 'lucide-preact'
 import { useEffect, useState } from 'preact/hooks'
@@ -415,6 +416,12 @@ async function restartApp() {
   location.reload()
 }
 
+/** 2026-11-22 → 2026年11月22日 */
+function jpDay(d: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d)
+  return m ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日` : d
+}
+
 function AboutPage() {
   return (
     <Page title="情報">
@@ -424,6 +431,7 @@ function AboutPage() {
       </div>
       <Section>
         <LabeledRow label="バージョン" value={`${__APP_VERSION__}（Web版）`} />
+        <LabeledRow label="データ更新日" value={jpDay(dataUpdated.date)} />
       </Section>
       <Section footer="動きがおかしいときや、新しい版にしたいときに押してください。新しい版があれば入れてから起動し直します（入力中の内容は消えます）。">
         <ButtonRow icon={<RefreshCw size={20} />} onClick={restartApp}>
