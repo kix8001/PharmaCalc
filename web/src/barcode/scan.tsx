@@ -458,6 +458,10 @@ export function ScanPage() {
       </div>
       <NameSearch
         reset={scanNo}
+        onFocus={() => {
+          // 薬品名を入れ始めたら、カメラを細い帯に縮める（入力欄と候補を広く見せる）
+          if (!folded) fold()
+        }}
         onPick={(yj, name) => {
           addNamed(yj, name)
           setPicked({ yj, name })
@@ -523,7 +527,7 @@ export function ScanPage() {
 }
 
 /** 薬品名で探す窓（入力すると候補が出る。選ぶとスキャンと同じ結果を出す） */
-function NameSearch({ onPick, reset }: { onPick: (yj: string, name: string) => void; reset: number }) {
+function NameSearch({ onPick, reset, onFocus }: { onPick: (yj: string, name: string) => void; reset: number; onFocus?: () => void }) {
   const [q, setQ] = useState('')
   // カメラ・手入力で読み取ったら、前に探した薬品名を消す（紛らわしいので）
   useEffect(() => {
@@ -561,7 +565,10 @@ function NameSearch({ onPick, reset }: { onPick: (yj: string, name: string) => v
             setQ((e.target as HTMLInputElement).value)
             setOpen(true)
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true)
+            onFocus?.()
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && list[0]) pick(list[0])
           }}
