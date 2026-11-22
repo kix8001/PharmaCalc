@@ -22,6 +22,8 @@ export interface InfoItem {
   h?: string
   /** 1＝添付文書の識別コードの欄が「なし」「－」（刻印の無い錠剤） */
   n?: number
+  /** 1＝無字（添付文書の錠剤の図の表・裏に文字・記号が無い。tools/make_blank.py） */
+  b?: number
   /** 先発品：薬価がいちばん安いジェネリック [名前, 薬価] */
   c?: [string, string]
 }

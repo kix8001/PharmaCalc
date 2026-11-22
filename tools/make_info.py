@@ -55,6 +55,7 @@ def text(x):
 # 識別コード
 idc = {}
 # 識別コードが画像だけで載っている添付文書（バイアスピリンの「BA 100」など）は、画像を目で読んだ表 idcode_img.json を使う
+BLANK = set(json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "blank.json"), encoding="utf-8")))
 IMG_IDC = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "idcode_img.json"), encoding="utf-8"))
 look = {}  # 外観
 seen = set()
@@ -116,6 +117,9 @@ for d in CACHES:
                     rec["h"] = shape
                 if nocode:
                     rec["n"] = 1
+                # 無字（錠剤の図に文字・記号が無い。tools/make_blank.py が作る blank.json）
+                if yj in BLANK:
+                    rec["b"] = 1
                 if rec:
                     look[yj] = rec
 
