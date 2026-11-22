@@ -92,6 +92,13 @@ def extract(txt, lay):
     return rec
 
 
+def ag_clean(v):
+    """目次の点線・ページ番号・見出し（「開発の経緯」など）を文の頭から除く"""
+    v = re.split(r"開発の経緯|[.．·・…]{4,}[\dⅠ-Ⅹ]*", v)[-1]
+    v = re.sub(r"^[\dⅠ-Ⅹ]+[.．]?(概要に関する項目)?\d*[.．]?", "", v)
+    return v.strip()
+
+
 def ag_sentence(t):
     c = re.sub(r"\s+", "", t)
     for m in re.finditer(r"オーソライズド[・･]?ジェネリック|オーソライズドジェネリック", c):
@@ -181,8 +188,8 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "ag":
         # 後発品の IF だけ、AG を調べていない物を取り直す（キャッシュを消さずに AG を足すとき用）
         gen = json.load(open(os.path.join(HERE, "..", "data", "generic.json"), encoding="utf-8"))["items"]
-        gu = sorted({u for yj, u in links.items() if gen.get(yj, {}).get("k") == "G"})
-        print("後発品の IF", len(gu), flush=True)
+        gu = sorted({u for yj, u in links.items() if gen.get(yj, {}).get("k") not in ("B", "Q")})
+        print("先発品以外の IF", len(gu), flush=True)
         with ThreadPoolExecutor(6) as ex:
             for n, _ in enumerate(ex.map(lambda u: one(u, True), gu)):
                 if n % 200 == 0:
@@ -201,7 +208,7 @@ def main():
             continue
         rec = json.load(open(cf))
         if rec.get("a"):
-            ag[yj] = rec["a"]
+            ag[yj] = ag_clean(rec["a"])
         rec = {k: short(v, {"c": 220, "k": 160, "s": 160}[k]) for k, v in rec.items() if k in ("c", "k", "s")}
         rec = {k: v for k, v in rec.items() if v}
         rec["u"] = u.replace("https://www.info.pmda.go.jp/go/interview/", "")
@@ -215,7 +222,10 @@ def main():
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     # AG（後発品だけ。先発品の IF の「AG を販売」などの文は使わない）
     gen = json.load(open(os.path.join(HERE, "..", "data", "generic.json"), encoding="utf-8"))["items"]
-    ag = {yj: v for yj, v in sorted(ag.items()) if gen.get(yj, {}).get("k") == "G"}
+    names = json.load(open(os.path.join(HERE, "..", "data", "otc.json"), encoding="utf-8"))["names"]
+    # 後発品：一覧で G、または一覧に行の無い（一般名でまとめて載る）製品で販売名に「」が付く物
+    is_gen = lambda yj: gen.get(yj, {}).get("k") == "G" or (yj not in gen and "「" in names.get(yj, ""))
+    ag = {yj: v for yj, v in sorted(ag.items()) if is_gen(yj)}
     with open(os.path.join(HERE, "..", "data", "ag.json"), "w", encoding="utf-8") as f:
         json.dump({"source": "各社のインタビューフォーム（オーソライズド・ジェネリックである旨の記載）", "yj": ag}, f, ensure_ascii=False, separators=(",", ":"))
     print("AG", len(ag))
