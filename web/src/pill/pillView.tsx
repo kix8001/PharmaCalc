@@ -165,7 +165,7 @@ export function PillCountPage() {
           <Section
             footer={
               sampling ? (
-                <span style={{ color: 'var(--orange)' }}>数える錠剤を1錠タップしてください（なるべく錠剤の真ん中を。大きさと色を覚えて、同じ形の錠剤を数えます）。</span>
+                <span style={{ color: 'var(--orange)' }}>数える錠剤を1錠タップしてください（なるべく錠剤の真ん中を。大きさと色を覚えて、同じ形の錠剤を数えます）。写真は拡大して出しています。指でなぞると動かせて、右下のボタンで倍率を変えられます。</span>
               ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
@@ -261,6 +261,19 @@ function MarkedImage(props: {
   const box = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const { p } = props
+  // 見本の1錠を選ぶときは写真を拡大して出す（1本指で動かし、軽くタップで選ぶ。ピンチで拡大すると範囲の指定になってしまうため）
+  const view = useRef<HTMLDivElement>(null)
+  const [zoom, setZoom] = useState(2.5)
+  const down = useRef<{ x: number; y: number; sl: number; st: number } | null>(null)
+  useEffect(() => {
+    if (!props.pointMode) return
+    // 写真の真ん中から見せる
+    const v = view.current
+    if (v) {
+      v.scrollLeft = (v.scrollWidth - v.clientWidth) / 2
+      v.scrollTop = (v.scrollHeight - v.clientHeight) / 2
+    }
+  }, [props.pointMode, zoom])
   // 画像の画素 ↔ 画面上の位置
   const scale = () => (box.current ? box.current.clientWidth / p.width : 1)
   const toImg = (ev: PointerEvent) => {
@@ -295,6 +308,62 @@ function MarkedImage(props: {
   // 印の大きさ（画像の画素で。表示の幅にかかわらず見やすい大きさにする）
   const s = box.current ? box.current.clientWidth / p.width : 0.4
   const dot = Math.min(Math.max(Math.min(Math.max(props.radius * s, 6), 40) * 0.45, 6), 12) / (s || 1)
+
+  if (props.pointMode) {
+    const setZ = (z: number) => {
+      // 拡大率を変えても、見ている所の真ん中がずれないように
+      const v = view.current
+      const cx = v ? (v.scrollLeft + v.clientWidth / 2) / v.scrollWidth : 0.5
+      const cy = v ? (v.scrollTop + v.clientHeight / 2) / v.scrollHeight : 0.5
+      setZoom(z)
+      requestAnimationFrame(() => {
+        if (!v) return
+        v.scrollLeft = cx * v.scrollWidth - v.clientWidth / 2
+        v.scrollTop = cy * v.scrollHeight - v.clientHeight / 2
+      })
+    }
+    return (
+      <div class="pill-zoom-wrap">
+        <div class="pill-zoom" ref={view}>
+          <div
+            ref={box}
+            class="pill-image"
+            style={{ width: `${zoom * 100}%`, aspectRatio: `${p.width} / ${p.height}`, touchAction: 'pan-x pan-y' }}
+            onPointerDown={(ev) => {
+              const v = view.current
+              down.current = { x: ev.clientX, y: ev.clientY, sl: v?.scrollLeft ?? 0, st: v?.scrollTop ?? 0 }
+            }}
+            onPointerCancel={() => {
+              down.current = null
+            }}
+            onPointerUp={(ev) => {
+              const d = down.current
+              down.current = null
+              const v = view.current
+              // 指を動かした（写真を動かした）ときは選ばない
+              if (!d || Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 10 || (v && (Math.abs(v.scrollLeft - d.sl) > 4 || Math.abs(v.scrollTop - d.st) > 4))) return
+              const a = toImg(ev)
+              props.onSelect({ x: a.x, y: a.y, w: 0, h: 0 })
+            }}
+          >
+            <img src={p.url} alt="数える錠剤の写真" draggable={false} />
+            {props.busy && (
+              <div class="pill-busy" role="status">
+                数えています…
+              </div>
+            )}
+          </div>
+        </div>
+        <div class="pill-zoom-btns">
+          {[1, 2.5, 4].map((z) => (
+            <button class={'zoom-chip' + (zoom === z ? ' on' : '')} onClick={() => setZ(z)}>
+              {z}×
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
