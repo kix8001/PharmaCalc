@@ -453,3 +453,6 @@ a.row { text-decoration: none; }
 /* カメラのすぐ下の小さな「カメラを縮める」ボタン */
 .cam-fold-row { display: flex; justify-content: flex-end; padding: 6px 16px 0; }
 .cam-fold { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card, transparent); color: var(--sub); font-size: 13px; }
+/* 薬品名で探す：右の消すボタン（ブラウザの標準の×は出さない） */
+.name-search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.name-clear { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--sub); color: var(--card, #fff); display: flex; align-items: center; justify-content: center; opacity: 0.7; padding: 0; }

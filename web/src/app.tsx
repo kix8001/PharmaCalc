@@ -110,7 +110,7 @@ interface CalcItem {
 const items: CalcItem[] = [
   { id: 'renal', title: '腎機能（CCr・eGFR）', short: '腎機能', subtitle: 'Cockcroft-Gault・日本人eGFR・シスタチンC', keywords: 'ccr egfr クレアチニン 腎 シスタチン', icon: Droplet, group: 'renal', page: () => <RenalPage /> },
   { id: 'renalDrugs', title: '腎機能で注意する薬（添付文書）', short: '腎機能と薬', subtitle: 'CCr・eGFRで減量・禁忌がある薬と添付文書の記載', keywords: '腎 ccr egfr 減量 禁忌 用量調節 添付文書 透析', icon: ListChecks, group: 'renal', page: () => <RenalDrugsPage /> },
-  { id: 'body', title: '体表面積・BMI・理想体重', short: '体表面積', subtitle: 'DuBois・藤本・Mosteller', keywords: 'bsa bmi ibw 体重 身長', icon: PersonStanding, group: 'renal', page: () => <BodyPage /> },
+  { id: 'body', title: 'BMI・理想体重・体表面積', short: 'BMI', subtitle: 'BMI・理想体重、体表面積（DuBois・藤本・Mosteller）', keywords: 'bsa bmi ibw 体重 身長', icon: PersonStanding, group: 'renal', page: () => <BodyPage /> },
   { id: 'lab', title: 'Child-Pugh・補正Ca', short: 'Child-Pugh', subtitle: '肝機能の重症度・アルブミン補正', keywords: 'カルシウム ca アルブミン 肝 child pugh 検査', icon: TestTubes, group: 'renal', page: () => <LabPage /> },
   { id: 'endDate', title: '服用終了日', short: '服用終了日', subtitle: '開始日＋処方日数 → 最終服用日', keywords: '日数 日付 カレンダー', icon: Calendar, group: 'days', page: () => <EndDatePage /> },
   { id: 'nextVisit', title: '次回受診までの日数', short: '次回受診', subtitle: '受診日までに必要な日数・錠数', keywords: '日数 日付 カレンダー', icon: CalendarClock, group: 'days', page: () => <NextVisitPage /> },
@@ -190,7 +190,7 @@ const items: CalcItem[] = [
     subtitle: 'PT-INR の目標域と判定・相互作用（添付文書）・食事と生活・服薬指導のチェック',
     keywords: 'ワルファリン ワーファリン warfarin pt-inr inr 抗凝固 相互作用 併用禁忌 併用注意 納豆 ビタミンk 手帳 出血',
     icon: NotebookPen,
-    group: 'dose',
+    group: 'scale',
     page: () => <WarfarinPage />,
   },
   { id: 'jcs', title: 'JCS（ジャパン・コーマ・スケール）', short: 'JCS', subtitle: '意識レベル 0〜300、R・I・A', keywords: 'jcs 意識 意識障害 昏睡 3-3-9 スケール', icon: Brain, group: 'scale', page: () => <JcsPage /> },
@@ -248,7 +248,16 @@ function CalcScreen({ c }: { c: CalcItem }) {
 const open = (nav: { push: (n: VNode) => void }, c: CalcItem) => nav.push(<CalcScreen c={c} />)
 
 /** ホームに並べるタイル（このブラウザに保存） */
-const defaultTiles = ['pillCount', 'remainder', 'endDate', 'remaining', 'renal', 'nextVisit']
+const defaultTiles = ['pillCount', 'remainder', 'renal', 'body', 'endDate', 'nextVisit', 'limits', 'rmp', 'ident']
+// 初期のホームの並びを変えたとき（版 2）は、一度だけ全員のホームをこの並びにする（ユーザーの指示）
+try {
+  if (localStorage.getItem('homeTilesVer') !== '2') {
+    localStorage.setItem('homeTiles', JSON.stringify(defaultTiles))
+    localStorage.setItem('homeTilesVer', '2')
+  }
+} catch {
+  /* 保存できない端末は初期の並びのまま */
+}
 const tilesStore = persistedStore<string[]>('homeTiles', defaultTiles)
 
 function TileIcon({ c, size }: { c: CalcItem; size: number }) {

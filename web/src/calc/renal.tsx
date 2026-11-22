@@ -115,7 +115,7 @@ export function BodyPage() {
   const w = weightV(p), h = heightV(p)
   const ok = w != null && h != null && w > 0 && h > 0
   return (
-    <Page title="体表面積・体格">
+    <Page title="BMI・理想体重・体表面積">
       <Section header="患者情報（共通）">
         <PatientFields fields={['sex', 'height', 'weight']} />
       </Section>

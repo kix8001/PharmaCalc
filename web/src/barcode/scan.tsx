@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { ChevronDown, ChevronUp, Flashlight, FlashlightOff, ScanBarcode, Search, SwitchCamera, Trash2 } from 'lucide-preact'
+import { ChevronDown, ChevronUp, Flashlight, FlashlightOff, ScanBarcode, Search, SwitchCamera, Trash2, X } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { ButtonRow, LabeledRow, Page, Section, WarningRow, openExternal } from '../ui/components'
@@ -531,6 +531,18 @@ function NameSearch({ onPick }: { onPick: (yj: string, name: string) => void }) 
             if (e.key === 'Enter' && list[0]) pick(list[0])
           }}
         />
+        {q && (
+          <button
+            class="name-clear"
+            aria-label="薬品名を消す"
+            onClick={() => {
+              setQ('')
+              setOpen(false)
+            }}
+          >
+            <X size={16} strokeWidth={3} />
+          </button>
+        )}
       </div>
       {open && list.length > 0 && (
         <div class="name-suggest-list">
