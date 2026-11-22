@@ -6,3 +6,4 @@ PharmaCalc/Info.plist
 web/node_modules/
 web/dist/
 out/
+__pycache__/
