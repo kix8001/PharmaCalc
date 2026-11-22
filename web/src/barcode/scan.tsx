@@ -8,7 +8,7 @@ import { persistedStore, useStore } from '../core/store'
 import { matchesSearch } from '../core/format'
 import { ScanSummary } from './summary'
 import { backCameras, cameraStore, openBackCamera, preferredCamera, type CamInfo } from './camera'
-import { PMDA, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
+import { PMDA, addNamed, addScan, memoFor, parseGS1, scanHistory, setAutoName, type GS1Result } from './gs1'
 import { loadOtc, nameForGtin, productName, suggestProducts, type OtcData } from '../otc/otcData'
 
 // バーコードを読む部品（zxing-cpp の WebAssembly 版）は、このサイトに置いた物を使う（外部のサーバーから読まない）
@@ -459,6 +459,7 @@ export function ScanPage() {
       <NameSearch
         reset={scanNo}
         onPick={(yj, name) => {
+          addNamed(yj, name)
           setPicked({ yj, name })
           setResult(null)
           fold()
@@ -608,7 +609,7 @@ async function backfillNames() {
   try {
     const gtins = scanHistory
       .get()
-      .filter((x) => !x.memo)
+      .filter((x) => !x.memo && x.gtin)
       .map((x) => x.gtin)
       .slice(0, 30)
     for (const g of gtins) {
@@ -637,12 +638,12 @@ export function HistoryPage() {
         <input type="search" placeholder="薬品名・GTIN" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} />
       </label>
       <Section>
-        {items.length === 0 && <div class="row sub">バーコードを読み取ると、ここに履歴が残ります</div>}
+        {items.length === 0 && <div class="row sub">バーコードを読み取るか、薬品名で探して選ぶと、ここに履歴が残ります</div>}
         {filtered.map((it) => (
           <div class="row hist-row">
             <button class="hist-main" onClick={() => nav.push(<HistoryDetailPage id={it.id} />)}>
               <span class={it.memo ? '' : 'sub'}>{it.memo || '名称未登録'}</span>
-              <span class="small sub num">{it.gtin}</span>
+              <span class="small sub num">{it.gtin || '薬品名で検索'}</span>
               <span class="small sub">{dateFmt.format(new Date(it.date))}</span>
             </button>
           </div>
@@ -669,9 +670,10 @@ function HistoryDetailPage({ id }: { id: string }) {
     <Page title="読み取り結果">
       <Section header="読み取り結果">
         <ScanSummary
-          gtin={item.gtin}
+          gtin={item.gtin || undefined}
+          yj={!item.gtin && item.yj ? [item.yj] : undefined}
           memo={item.memo}
-          detail={[`GTIN ${item.gtin}`, item.expiry && `有効期限 ${item.expiry}`, item.lot && `ロット ${item.lot}`].filter(Boolean).join('・')}
+          detail={[item.gtin ? `GTIN ${item.gtin}` : '薬品名で探した薬', item.expiry && `有効期限 ${item.expiry}`, item.lot && `ロット ${item.lot}`].filter(Boolean).join('・')}
         />
       </Section>
       <Section header="薬品名（メモ）" footer="薬品名を入れておくと、次に読み取ったときにも表示されます">
@@ -688,10 +690,10 @@ function HistoryDetailPage({ id }: { id: string }) {
         </div>
       </Section>
       <Section>
-        <LabeledRow label="GTIN" value={item.gtin} />
+        {item.gtin && <LabeledRow label="GTIN" value={item.gtin} />}
         {item.expiry && <LabeledRow label="有効期限" value={item.expiry} />}
         {item.lot && <LabeledRow label="ロット" value={item.lot} />}
-        <LabeledRow label="読み取り日時" value={dateFmt.format(new Date(item.date))} />
+        <LabeledRow label="日時" value={dateFmt.format(new Date(item.date))} />
       </Section>
       <Section>
         <ButtonRow

@@ -112,7 +112,10 @@ export interface ScanRecord {
   id: string
   /** 読み取った日時（ミリ秒） */
   date: number
+  /** 読み取ったコード。薬品名で探して選んだときは空 */
   gtin: string
+  /** 薬品名で探して選んだときの YJ コード */
+  yj?: string
   expiry?: string
   lot?: string
   raw: string
@@ -130,6 +133,14 @@ export function addScan(r: GS1Result) {
     const old = items.find((x) => x.gtin === gtin)
     const rec: ScanRecord = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, date: Date.now(), gtin, expiry: r.expiry, lot: r.lot, raw: r.raw, memo: old?.memo ?? '' }
     return [rec, ...items.filter((x) => x.gtin !== gtin)].slice(0, 300)
+  })
+}
+
+/** 薬品名で探して選んだ薬も履歴に残す。同じ薬は先頭に移す */
+export function addNamed(yj: string, name: string) {
+  scanHistory.set((items) => {
+    const rec: ScanRecord = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, date: Date.now(), gtin: '', yj, raw: '', memo: name }
+    return [rec, ...items.filter((x) => !(x.yj === yj && !x.gtin))].slice(0, 300)
   })
 }
 
