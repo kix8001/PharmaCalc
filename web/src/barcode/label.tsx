@@ -93,8 +93,8 @@ export function LabelRows({ yj, name }: { yj: string[]; name: string }) {
   const rows: { t: string; v: string; on: boolean; go?: () => void }[] = [
     {
       t: '効能・効果',
-      v: d.ip ? '関連する注意あり' : '関連する注意なし',
-      on: !!d.ip,
+      v: '',
+      on: false,
       go: d.i
         ? () =>
             open('効能・効果', [
@@ -105,8 +105,8 @@ export function LabelRows({ yj, name }: { yj: string[]; name: string }) {
     },
     {
       t: '用法・用量',
-      v: d.dp ? '関連する注意あり' : '関連する注意なし',
-      on: !!d.dp,
+      v: '',
+      on: false,
       go: d.d
         ? () =>
             open('用法・用量', [

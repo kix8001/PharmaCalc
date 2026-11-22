@@ -23,8 +23,6 @@ import {
   Droplets,
   FileText,
   FlaskConical,
-  Grid3x3,
-  History,
   Info,
   JapaneseYen,
   ListChecks,
@@ -59,7 +57,7 @@ import { matchesSearch } from './core/format'
 import { persistedStore, useStore } from './core/store'
 import { BodyPage, RenalPage } from './calc/renal'
 import { AgePage, CyclePage, EndDatePage, NextVisitPage, ValidityPage } from './calc/days'
-import { RemainingPage, SheetPage, UnevenPage } from './calc/quantity'
+import { RemainingPage, UnevenPage } from './calc/quantity'
 import { PediatricPage, PowderPage, WeightDosePage } from './calc/dose'
 import { DripPage, GammaPage } from './calc/injection'
 import { OpioidPage, SteroidPage } from './calc/convert'
@@ -113,7 +111,7 @@ const items: CalcItem[] = [
   { id: 'renal', title: '腎機能（CCr・eGFR）', short: '腎機能', subtitle: 'Cockcroft-Gault・日本人eGFR・シスタチンC', keywords: 'ccr egfr クレアチニン 腎 シスタチン', icon: Droplet, group: 'renal', page: () => <RenalPage /> },
   { id: 'renalDrugs', title: '腎機能で注意する薬（添付文書）', short: '腎機能と薬', subtitle: 'CCr・eGFRで減量・禁忌がある薬と添付文書の記載', keywords: '腎 ccr egfr 減量 禁忌 用量調節 添付文書 透析', icon: ListChecks, group: 'renal', page: () => <RenalDrugsPage /> },
   { id: 'body', title: '体表面積・BMI・理想体重', short: '体表面積', subtitle: 'DuBois・藤本・Mosteller', keywords: 'bsa bmi ibw 体重 身長', icon: PersonStanding, group: 'renal', page: () => <BodyPage /> },
-  { id: 'lab', title: '補正Ca・Child-Pugh', short: '補正Ca', subtitle: 'アルブミン補正・肝機能の重症度', keywords: 'カルシウム ca アルブミン 肝 child pugh 検査', icon: TestTubes, group: 'renal', page: () => <LabPage /> },
+  { id: 'lab', title: 'Child-Pugh・補正Ca', short: 'Child-Pugh', subtitle: '肝機能の重症度・アルブミン補正', keywords: 'カルシウム ca アルブミン 肝 child pugh 検査', icon: TestTubes, group: 'renal', page: () => <LabPage /> },
   { id: 'endDate', title: '服用終了日', short: '服用終了日', subtitle: '開始日＋処方日数 → 最終服用日', keywords: '日数 日付 カレンダー', icon: Calendar, group: 'days', page: () => <EndDatePage /> },
   { id: 'nextVisit', title: '次回受診までの日数', short: '次回受診', subtitle: '受診日までに必要な日数・錠数', keywords: '日数 日付 カレンダー', icon: CalendarClock, group: 'days', page: () => <NextVisitPage /> },
   { id: 'validity', title: '処方箋の有効期限', short: '処方箋期限', subtitle: '交付日を含めて4日', keywords: '処方せん 期限 4日', icon: FileText, group: 'days', page: () => <ValidityPage /> },
@@ -122,7 +120,6 @@ const items: CalcItem[] = [
   { id: 'pillCount', title: '錠剤カウント（カメラ）', short: '錠剤カウント', subtitle: 'バラ錠を撮影して数える', keywords: 'カウント 数える 写真 撮影 バラ 監査', icon: ScanLine, group: 'quantity', page: () => <PillCountPage /> },
   { id: 'remainder', title: '余り電卓', short: '余り電卓', subtitle: '割り算のあまり・シート＋バラを大きなキーで', keywords: '余り あまり 割り算 電卓 シート バラ', icon: SquareDivide, group: 'quantity', page: () => <RemainderPage /> },
   { id: 'remaining', title: '残薬調整', short: '残薬調整', subtitle: '残薬を差し引いた処方日数・数量', keywords: '残薬 余り 調整', icon: MinusCircle, group: 'quantity', page: () => <RemainingPage /> },
-  { id: 'sheet', title: 'PTPシート換算', short: 'シート換算', subtitle: '錠数 → シート＋バラ', keywords: 'ptp シート バラ', icon: Grid3x3, group: 'quantity', page: () => <SheetPage /> },
   { id: 'uneven', title: '不均等投与の総数', short: '不均等投与', subtitle: '朝2・夕1など', keywords: '朝 昼 夕 寝る前', icon: Sunrise, group: 'quantity', page: () => <UnevenPage /> },
   { id: 'powder', title: '散剤の換算（mg ⇄ g）', short: '散剤換算', subtitle: '成分量 ⇄ 製剤量、1包あたり', keywords: '散 力価 % 包', icon: Scale, group: 'dose', page: () => <PowderPage /> },
   { id: 'pediatric', title: '小児薬用量（成人量から）', short: '小児薬用量', subtitle: 'Augsberger・von Harnack・Young', keywords: '小児 子供 こども', icon: Baby, group: 'dose', page: () => <PediatricPage /> },
@@ -204,7 +201,6 @@ const items: CalcItem[] = [
   { id: 'anticholinergic', title: '日本版抗コリン薬リスクスケール', short: '抗コリン', subtitle: '158薬物のスコア（1〜3）と服用中の薬の合計', keywords: '抗コリン 抗コリン薬 リスクスケール 老年薬学会 高齢者 認知機能 せん妄 ポリファーマシー スコア', icon: Pill, group: 'scale', page: () => <AnticholinergicPage /> },
   { id: 'naranjo', title: 'Naranjo評価スケール', short: 'Naranjo', subtitle: '副作用と薬の因果関係（10問）', keywords: 'naranjo ナランホ 副作用 因果関係 有害事象 スケール', icon: ClipboardCheck, group: 'scale', page: () => <NaranjoPage /> },
   { id: 'fast', title: 'FAST（脳卒中のサイン）', short: 'FAST', subtitle: '顔・腕・言葉・時間（脳卒中を疑うサイン）', keywords: 'fast 脳卒中 脳梗塞 救急 119 befast', icon: Siren, group: 'scale', page: () => <FastPage /> },
-  { id: 'barcode', title: 'バーコード → 添付文書', short: '添付文書', subtitle: 'PTPのGS1バーコードを読んで電子添文を開く', keywords: 'バーコード gs1 jan 添文 添付文書 pmda ptp スキャン', icon: ScanBarcode, group: 'tools', page: () => <ScanPage /> },
   {
     id: 'rmp',
     title: '患者向けRMP資材',
@@ -225,13 +221,12 @@ const items: CalcItem[] = [
     group: 'tools',
     page: () => <IdentPage />,
   },
-  { id: 'scanHistory', title: '読み取り履歴', short: '読取履歴', subtitle: '読み取った薬と薬品名メモ', keywords: '履歴 バーコード', icon: History, group: 'tools', page: () => <HistoryPage /> },
 ]
 const byId = new Map(items.map((c) => [c.id, c]))
 
 // 入力のある画面にクリアボタンをつける。患者情報（共通）を入れる画面は、患者情報も消す
 const patientScreens = ['renal', 'body', 'pediatric', 'pedDrugs', 'weightDose', 'gamma', 'nutrition']
-const noClear = ['renalDrugs', 'pillCount', 'remainder', 'barcode', 'scanHistory', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'newDrug', 'nyha', 'fast']
+const noClear = ['renalDrugs', 'pillCount', 'remainder', 'otc', 'sentei', 'limits', 'rmp', 'ident', 'newDrug', 'nyha', 'fast']
 for (const c of items) if (!noClear.includes(c.id)) c.clear = patientScreens.includes(c.id) ? 'patient' : 'local'
 
 /** 電卓の画面を開く。クリアを押したら、その画面を最初の状態から作り直す */
@@ -253,7 +248,7 @@ function CalcScreen({ c }: { c: CalcItem }) {
 const open = (nav: { push: (n: VNode) => void }, c: CalcItem) => nav.push(<CalcScreen c={c} />)
 
 /** ホームに並べるタイル（このブラウザに保存） */
-const defaultTiles = ['barcode', 'pillCount', 'remainder', 'endDate', 'remaining', 'renal', 'nextVisit']
+const defaultTiles = ['pillCount', 'remainder', 'endDate', 'remaining', 'renal', 'nextVisit']
 const tilesStore = persistedStore<string[]>('homeTiles', defaultTiles)
 
 function TileIcon({ c, size }: { c: CalcItem; size: number }) {
@@ -466,7 +461,7 @@ function AboutPage() {
 
 const tabs = [
   { id: 'calc', label: 'メインメニュー', icon: Calculator, root: () => <HomePage /> },
-  { id: 'scan', label: 'スキャン', icon: ScanBarcode, root: () => <ScanPage /> },
+  { id: 'scan', label: '薬剤検索', icon: ScanBarcode, root: () => <ScanPage /> },
   { id: 'history', label: '履歴', icon: Clock, root: () => <HistoryPage /> },
   { id: 'about', label: '情報', icon: Info, root: () => <AboutPage /> },
 ]

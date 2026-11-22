@@ -14,24 +14,7 @@ export function LabPage() {
   const c = parseNum(ca), a = parseNum(alb)
   const b = parseNum(bil), a2 = parseNum(alb2), i = parseNum(inr)
   return (
-    <Page title="補正Ca・Child-Pugh">
-      <Section header="補正カルシウム（Payne式）" footer="補正Ca = 血清Ca＋(4−アルブミン)。アルブミンが4g/dL以上なら補正しません。">
-        <NumField title="血清Ca" value={ca} onChange={setCa} unit="mg/dL" />
-        <NumField title="アルブミン" value={alb} onChange={setAlb} unit="g/dL" />
-        {c != null && a != null && c > 0 && a > 0 &&
-          (() => {
-            const corr = a < 4 ? c + (4 - a) : c
-            return (
-              <ResultRow
-                title="補正Ca"
-                value={fmt(corr, 1)}
-                unit="mg/dL"
-                note={corr > 10.4 ? '高カルシウム血症の目安（10.4mg/dL超）' : corr < 8.5 ? '低カルシウム血症の目安（8.5mg/dL未満）' : undefined}
-                color="orange"
-              />
-            )
-          })()}
-      </Section>
+    <Page title="Child-Pugh・補正Ca">
       <Section
         header="Child-Pugh分類"
         footer="ビリルビン：2未満1点、2〜3は2点、3超3点。アルブミン：3.5超1点、2.8〜3.5は2点、2.8未満3点。PT-INR：1.7未満1点、1.7〜2.3は2点、2.3超3点。A：5〜6点、B：7〜9点、C：10〜15点。"
@@ -67,6 +50,23 @@ export function LabPage() {
             const total = sb + sa + si + ascites + enceph
             const grade = total <= 6 ? 'A' : total <= 9 ? 'B' : 'C'
             return <ResultRow title="Child-Pugh" value={`${grade}（${total}点）`} note={`ビリルビン${sb}・アルブミン${sa}・PT-INR${si}・腹水${ascites}・脳症${enceph}点`} color="orange" />
+          })()}
+      </Section>
+      <Section header="補正カルシウム（Payne式）" footer="補正Ca = 血清Ca＋(4−アルブミン)。アルブミンが4g/dL以上なら補正しません。">
+        <NumField title="血清Ca" value={ca} onChange={setCa} unit="mg/dL" />
+        <NumField title="アルブミン" value={alb} onChange={setAlb} unit="g/dL" />
+        {c != null && a != null && c > 0 && a > 0 &&
+          (() => {
+            const corr = a < 4 ? c + (4 - a) : c
+            return (
+              <ResultRow
+                title="補正Ca"
+                value={fmt(corr, 1)}
+                unit="mg/dL"
+                note={corr > 10.4 ? '高カルシウム血症の目安（10.4mg/dL超）' : corr < 8.5 ? '低カルシウム血症の目安（8.5mg/dL未満）' : undefined}
+                color="orange"
+              />
+            )
           })()}
       </Section>
     </Page>

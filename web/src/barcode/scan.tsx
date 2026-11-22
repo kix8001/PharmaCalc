@@ -388,7 +388,7 @@ export function ScanPage() {
 
   return (
     <Page
-      title="バーコード"
+      title="薬剤選択"
       right={
         cam.torchOK && !folded && (
           <button class="bar-btn" aria-label={cam.torch ? 'ライトを消す' : 'ライトをつける'} onClick={cam.toggleTorch}>
