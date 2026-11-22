@@ -25,6 +25,9 @@ SECTIONS = {
     "d": "InfoDoseAdmin",
     "dp": "InfoPrecautionsDosage",
     "x": "ContraIndicatedCombinations",
+    # 9.2 腎機能障害患者・9.3 肝機能障害患者
+    "r": "PatientsWithRenalImpairment",
+    "h": "PatientsWithHepaticImpairment",
 }
 
 
@@ -91,7 +94,8 @@ def render(el, depth, lines, in_item=False):
         start = len(lines)
         for c in el:
             render(c, depth, lines, True)
-        if len(lines) > start:
+        # 見出し（■）で始まる項目には「・」を付けない
+        if len(lines) > start and not lines[start].lstrip().startswith("■"):
             lines[start] = ("  " * depth) + "・" + lines[start].lstrip()
         return
     if t in ("OrderedList", "UnorderedList", "SimpleList"):
@@ -236,6 +240,15 @@ for doc, s in picked:
             rec[k] = t
     if not rec:
         continue
+    # 警告・禁忌・用法用量・用法用量関連注意の中で腎機能・肝機能に触れた行（9.2・9.3 とは別に「ほかの項目」として出す）
+    for key, rx in (("rx", r"(?<!副)腎|透析|クレアチニン|CCr|eGFR|Ccr"), ("hx", r"肝(?!炎ウイルス)|Child-Pugh")):
+        hits = []
+        for src, name in (("w", "警告"), ("c", "禁忌"), ("d", "用法及び用量"), ("dp", "用法及び用量に関連する注意")):
+            for ln in rec.get(src, "").split("\n"):
+                if re.search(rx, ln):
+                    hits.append("【" + name + "】" + ln.strip().lstrip("・"))
+        if hits:
+            rec[key] = "\n".join(hits)
     n_docs += 1
     for y in yjs:
         bucket = files.setdefault(y[:4], {"yj": {}, "docs": {}})

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { Flashlight, FlashlightOff, Search, SwitchCamera, Trash2 } from 'lucide-preact'
+import { ChevronDown, Flashlight, FlashlightOff, ScanBarcode, Search, SwitchCamera, Trash2 } from 'lucide-preact'
 import { prepareZXingModule, readBarcodes, type ReaderOptions } from 'zxing-wasm/reader'
 import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { ButtonRow, LabeledRow, Page, Section, WarningRow, openExternal } from '../ui/components'
@@ -338,6 +338,36 @@ export function ScanPage() {
   const [manual, setManual] = useState('')
   /** 薬品名で選んだ製品 */
   const [picked, setPicked] = useState<{ yj: string; name: string } | null>(null)
+  /** 結果を出したら、カメラを細い帯（「他の薬をスキャン」）に縮める。カメラは止めず、読み取りだけ休む */
+  const [folded, setFolded] = useState(false)
+  /** 帯に出す、読み取ったときのカメラの小さな絵 */
+  const [thumb, setThumb] = useState('')
+  const camRef = useRef<ReturnType<typeof useScanner> | null>(null)
+  const fold = () => {
+    const v = camRef.current?.video.current
+    try {
+      if (v && v.videoWidth > 0) {
+        const c = document.createElement('canvas')
+        c.width = 160
+        c.height = 100
+        const s = Math.min(v.videoWidth / 160, v.videoHeight / 100)
+        c.getContext('2d')!.drawImage(v, (v.videoWidth - 160 * s) / 2, (v.videoHeight - 100 * s) / 2, 160 * s, 100 * s, 0, 0, 160, 100)
+        setThumb(c.toDataURL('image/jpeg', 0.7))
+      }
+    } catch {
+      /* 絵が取れなくても帯は出す */
+    }
+    setFolded(true)
+    // 結果が見えるよう、画面の上（帯）まで戻す
+    setTimeout(() => document.querySelector('.cam-strip')?.scrollIntoView({ block: 'start' }), 0)
+  }
+  const unfold = () => {
+    setFolded(false)
+    setTimeout(() => {
+      camRef.current?.video.current?.play().catch(() => {})
+      document.querySelector('.camera')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }, 0)
+  }
 
   const handle = (code: string) => {
     const r = parseGS1(code)
@@ -348,28 +378,45 @@ export function ScanPage() {
     } catch {
       /* 振動できない端末 */
     }
+    fold()
     if (!r.gtin) return
     addScan(r)
     fillName(r.gtin)
   }
-  const cam = useScanner(handle, false, useCameraOn())
+  const cam = useScanner(handle, folded, useCameraOn())
+  camRef.current = cam
 
   return (
     <Page
       title="バーコード"
       right={
-        cam.torchOK && (
+        cam.torchOK && !folded && (
           <button class="bar-btn" aria-label={cam.torch ? 'ライトを消す' : 'ライトをつける'} onClick={cam.toggleTorch}>
             {cam.torch ? <Flashlight size={22} /> : <FlashlightOff size={22} />}
           </button>
         )
       }
     >
-      <CameraBox cam={cam} />
+      {folded && (
+        <button class="cam-strip" onClick={unfold}>
+          <span class="cs-thumb" style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}>
+            {!thumb && <ScanBarcode size={22} />}
+          </span>
+          <span class="cs-text">
+            <b>他の薬をスキャン</b>
+            <span>タップするとカメラが開きます</span>
+          </span>
+          <ChevronDown size={22} class="cs-ic" />
+        </button>
+      )}
+      <div style={folded ? { display: 'none' } : undefined}>
+        <CameraBox cam={cam} />
+      </div>
       <NameSearch
         onPick={(yj, name) => {
           setPicked({ yj, name })
           setResult(null)
+          fold()
         }}
       />
       {picked && (

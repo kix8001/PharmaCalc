@@ -14,6 +14,11 @@ export interface LabelDoc {
   d?: string
   dp?: string
   x?: string
+  /** 9.2 腎機能障害患者・9.3 肝機能障害患者、ほかの項目（警告・禁忌・用法用量など）の腎機能・肝機能に触れた行 */
+  r?: string
+  h?: string
+  rx?: string
+  hx?: string
 }
 interface LabelFile {
   yj: Record<string, string>
@@ -113,6 +118,32 @@ export function LabelRows({ yj, name }: { yj: string[]; name: string }) {
     { t: '警告', v: d.w ? 'あり' : 'なし', on: !!d.w, go: d.w ? () => open('警告', [['警告', d.w]]) : undefined },
     { t: '禁忌', v: d.c ? 'あり' : 'なし', on: !!d.c, go: d.c ? () => open('禁忌', [['禁忌（次の患者には投与しないこと）', d.c]]) : undefined },
     { t: '併用禁忌', v: d.x ? 'あり' : 'なし', on: !!d.x, go: d.x ? () => open('併用禁忌', [['併用禁忌（併用しないこと）', d.x]]) : undefined },
+    {
+      t: '腎機能の規定',
+      v: d.r || d.rx ? 'あり' : 'なし',
+      on: !!(d.r || d.rx),
+      go:
+        d.r || d.rx
+          ? () =>
+              open('腎機能の規定', [
+                ['ほかの項目の腎機能の記載（警告・禁忌・用法用量など）', d.rx],
+                ['9.2 腎機能障害患者', d.r],
+              ])
+          : undefined,
+    },
+    {
+      t: '肝機能の規定',
+      v: d.h || d.hx ? 'あり' : 'なし',
+      on: !!(d.h || d.hx),
+      go:
+        d.h || d.hx
+          ? () =>
+              open('肝機能の規定', [
+                ['ほかの項目の肝機能の記載（警告・禁忌・用法用量など）', d.hx],
+                ['9.3 肝機能障害患者', d.h],
+              ])
+          : undefined,
+    },
   ]
   return (
     <div class="label-rows">
