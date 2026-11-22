@@ -353,6 +353,8 @@ export function ScanPage() {
   const [picked, setPicked] = useState<{ yj: string; name: string } | null>(null)
   /** 結果を出したら、カメラを細い帯（「他の薬をスキャン」）に縮める。カメラは止めず、読み取りだけ休む */
   const [folded, setFolded] = useState(false)
+  /** 読み取るたびに増やす（薬品名で探すの窓を空にする合図） */
+  const [scanNo, setScanNo] = useState(0)
   /** 帯に出す、読み取ったときのカメラの小さな絵 */
   const [thumb, setThumb] = useState('')
   const camRef = useRef<ReturnType<typeof useScanner> | null>(null)
@@ -386,6 +388,7 @@ export function ScanPage() {
     const r = parseGS1(code)
     setResult(r)
     setPicked(null)
+    setScanNo((n) => n + 1)
     try {
       navigator.vibrate?.(30)
     } catch {
@@ -431,6 +434,7 @@ export function ScanPage() {
         </div>
       </div>
       <NameSearch
+        reset={scanNo}
         onPick={(yj, name) => {
           setPicked({ yj, name })
           setResult(null)
@@ -495,8 +499,15 @@ export function ScanPage() {
 }
 
 /** 薬品名で探す窓（入力すると候補が出る。選ぶとスキャンと同じ結果を出す） */
-function NameSearch({ onPick }: { onPick: (yj: string, name: string) => void }) {
+function NameSearch({ onPick, reset }: { onPick: (yj: string, name: string) => void; reset: number }) {
   const [q, setQ] = useState('')
+  // カメラ・手入力で読み取ったら、前に探した薬品名を消す（紛らわしいので）
+  useEffect(() => {
+    if (reset) {
+      setQ('')
+      setOpen(false)
+    }
+  }, [reset])
   const [otc, setOtc] = useState<OtcData | null>(null)
   const [open, setOpen] = useState(false)
   useEffect(() => {
