@@ -32,11 +32,15 @@ const norm = (s: string) =>
     .normalize('NFKC')
     .toUpperCase()
     .replace(/[\s\-‐・/／.,:：()（）「」]/g, '')
+    // ひらがなはカタカナに（製品名で探すとき用）
+    .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
 
 interface Hit {
   yj: string
   name: string
   info: InfoItem
+  /** 刻印のデータが無く、製品名で当たった物 */
+  byName?: boolean
 }
 
 export function IdentPage() {
@@ -58,16 +62,20 @@ export function IdentPage() {
     const cs = COLORS.filter(([n]) => colors.includes(n))
     for (const [yj, it] of Object.entries(data.items)) {
       if (!data.otc.names[yj]) continue
-      if (q && !(it.i && norm(it.i).includes(q))) continue
+      // 刻印のデータが無い薬（刻印が写真・図の中だけ）は製品名でも探す（錠剤に製品名が印字されていることが多い）
+      const byName = !!q && !it.i && q.length >= 2 && norm(data.otc.names[yj]).includes(q)
+      if (q && !(it.i && norm(it.i).includes(q)) && !byName) continue
       if (cs.length && !(it.k && cs.some(([, , re]) => re.test(it.k!)))) continue
       if (shape && it.h !== shape) continue
       if (score && !(it.m && /割線/.test(it.m))) continue
       if (!q && !it.i && !it.k && !it.h) continue
       total++
-      if (hits.length < 60) hits.push({ yj, name: productName(data.otc, yj), info: it })
+      hits.push({ yj, name: productName(data.otc, yj), info: it, byName })
     }
-    // 刻印が「ちょうど同じ」物を先に、そのあと名前の順
-    hits.sort((a, b) => Number(q && norm(b.info.i ?? '') === q) - Number(q && norm(a.info.i ?? '') === q) || a.name.localeCompare(b.name, 'ja'))
+    // 刻印が「ちょうど同じ」物を先に、刻印で当たった物、製品名で当たった物の順。その中は名前の順
+    const rank = (h: Hit) => (q && norm(h.info.i ?? '') === q ? 0 : h.byName ? 2 : 1)
+    hits.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'ja'))
+    hits = hits.slice(0, 60)
   }
   const toggle = (c: string) => setColors((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))
   const open = (h: Hit) =>
@@ -81,7 +89,7 @@ export function IdentPage() {
 
   return (
     <Page title="刻印・外観で探す">
-      <Section header="刻印・識別コード" footer="錠剤やカプセルに書いてある文字・数字（例：SW F20、601、SANKYO 157）。空白やハイフンは無くても探せます。">
+      <Section header="刻印・識別コード" footer="錠剤やカプセルに書いてある文字・数字（例：SW F20、601、BA100）。空白やハイフンは無くても探せます。刻印のデータが無い薬は製品名（カタカナ・ひらがな可）でも探します。">
         <div class="row name-search">
           <Search size={18} class="sub" />
           <input class="text-input" type="search" autocomplete="off" autocapitalize="characters" placeholder="刻印の文字・数字" value={code} onInput={(e) => setCode((e.target as HTMLInputElement).value)} />
@@ -117,7 +125,7 @@ export function IdentPage() {
       {data && active && (
         <Section
           header={total > hits.length ? `${total}件（はじめの${hits.length}件）` : `${total}件`}
-          footer="刻印・色・形は添付文書の「性状」の文から探しています。刻印が図の中にしか書かれていない薬（約6割）は、刻印では見つかりません。そのときは色・形で絞るか、PMDA の医薬品検索で探してください。"
+          footer="刻印・色・形は添付文書の「性状」の文から探しています。刻印が図・写真の中にしか無い薬は、刻印の英数字では見つかりません（錠剤に印字された製品名なら探せます）。そのときは色・形で絞るか、PMDA の医薬品検索で探してください。"
         >
           {hits.map((h) => (
             <button class="row ident-hit" onClick={() => open(h)}>
@@ -126,7 +134,7 @@ export function IdentPage() {
               </span>
               <span class="ident-txt">
                 <b>{h.name}</b>
-                <span class="small sub">{[h.info.i && `刻印 ${h.info.i}`, h.info.k, h.info.z].filter(Boolean).join('・')}</span>
+                <span class="small sub">{[h.info.i && `刻印 ${h.info.i}`, h.byName && '製品名で一致（刻印は図・写真のみ）', h.info.k, h.info.z].filter(Boolean).join('・')}</span>
               </span>
             </button>
           ))}

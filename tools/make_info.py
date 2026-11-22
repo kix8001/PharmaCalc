@@ -54,6 +54,8 @@ def text(x):
 
 # 識別コード
 idc = {}
+# 識別コードが画像だけで載っている添付文書（バイアスピリンの「BA 100」など）は、画像を目で読んだ表 idcode_img.json を使う
+IMG_IDC = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "idcode_img.json"), encoding="utf-8"))
 look = {}  # 外観
 seen = set()
 for d in CACHES:
@@ -81,16 +83,23 @@ for d in CACHES:
                 if mm:
                     codes = [mm.group(2).strip()]
             codes = [c for c in dict.fromkeys(codes) if c and c not in ("-", "－", "なし")]
+            if not codes and yj in IMG_IDC:
+                codes = [IMG_IDC[yj]]
             if codes and yj not in idc:
                 idc[yj] = " / ".join(codes)[:60]
             # 外観：色・剤形・大きさ・形（丸い r／楕円・長い o／カプセル c）
             if yj not in look:
                 col = re.search(r"<ColorTone>(.*?)</ColorTone>", b, re.S)
+                # 色調が「その他」の欄（色調・剤形 など）に書いてある添付文書もある
+                if not col:
+                    col = re.search(r"<CategoryName>(?:(?!</CategoryName>).)*色(?:(?!</CategoryName>).)*</CategoryName>\s*<Content>(.*?)</Content>", b, re.S)
                 fm = re.search(r"<Formulation>(.*?)</Formulation>", b, re.S)
                 dia = re.search(r"<SizeDiameter>(.*?)</SizeDiameter>", b, re.S)
                 lng = re.search(r"<SizeLongDiameter>(.*?)</SizeLongDiameter>", b, re.S)
                 sht = re.search(r"<SizeShortDiameter>(.*?)</SizeShortDiameter>", b, re.S)
                 fmt = text(fm.group(1)).replace("\n", " ")[:30] if fm else ""
+                if not fmt and col and re.search(r"錠|カプセル|丸|散|顆粒", text(col.group(1))):
+                    fmt = text(col.group(1)).replace("\n", " ")[:30]
                 rec = {}
                 if col:
                     rec["k"] = text(col.group(1)).replace("\n", " ")[:30]
