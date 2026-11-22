@@ -72,6 +72,7 @@ import { OtcPage, SenteiPage } from './otc/otcViews'
 import { LimitsPage } from './limits/limits'
 import { NewDrugPage } from './newdrug/newdrug'
 import { WarfarinPage } from './warfarin/warfarin'
+import { InstallBanner, InstallInfo } from './ui/install'
 import { AnticholinergicPage, Chads2Page, Cha2ds2VascPage, FastPage, HasBledPage, JcsPage, NaranjoPage, NyhaPage } from './calc/scales'
 import { RmpPage } from './rmp/rmp'
 import { IdentPage } from './barcode/ident'
@@ -461,8 +462,8 @@ function AboutPage() {
         </div>
         <ButtonRow onClick={() => openExternal(PMDA.searchURL)}>PMDA 医療用医薬品 情報検索</ButtonRow>
       </Section>
-      <Section header="ホーム画面に追加" footer="iPhone：Safari の共有ボタン →「ホーム画面に追加」。Android：Chrome のメニュー →「ホーム画面に追加」または「アプリをインストール」。追加するとアプリのように起動し、電波が無いところでも使えます。">
-        <></>
+      <Section header="ホーム画面に追加" footer="追加するとアプリのように1タップで開けて、電波が無いところでも使えます。">
+        <InstallInfo />
       </Section>
     </Page>
   )
@@ -500,6 +501,7 @@ export function App() {
           ) : null,
         )}
       </div>
+      <InstallBanner />
       <nav class="tabbar" aria-label="タブ">
         {tabs.map((t) => {
           const I = t.icon
