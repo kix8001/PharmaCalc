@@ -1,8 +1,8 @@
 import { useState } from 'preact/hooks'
-import { CirclePlus, FileText, Search, Trash2 } from 'lucide-preact'
+import { CirclePlus, FileText, Search, Star, Trash2 } from 'lucide-preact'
 import { ButtonRow, NumField, Page, Section, Segmented, SelectRow, openExternal } from '../ui/components'
 import { useNav } from '../ui/nav'
-import { useStore } from '../core/store'
+import { persistedStore, useStore } from '../core/store'
 import { ageV, patientStore, setPatient, weightV } from '../core/patient'
 import { fmtTrim, matchesSearch, parseIntNum, parseNum } from '../core/format'
 import {
@@ -22,6 +22,11 @@ import {
   type PedDrug,
 } from './pedDrug'
 
+/** ☆をつけた薬（薬の名前。初期登録の薬が新しい値に入れ替わっても残るよう、id ではなく名前で持つ） */
+const pedFavorites = persistedStore<string[]>('pedFavorites', [])
+const pedFavOnly = persistedStore<boolean>('pedFavOnly', false)
+const toggleFav = (name: string) => pedFavorites.set((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]))
+
 /** 小児用量（薬剤別）：年齢・体重から登録した薬の用量を一覧で出す */
 export function PedDosePage() {
   const p = useStore(patientStore)
@@ -29,6 +34,9 @@ export function PedDosePage() {
   const nav = useNav()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
+  const favs = useStore(pedFavorites)
+  const favOnly = useStore(pedFavOnly)
+  const favSet = new Set(favs)
   const cats = categoriesOf(drugs)
   const age = ageV(p), w = weightV(p)
   return (
@@ -43,6 +51,9 @@ export function PedDosePage() {
         <input type="search" placeholder="薬の名前・成分で絞り込む" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} />
       </label>
       <div class="row quick" style={{ padding: '10px 0 0' }}>
+        <button class={'chip ' + (favOnly ? 'on' : '')} onClick={() => pedFavOnly.set(!favOnly)}>
+          ★ だけ（{favs.length}）
+        </button>
         <button class={'chip ' + (category == null ? 'on' : '')} onClick={() => setCategory(null)}>
           すべて
         </button>
@@ -55,16 +66,21 @@ export function PedDosePage() {
       {cats
         .filter((c) => category == null || c === category)
         .map((c) => {
-          const list = drugs.filter((d) => (d.category ?? '自分で追加') === c && matchesSearch(d.name + d.ingredient, query))
+          const list = drugs.filter((d) => (d.category ?? '自分で追加') === c && matchesSearch(d.name + d.ingredient, query) && (!favOnly || favSet.has(d.name)))
           if (list.length === 0) return null
           return (
             <Section header={c}>
               {list.map((d) => (
-                <PedDrugRow drug={d} age={age} weight={w} onOpen={() => nav.push(<PedDrugEditPage id={d.id} />)} />
+                <PedDrugRow drug={d} age={age} weight={w} fav={favSet.has(d.name)} onOpen={() => nav.push(<PedDrugEditPage id={d.id} />)} />
               ))}
             </Section>
           )
         })}
+      {favOnly && !drugs.some((d) => favSet.has(d.name)) && (
+        <Section>
+          <div class="row sub">☆をつけた薬はまだありません。「★ だけ」を外して、薬の右の☆を押してください。</div>
+        </Section>
+      )}
       <Section footer="初期登録は PMDA の電子添文（2026年11月）の用法及び用量と照合しています。適応症で用量が違う薬もあるので、迷ったら「添付文書」で確認してください。「用量未登録」の薬は、タップして用量を入れられます。">
         <ButtonRow icon={<CirclePlus size={20} />} onClick={() => nav.push(<PedDrugEditPage id={null} />)}>
           薬を追加
@@ -82,7 +98,7 @@ export function PedDosePage() {
   )
 }
 
-function PedDrugRow({ drug, age, weight, onOpen }: { drug: PedDrug; age: number | null; weight: number | null; onOpen: () => void }) {
+function PedDrugRow({ drug, age, weight, fav, onOpen }: { drug: PedDrug; age: number | null; weight: number | null; fav: boolean; onOpen: () => void }) {
   const r = compute(drug, age, weight)
   const a = amountOf(drug), u = unitOf(drug), dg = drug.isSyrup ? 1 : 2, ad = a === 'μg' ? 1 : 2
   const url = pmdaURL(drug)
@@ -129,6 +145,9 @@ function PedDrugRow({ drug, age, weight, onOpen }: { drug: PedDrug; age: number 
           <div class="sub">{errorMessage[r]}</div>
         )}
         {drug.note && <div class="small sub">{drug.note}</div>}
+      </button>
+      <button class={'star ped-star ' + (fav ? 'on' : '')} aria-label={fav ? 'よく使う薬から外す' : 'よく使う薬に登録'} aria-pressed={fav} onClick={() => toggleFav(drug.name)}>
+        <Star size={22} fill={fav ? 'currentColor' : 'none'} />
       </button>
       {url && (
         <button class="ped-doc" aria-label={`${drug.name}の添付文書を見る（PMDA）`} onClick={() => openExternal(url)}>

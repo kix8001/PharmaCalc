@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { FileText, Search, Star } from 'lucide-preact'
-import { ButtonRow, MissingRow, Page, ResultRow, Section, Segmented, SelectRow } from '../ui/components'
+import { ButtonRow, MissingRow, Page, ResultRow, Section, Segmented, SelectRow, Toggle } from '../ui/components'
 import { useNav } from '../ui/nav'
 import { persistedStore, useStore } from '../core/store'
 import { ageV, heightV, patientStore, scrV, weightV } from '../core/patient'
@@ -62,6 +62,8 @@ function useRenalData() {
 
 /** よく使う薬（このブラウザに保存。成分ごとの ID） */
 export const renalFavorites = persistedStore<string[]>('renalFavorites', [])
+/** ☆をつけた薬だけ表示する */
+const renalFavOnly = persistedStore<boolean>('renalFavOnly', false)
 function toggleFavorite(id: string) {
   renalFavorites.set((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id].sort()))
 }
@@ -133,6 +135,7 @@ function DrugRow({ d, fav }: { d: RenalDrug; fav: boolean }) {
 export function RenalDrugsPage() {
   const data = useRenalData()
   const favs = useStore(renalFavorites)
+  const favOnly = useStore(renalFavOnly)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
   const [filter, setFilter] = useState(0) // 0: すべて, 1: 禁忌・警告あり, 2: 数値の基準あり
@@ -191,27 +194,34 @@ export function RenalDrugsPage() {
           value={filter}
           onChange={setFilter}
         />
+        <Toggle label={`☆をつけた薬だけ表示（${favs.length}）`} value={favOnly} onChange={(v) => renalFavOnly.set(v)} />
       </Section>
-      {favList.length > 0 && (
-        <Section header="よく使う薬">
-          {favList.map((d) => (
-            <DrugRow d={d} fav />
-          ))}
+      {favOnly ? (
+        <Section header="☆をつけた薬" footer="右の☆を押すと登録・解除できます。上の切り替えを外すと、すべての薬が出ます。">
+          {favList.length ? favList.map((d) => <DrugRow d={d} fav />) : <div class="row sub">{favs.length ? '条件に合う薬がありません' : 'まだありません。切り替えを外して、薬の右の☆を押してください。'}</div>}
         </Section>
+      ) : (
+        favList.length > 0 && (
+          <Section header="☆をつけた薬">
+            {favList.map((d) => (
+              <DrugRow d={d} fav />
+            ))}
+          </Section>
+        )
       )}
-      {groups.map((g) => (
+      {!favOnly && groups.map((g) => (
         <Section header={g!.c}>
           {g!.part.map((d) => (
             <DrugRow d={d} fav={favSet.has(drugId(d))} />
           ))}
         </Section>
       ))}
-      {total > shown && (
+      {!favOnly && total > shown && (
         <Section>
           <ButtonRow onClick={() => setLimit((l) => l + 200)}>さらに表示（残り{total - shown}件）</ButtonRow>
         </Section>
       )}
-      {total === 0 && (
+      {!favOnly && total === 0 && (
         <Section>
           <div class="row sub">見つかりませんでした</div>
         </Section>

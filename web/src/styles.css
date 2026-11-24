@@ -484,3 +484,4 @@ div.install-steps { padding-left: 0; }
 .pill-zoom .pill-image { max-width: none; }
 .pill-zoom-btns { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
 .cam-stuck { display: block; line-height: 1.5; }
+.ped-star { width: 44px; }
