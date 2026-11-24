@@ -28,10 +28,12 @@ const readerOptions: ReaderOptions = {
 export const autoOpenStore = persistedStore<boolean>('autoOpen', true)
 /** カメラの倍率（ズームできる端末だけ。0＝まだ選んでいない→2倍で始める） */
 const zoomStore = persistedStore<number>('cameraZoom', 0)
-type CamState = 'starting' | 'running' | 'denied' | 'stopped' | 'unsupported' | 'error'
+type CamState = 'starting' | 'running' | 'denied' | 'stopped' | 'stuck' | 'unsupported' | 'error'
 
 /** このページで一度でもカメラが動いたか（動いたあとに断られたら「再開」のボタンを出す） */
 let startedOnce = false
+/** 最後に自動でカメラを開き直した時刻（何度も繰り返さないため） */
+let lastAutoRestart = 0
 /** 「タップしてカメラを再開」で、押した流れの中で取ったカメラの映像（次の起動でそのまま使う） */
 let pendingStream: MediaStream | null = null
 const SIZE = { width: { ideal: 1920 }, height: { ideal: 1080 } }
@@ -58,6 +60,17 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
   onCodeRef.current = onCode
   const pausedRef = useRef(paused)
   pausedRef.current = paused
+  const onRef = useRef(on)
+  onRef.current = on
+  /**
+   * iPhone では、一度開いたカメラは画面を離れても閉じない（止めて開き直すと、押した直後でないときに断られ、
+   * アプリを終了するまで使えなくなるため）。使わない間は映像を一時停止（track.enabled=false）して節電する
+   */
+  const [acq, setAcq] = useState(on)
+  useEffect(() => {
+    if (on) setAcq(true)
+  }, [on])
+  const want = isIOS ? acq : on
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -75,6 +88,10 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
 
     let tries = 0
     let retryTimer = 0
+    // 映像が止まっていないかの見張り（iPhone で別のカメラを開いたあとなどに、映像が止まったまま戻らないことがある）
+    let lastTime = -1
+    let stallSince = 0
+    let softTried = false
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setState('unsupported')
@@ -120,6 +137,14 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       v.srcObject = stream
       await v.play().catch(() => {})
       track.current = stream.getVideoTracks()[0] ?? null
+      if (track.current) {
+        // 映像が切れたら（ほかのカメラに取られたなど）、使っている間なら開き直す
+        track.current.onended = () => {
+          if (!stop && onRef.current && !document.hidden) restartSoon()
+        }
+        track.current.onunmute = () => video.current?.play().catch(() => {})
+        if (isIOS) track.current.enabled = onRef.current
+      }
       try {
         const caps = track.current?.getCapabilities?.() as MediaTrackCapabilities & {
           torch?: boolean
@@ -161,7 +186,8 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         wasPaused = false
         activeAt = Date.now()
       }
-      if (v && v.videoWidth > 0 && !pausedRef.current && !document.hidden) {
+      watch(v)
+      if (v && v.videoWidth > 0 && !pausedRef.current && !document.hidden && onRef.current) {
         // 1回おきに「枠の中（真ん中の横長の部分）」と「映像全体」を読む。
         // 枠の中だけだとPTPの小さいバーコードが読みやすく、全体なら箱の横長のバーコードがはみ出しても読める
         // さらに、斜めに傾けたバーコードのために、映像を±30°回した物も読む（90°は読み取り側が回して試す）
@@ -206,11 +232,56 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         }
       }
       // ふだんは 0.12 秒ごと。20秒読み取りが無ければ 0.33 秒ごと、休み・画面が隠れている間は 0.5 秒ごと（節電）
-      const idle = pausedRef.current || document.hidden
+      const idle = pausedRef.current || document.hidden || !onRef.current
       timer = window.setTimeout(loop, idle ? 500 : Date.now() - activeAt > 20000 ? 330 : 120)
     }
 
-    if (!on) return
+    /** 映像が3秒進まなければ、まず一時停止→再開で起こし、それでも止まったままならカメラを開き直す */
+    function watch(v: HTMLVideoElement | null) {
+      const t = track.current
+      if (!v || !t || pausedRef.current || document.hidden || !onRef.current) {
+        stallSince = 0
+        lastTime = -1
+        return
+      }
+      const now = Date.now()
+      if (t.readyState === 'ended') {
+        restartSoon()
+        return
+      }
+      if (v.currentTime !== lastTime) {
+        lastTime = v.currentTime
+        stallSince = now
+        softTried = false
+        return
+      }
+      if (now - stallSince < 3000) return
+      if (!softTried) {
+        softTried = true
+        stallSince = now
+        t.enabled = false
+        t.enabled = true
+        v.play().catch(() => {})
+        return
+      }
+      restartSoon()
+    }
+
+    /** カメラを開き直す。20秒以内に2回目になったら自動ではやめ、「タップしてカメラを再開」を出す（押した流れの中なら開ける） */
+    function restartSoon() {
+      if (stop) return
+      stop = true
+      const now = Date.now()
+      if (now - lastAutoRestart < 20000) {
+        stream?.getTracks().forEach((t) => t.stop())
+        setState('stopped')
+        return
+      }
+      lastAutoRestart = now
+      setRestart((x) => x + 1)
+    }
+
+    if (!want) return
     start()
     // iPhone では、アプリを離れても映像を止めない（止めると戻ったときにカメラを断られる）。
     // 戻ったら映像を動かし直し、映像が切れていたら起動し直す
@@ -232,7 +303,19 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
       setZoomMax(null)
       setState('starting')
     }
-  }, [on, restart])
+  }, [want, restart])
+
+  // iPhone：使わない間は映像を一時停止し、また使うときに再開する（カメラは閉じない）
+  useEffect(() => {
+    if (!isIOS) return
+    const t = track.current
+    if (!t) return
+    t.enabled = on
+    if (on) {
+      if (t.readyState === 'ended') setRestart((x) => x + 1)
+      else video.current?.play().catch(() => {})
+    }
+  }, [on])
 
   const toggleTorch = async () => {
     const t = track.current
@@ -275,6 +358,11 @@ export function useScanner(onCode: (s: string) => void, paused: boolean, on: boo
         // iPhone のホーム画面のアプリは、一度カメラを断ると、読み込み直すまで何度頼んでも断る。
         // 押されたら、この画面（薬剤検索）を開いたまま読み込み直す（読み込み直すとカメラの許可をもう一度聞く）
         if ((e as DOMException)?.name === 'NotAllowedError') {
+          // 押した流れでも断られた＝iPhone がこのアプリのカメラを止めたまま。読み込み直しても直らないことが多い
+          if (isIOS) {
+            setState('stuck')
+            return
+          }
           try {
             sessionStorage.setItem('reopenTab', 'scan')
           } catch {
@@ -348,6 +436,15 @@ export function CameraBox({ cam }: { cam: ReturnType<typeof useScanner> }) {
             <button class="cam-resume" onClick={cam.resume}>
               タップしてカメラを再開
             </button>
+          )}
+          {cam.state === 'stuck' && (
+            <span class="cam-stuck">
+              iPhone がこのアプリのカメラを止めたままにしています。画面の下から上へゆっくりスワイプして指を止め、出てきたアプリの一覧でメドスキャンを上にはじいて閉じてから、開き直してください。
+              <br />
+              <button class="cam-resume" onClick={() => location.reload()}>
+                読み込み直して試す
+              </button>
+            </span>
           )}
           {cam.state === 'unsupported' && 'このブラウザではカメラを使えません。下の手入力を使ってください。'}
           {cam.state === 'error' && 'カメラを起動できませんでした。'}

@@ -425,6 +425,11 @@ async function restartApp() {
   } catch {
     /* 電波が無いときなどはそのまま読み込み直す */
   }
+  // 開いているカメラを閉じてから読み込み直す
+  document.querySelectorAll('video').forEach((v) => {
+    const st = v.srcObject as MediaStream | null
+    st?.getTracks().forEach((t) => t.stop())
+  })
   location.reload()
 }
 
@@ -445,7 +450,7 @@ function AboutPage() {
         <LabeledRow label="バージョン" value={`${__APP_VERSION__}（Web版）`} />
         <LabeledRow label="データ更新日" value={jpDay(dataUpdated.date)} />
       </Section>
-      <Section footer="動きがおかしいときや、新しい版にしたいときに押してください。新しい版があれば入れてから起動し直します（入力中の内容は消えます）。">
+      <Section footer="動きがおかしいときや、新しい版にしたいときに押してください。新しい版があれば入れてから、画面を読み込み直します（入力中の内容は消えます）。Web アプリはアプリそのものを終了できないため、iPhone でカメラが動かないままのときは直らないことがあります。そのときは、画面の下から上へゆっくりスワイプして指を止め、アプリの一覧でメドスキャンを上にはじいて閉じてから開き直してください。">
         <ButtonRow icon={<RefreshCw size={20} />} onClick={restartApp}>
           アプリを再起動
         </ButtonRow>
