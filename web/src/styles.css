@@ -508,3 +508,5 @@ div.install-steps { padding-left: 0; }
 .pdf-searchbox input { flex: 1; border: 0; background: transparent; outline: none; padding: 13px 0; font-size: 18px; min-width: 0; color: var(--text); }
 .pdf-bar { height: 4px; margin: 0 16px 12px; background: var(--fill); border-radius: 2px; overflow: hidden; }
 .pdf-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+/* ボタンをすばやく2回押しても画面が拡大しないように（ダブルタップでの拡大を止める） */
+html, button, .doc-search, .doc-search * { touch-action: manipulation; }

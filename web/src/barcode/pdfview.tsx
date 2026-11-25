@@ -161,46 +161,52 @@ function usePinch(scroller: { current: HTMLDivElement | null }, list: { current:
   useEffect(() => {
     const el = scroller.current
     if (!el) return
-    let g: { d0: number; z0: number; fx: number; fy: number; cx: number; cy: number; z: number } | null = null
+    // 指の動きに合わせて、倍率は段階なしで（1〜4倍）。2本指をずらすと拡大したまま動かせる
+    let g: { d0: number; z0: number; fx: number; fy: number; cx0: number; cy0: number; cx: number; cy: number; z: number } | null = null
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+    const mid = (t: TouchList) => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]
     const start = (e: TouchEvent) => {
       if (e.touches.length !== 2 || !list.current) return
       e.preventDefault()
       const r = list.current.getBoundingClientRect()
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2, cy = (e.touches[0].clientY + e.touches[1].clientY) / 2
-      g = { d0: dist(e.touches), z0: zoomRef.current, fx: cx - r.left, fy: cy - r.top, cx, cy, z: zoomRef.current }
+      const [cx, cy] = mid(e.touches)
+      g = { d0: dist(e.touches), z0: zoomRef.current, fx: cx - r.left, fy: cy - r.top, cx0: cx, cy0: cy, cx, cy, z: zoomRef.current }
       list.current.style.transformOrigin = `${g.fx}px ${g.fy}px`
     }
     const move = (e: TouchEvent) => {
       if (!g || e.touches.length !== 2 || !list.current) return
       e.preventDefault()
+      const [cx, cy] = mid(e.touches)
+      g.cx = cx
+      g.cy = cy
       g.z = Math.min(4, Math.max(1, (g.z0 * dist(e.touches)) / g.d0))
-      list.current.style.transform = `scale(${g.z / g.z0})`
+      list.current.style.transform = `translate(${cx - g.cx0}px, ${cy - g.cy0}px) scale(${g.z / g.z0})`
     }
     const end = (e: TouchEvent) => {
       if (!g || e.touches.length >= 2 || !list.current) return
-      const { z, z0, fx, fy } = g
+      const { z, z0, fx, fy, cx0, cy0, cx, cy } = g
       g = null
+      const k = z / z0
+      // 同じ瞬間に、拡大した大きさに置き替えて、指の真ん中の所が同じ位置に来るよう動かす（ちらつかない）
+      list.current.style.width = `${z * 100}%`
       list.current.style.transform = ''
-      if (Math.abs(z - z0) < 0.02) return
-      setZoom(z)
-      // 描き直した大きさで、指の真ん中の所が同じ位置に来るよう動かす
-      requestAnimationFrame(() => {
-        const k = z / z0
-        el.scrollLeft += fx * k - fx
-        const body = el.closest('.page-body') as HTMLElement | null
-        if (body) body.scrollTop += fy * k - fy
-      })
+      el.scrollLeft += fx * k - fx - (cx - cx0)
+      const body = el.closest('.page-body') as HTMLElement | null
+      if (body) body.scrollTop += fy * k - fy - (cy - cy0)
+      // くっきり描き直す
+      if (Math.abs(z - z0) > 0.005) setZoom(z)
     }
-    // iPhone の Safari の画面全体の拡大を止める
+    // iPhone の Safari の画面全体の拡大を止める（この画面を開いている間）
     const gesture = (e: Event) => e.preventDefault()
-    el.addEventListener('gesturestart', gesture)
+    document.addEventListener('gesturestart', gesture)
+    document.addEventListener('gesturechange', gesture)
     el.addEventListener('touchstart', start, { passive: false })
     el.addEventListener('touchmove', move, { passive: false })
     el.addEventListener('touchend', end)
     el.addEventListener('touchcancel', end)
     return () => {
-      el.removeEventListener('gesturestart', gesture)
+      document.removeEventListener('gesturestart', gesture)
+      document.removeEventListener('gesturechange', gesture)
       el.removeEventListener('touchstart', start)
       el.removeEventListener('touchmove', move)
       el.removeEventListener('touchend', end)
