@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Camera, Crop, Image as ImageIcon } from 'lucide-preact'
 import { ButtonRow, NumField, OkRow, Page, ResultRow, Section, Segmented, WarningRow } from '../ui/components'
-import { persistedStore, useStore } from '../core/store'
 import { CameraShot } from './cameraShot'
 import { parseIntNum } from '../core/format'
 import { nextMarkerId, type PillMarker, type Rect } from './pillCounter'
@@ -30,7 +29,6 @@ async function prepare(file: File): Promise<Prepared> {
 }
 
 /** 錠剤の形（round＝丸い錠剤：円の検出、any＝楕円・長い錠剤・カプセル：形を問わない数え方） */
-const shapeStore = persistedStore<'round' | 'any'>('pillShape', 'round')
 
 let worker: Worker | null = null
 let jobSeq = 0
@@ -53,7 +51,8 @@ export function PillCountPage() {
   const [sampling, setSampling] = useState(false)
   const [error, setError] = useState('')
   const camIn = useRef<HTMLInputElement>(null)
-  const shape = useStore(shapeStore)
+  // 開くたびに「丸い」から始める（ユーザーの指示）
+  const [shape, setShape] = useState<'round' | 'any'>('round')
   const [shooting, setShooting] = useState(false)
   const libIn = useRef<HTMLInputElement>(null)
   const job = useRef(0)
@@ -132,7 +131,7 @@ export function PillCountPage() {
           }}
         />
       )}
-      <Section header="錠剤の形" footer="丸い錠剤は「丸い」、楕円の錠剤・細長い錠剤・カプセルは「楕円・長い・カプセル」を選んでください（選んだ物は次も使います）。">
+      <Section header="錠剤の形" footer="丸い錠剤は「丸い」、楕円の錠剤・細長い錠剤・カプセルは「楕円・長い・カプセル」を選んでください（開くたびに「丸い」から始まります）。">
         <Segmented
           options={[
             ['round', '丸い'],
@@ -140,7 +139,7 @@ export function PillCountPage() {
           ]}
           value={shape}
           onChange={(v) => {
-            shapeStore.set(v)
+            setShape(v)
             analyze(prepared, roi, sensitivity, v)
           }}
         />
@@ -169,7 +168,7 @@ export function PillCountPage() {
               ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
-                '緑の点が自動で数えた錠剤です。点をタップすると消え、点のない錠剤をタップすると追加します（青の点）。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
+                '赤い点が自動で数えた錠剤です。点をタップすると消え、点のない錠剤をタップすると追加します（真ん中が白い赤の点）。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
               )
             }
           >
@@ -307,7 +306,7 @@ function MarkedImage(props: {
     : props.roi
   // 印の大きさ（画像の画素で。表示の幅にかかわらず見やすい大きさにする）
   const s = box.current ? box.current.clientWidth / p.width : 0.4
-  const dot = Math.min(Math.max(Math.min(Math.max(props.radius * s, 6), 40) * 0.45, 6), 12) / (s || 1)
+  const dot = Math.min(Math.max(Math.min(Math.max(props.radius * s, 6), 40) * 0.6, 9), 18) / (s || 1)
 
   if (props.pointMode) {
     const setZ = (z: number) => {
@@ -405,7 +404,9 @@ function MarkedImage(props: {
         )}
         {props.markers.map((m) => (
           <g>
-            <circle cx={m.x} cy={m.y} r={dot / 2} fill={m.manual ? '#1d6ff2' : '#22b14c'} stroke="#fff" stroke-width={1.5 / (s || 1)} />
+            {/* 目立つよう鮮やかな赤に白のふち。手で足した点は真ん中に白い点 */}
+            <circle cx={m.x} cy={m.y} r={dot / 2} fill="#ff1a1a" stroke="#fff" stroke-width={2.5 / (s || 1)} />
+            {m.manual && <circle cx={m.x} cy={m.y} r={dot / 5} fill="#fff" />}
             {m.count > 1 && (
               <text x={m.x + dot} y={m.y - dot} fill="#fff" font-size={dot * 1.2} font-weight="700" stroke="#c2410c" stroke-width={dot * 0.25} paint-order="stroke">
                 {m.count}
