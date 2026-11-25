@@ -485,3 +485,12 @@ div.install-steps { padding-left: 0; }
 .pill-zoom-btns { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
 .cam-stuck { display: block; line-height: 1.5; }
 .ped-star { width: 44px; }
+/* 添付文書・インタビューフォームの全文と、文字で探す */
+.doc-search { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-bottom: 6px; }
+.doc-search .search { position: relative; }
+.doc-clear { flex: none; color: var(--faint); display: flex; align-items: center; }
+.doc-nav { display: flex; align-items: center; gap: 6px; padding: 6px 16px 0; }
+.doc-nav .small { flex: 1; }
+.doc-text mark { background: #ffe066; color: inherit; border-radius: 2px; }
+.doc-text mark.cur { background: #ff9f1a; outline: 2px solid #ff6a00; }
+.link-row { display: flex; align-items: center; gap: 8px; color: var(--accent); width: 100%; text-align: left; }

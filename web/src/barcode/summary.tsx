@@ -9,7 +9,8 @@ import { LimitDetailPage, groupOf, loadLimits } from '../limits/limits'
 import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { LotLookup } from './lot'
-import { LabelRows } from './label'
+import { LabelRows, labelDocId } from './label'
+import { DocSearchPage, loadIfText, loadLabelText } from './docview'
 import { GediffBadge, gediffFor, loadAg, loadGediff, type GediffGroup, type GediffProduct } from './gediff'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
@@ -316,15 +317,35 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
       )}
       {s && s.lookup.kind === 'found' && <LabelRows yj={s.lookup.yj} name={name} />}
       <div class="scan-btns">
-        <button class="primary-btn" disabled={!s?.doc} onClick={() => s?.doc && openExternal(s.doc)}>
+        <button
+          class="primary-btn"
+          disabled={!s?.doc}
+          onClick={async () => {
+            if (!s?.doc) return
+            // アプリの中で全文を開く（文字で探せる）。添付文書の番号が分からない製品は PMDA を開く
+            const d = s.lookup.kind === 'found' ? await labelDocId(s.lookup.yj) : null
+            if (!d) return openExternal(s.doc)
+            nav.push(
+              <DocSearchPage
+                title="添付文書"
+                name={name}
+                load={() => loadLabelText(d.id)}
+                original={s.doc}
+                note={d.other ? 'この製品の添付文書が無いため、同じ成分の別の製品の添付文書です。' : ''}
+              />,
+            )
+          }}
+        >
           <FileText size={20} /> 添付文書を開く
         </button>
         {s && s.lookup.kind === 'found' && (
           <button
             class="primary-btn"
-            onClick={() =>
-              openExternal(s.iff ? s.iff.url : `https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${(s.lookup as { yj: string[] }).yj[0].slice(0, 7)}`)
-            }
+            onClick={() => {
+              if (!s.iff) return openExternal(`https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${(s.lookup as { yj: string[] }).yj[0].slice(0, 7)}`)
+              const u = s.iff.url
+              nav.push(<DocSearchPage title="インタビューフォーム" name={name} load={(p) => loadIfText(u, p)} original={u} />)
+            }}
           >
             <BookOpen size={20} /> インタビューフォームを開く
           </button>

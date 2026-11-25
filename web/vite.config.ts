@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import { createHash } from 'node:crypto'
-import { readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 // 置き場所に関係なく動くよう、ファイルは相対パスで参照する（Concrete CMS のパッケージが /pharmacalc/ で配信する）
 const base = process.env.BASE ?? './'
@@ -10,9 +10,14 @@ function serviceWorker(): Plugin {
   return {
     name: 'pharmacalc-sw',
     apply: 'build',
+    buildStart() {
+      // インタビューフォーム（PDF）の日本語の文字を取り出すための対応表（pdf.js の cmaps）を cmaps/ に置く
+      const dir = 'node_modules/pdfjs-dist/cmaps'
+      for (const f of readdirSync(dir)) if (f.endsWith('.bcmap')) this.emitFile({ type: 'asset', fileName: 'cmaps/' + f, source: readFileSync(dir + '/' + f) })
+    },
     generateBundle(_, bundle) {
-      // public/label（添付文書の項目、数十 MB）は先に保存しない。開いたときに保存する
-      const files = [...Object.keys(bundle), ...readdirSync('public')].filter((f) => !f.endsWith('.map') && f !== 'label')
+      // public/label（添付文書の項目、数十 MB）と cmaps/ は先に保存しない。開いたときに保存する
+      const files = [...Object.keys(bundle), ...readdirSync('public')].filter((f) => !f.endsWith('.map') && f !== 'label' && !f.startsWith('cmaps/'))
       const hash = createHash('sha256').update(files.sort().join('\n')).digest('hex').slice(0, 12)
       const list = JSON.stringify(['index.html', ...files.filter((f) => f !== 'index.html')])
       this.emitFile({
@@ -36,7 +41,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(fetch(req).catch(() => caches.match('index.html')))
     return
   }
-  if (/\/label\/[^/]+\.json$/.test(new URL(req.url).pathname)) {
+  if (/\/(label\/[^/]+\.json|cmaps\/[^/]+\.bcmap)$/.test(new URL(req.url).pathname)) {
     // 添付文書の項目：保存した物があれば使い、無ければ取って保存する
     e.respondWith(
       caches.open(LABEL).then((c) =>

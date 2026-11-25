@@ -20,7 +20,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.28.2';
+    protected $pkgVersion = '1.29.0';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
@@ -64,6 +64,12 @@ class Controller extends Package
         }
         if (preg_match('#^pmda-yj/(\d{8,14})$#', $file, $m)) {
             return $this->pmdaYj($m[1]);
+        }
+        if (preg_match('#^pmda-doc/(\d{6}_\d{7}[0-9A-Z]\d{4}_[0-9A-Z]_\d+)$#', $file, $m)) {
+            return $this->pmdaDoc($m[1]);
+        }
+        if (preg_match('#^pmda-if/(\d/[0-9A-Za-z_./-]+\.pdf)$#', $file, $m) && strpos($m[1], '..') === false) {
+            return $this->pmdaIf($m[1]);
         }
         $root = realpath(__DIR__ . '/app');
         $path = $root === false ? false : realpath($root . '/' . $file);
@@ -172,13 +178,71 @@ class Controller extends Package
         return $this->json($out);
     }
 
+    /**
+     * 添付文書（電子添文）の XML を返す（アプリの中で全文を読んで、文字で探すため）。
+     * PMDA の ResultDataSetXML/{添付文書番号} の zip の中の XML。7日保存する
+     */
+    private function pmdaDoc(string $id): Response
+    {
+        if (!$this->loggedIn()) {
+            return new Response('', 401, ['Cache-Control' => 'no-store']);
+        }
+        $cache = sys_get_temp_dir() . '/pharmacalc_doc_' . $id . '.xml';
+        if (!is_file($cache) || filemtime($cache) < time() - 7 * 86400) {
+            [$status, , $body] = $this->fetch('https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetXML/' . $id, true);
+            if ($status !== 200 || $body === '' || !class_exists('ZipArchive')) {
+                return new Response('', 502, ['Cache-Control' => 'no-store']);
+            }
+            $tmp = tempnam(sys_get_temp_dir(), 'pcz');
+            file_put_contents($tmp, $body);
+            $zip = new \ZipArchive();
+            $xml = '';
+            if ($zip->open($tmp) === true) {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $n = $zip->getNameIndex($i);
+                    if (substr($n, -4) === '.xml') {
+                        $xml = (string) $zip->getFromIndex($i);
+                        break;
+                    }
+                }
+                $zip->close();
+            }
+            @unlink($tmp);
+            if ($xml === '') {
+                return new Response('', 404, ['Cache-Control' => 'no-store']);
+            }
+            @file_put_contents($cache, $xml);
+        }
+        return new Response(file_get_contents($cache), 200, ['Content-Type' => 'application/xml; charset=utf-8', 'Cache-Control' => 'private, max-age=86400']);
+    }
+
+    /** インタビューフォームの PDF を返す（アプリの中で文字を取り出して探すため。ブラウザからは PMDA に直接行けない）。7日保存する */
+    private function pmdaIf(string $path): Response
+    {
+        if (!$this->loggedIn()) {
+            return new Response('', 401, ['Cache-Control' => 'no-store']);
+        }
+        $cache = sys_get_temp_dir() . '/pharmacalc_if_' . md5($path) . '.pdf';
+        if (!is_file($cache) || filemtime($cache) < time() - 7 * 86400) {
+            [$status, , $body] = $this->fetch('https://www.info.pmda.go.jp/go/interview/' . $path, true);
+            if ($status !== 200 || strncmp($body, '%PDF', 4) !== 0) {
+                return new Response('', 502, ['Cache-Control' => 'no-store']);
+            }
+            @file_put_contents($cache, $body);
+        }
+        $res = new BinaryFileResponse($cache);
+        $res->headers->set('Content-Type', 'application/pdf');
+        $res->headers->set('Cache-Control', 'private, max-age=86400');
+        return $res;
+    }
+
     private function json(string $s): Response
     {
         return new Response($s, 200, ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store']);
     }
 
     /** 転送をたどらずに取得する。[状態コード, 転送先, 本文]（つながらなければ状態コード 0） */
-    private function fetch(string $url): array
+    private function fetch(string $url, bool $binary = false): array
     {
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
@@ -186,7 +250,7 @@ class Controller extends Package
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_HEADER => true,
-                CURLOPT_TIMEOUT => 15,
+                CURLOPT_TIMEOUT => $binary ? 60 : 15,
                 CURLOPT_USERAGENT => 'PharmaCalc/1.0',
             ]);
             $raw = curl_exec($ch);
@@ -208,7 +272,7 @@ class Controller extends Package
         }
         $location = preg_match('#^Location:\s*(\S+)#mi', $head, $lm) ? $lm[1] : '';
         // PDF の中身は使わない
-        if (strpos($head, 'application/pdf') !== false) {
+        if (!$binary && strpos($head, 'application/pdf') !== false) {
             $body = '';
         }
         return [$status, $location, $body];

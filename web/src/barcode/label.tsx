@@ -59,6 +59,22 @@ export async function labelFor(yjs: string[]): Promise<{ doc: LabelDoc; other: b
   return null
 }
 
+/** 製品の YJ コードの添付文書の番号（PMDA の ResultDataSetXML/{番号}）。その製品の物が無ければ同じ成分・剤形・規格の製品の物 */
+export async function labelDocId(yjs: string[]): Promise<{ id: string; other: boolean } | null> {
+  for (const yj of yjs) {
+    const f = await loadFile(yj.slice(0, 4))
+    if (f?.yj[yj]) return { id: f.yj[yj], other: false }
+  }
+  for (const n of [9, 7]) {
+    for (const yj of yjs) {
+      const f = await loadFile(yj.slice(0, 4))
+      const k = f && Object.keys(f.yj).find((y) => y.startsWith(yj.slice(0, n)))
+      if (f && k) return { id: f.yj[k], other: true }
+    }
+  }
+  return null
+}
+
 /** 項目の本文の画面 */
 function LabelTextPage({ title, name, parts, other }: { title: string; name: string; parts: [string, string | undefined][]; other: boolean }) {
   return (

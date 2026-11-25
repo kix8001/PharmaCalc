@@ -1,6 +1,8 @@
 // 調剤・保管の注意（粉砕・分割・一包化・遮光・温度・湿気）。data/handling.json（tools/make_handling.py で PMDA の電子添文から作る）
 import { BookOpen, FileText } from 'lucide-preact'
 import { Page, Section, openExternal } from '../ui/components'
+import { useNav } from '../ui/nav'
+import { DocSearchPage, loadIfText } from './docview'
 
 export interface HandlingDoc {
   /** 貯法 */
@@ -146,6 +148,7 @@ export function HandlingTiles({ h, f, onOpen }: { h: HandlingDoc; f?: IfDoc | nu
 
 /** 根拠の文をまとめた画面 */
 export function HandlingDetailPage({ h, f, name, doc }: { h: HandlingDoc; f?: (IfDoc & { url: string }) | null; name: string; doc?: string }) {
+  const nav = useNav()
   const tiles = handlingTiles(h, f)
   const q = h.q ?? []
   return (
@@ -200,7 +203,7 @@ export function HandlingDetailPage({ h, f, name, doc }: { h: HandlingDoc; f?: (I
           {f.s && <IfRow title="無包装状態の安定性" text={f.s} />}
           {!f.c && !f.k && !f.s && <div class="row small sub">粉砕・簡易懸濁・無包装の安定性の記載は見つかりませんでした（該当資料なし、または古い書式）。</div>}
           <div class="row" style={{ display: 'block' }}>
-            <button class="primary-btn" onClick={() => openExternal(f.url)}>
+            <button class="primary-btn" onClick={() => nav.push(<DocSearchPage title="インタビューフォーム" name={name} load={(p) => loadIfText(f.url, p)} original={f.url} q0="粉砕" />)}>
               <BookOpen size={20} /> インタビューフォームを開く
             </button>
           </div>
