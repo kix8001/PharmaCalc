@@ -82,7 +82,7 @@ export async function loadIfText(ifUrl: string, onProgress?: (p: number) => void
 
 const HIRA = /[ぁ-ゖ]/g
 /** 探す文字を正規表現に。全角・半角、大文字・小文字、ひらがな・カタカナを区別しない */
-function queryRegex(q: string): RegExp | null {
+export function queryRegex(q: string): RegExp | null {
   q = q.normalize('NFKC').trim()
   if (!q) return null
   let src = ''

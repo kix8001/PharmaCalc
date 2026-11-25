@@ -20,7 +20,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.29.0';
+    protected $pkgVersion = '1.30.0';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
@@ -68,8 +68,11 @@ class Controller extends Package
         if (preg_match('#^pmda-doc/(\d{6}_\d{7}[0-9A-Z]\d{4}_[0-9A-Z]_\d+)$#', $file, $m)) {
             return $this->pmdaDoc($m[1]);
         }
+        if (preg_match('#^pmda-pdf/(\d{6}_\d{7}[0-9A-Z]\d{4}_[0-9A-Z]_\d+)$#', $file, $m)) {
+            return $this->pmdaPdf('https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetPDF/' . $m[1]);
+        }
         if (preg_match('#^pmda-if/(\d/[0-9A-Za-z_./-]+\.pdf)$#', $file, $m) && strpos($m[1], '..') === false) {
-            return $this->pmdaIf($m[1]);
+            return $this->pmdaPdf('https://www.info.pmda.go.jp/go/interview/' . $m[1]);
         }
         $root = realpath(__DIR__ . '/app');
         $path = $root === false ? false : realpath($root . '/' . $file);
@@ -216,15 +219,18 @@ class Controller extends Package
         return new Response(file_get_contents($cache), 200, ['Content-Type' => 'application/xml; charset=utf-8', 'Cache-Control' => 'private, max-age=86400']);
     }
 
-    /** インタビューフォームの PDF を返す（アプリの中で文字を取り出して探すため。ブラウザからは PMDA に直接行けない）。7日保存する */
-    private function pmdaIf(string $path): Response
+    /**
+     * 添付文書・インタビューフォームの PDF を返す（アプリの中で元の見た目のまま表示し、文字で探すため。
+     * ブラウザからは PMDA に直接行けない）。7日保存する
+     */
+    private function pmdaPdf(string $url): Response
     {
         if (!$this->loggedIn()) {
             return new Response('', 401, ['Cache-Control' => 'no-store']);
         }
-        $cache = sys_get_temp_dir() . '/pharmacalc_if_' . md5($path) . '.pdf';
+        $cache = sys_get_temp_dir() . '/pharmacalc_pdf_' . md5($url) . '.pdf';
         if (!is_file($cache) || filemtime($cache) < time() - 7 * 86400) {
-            [$status, , $body] = $this->fetch('https://www.info.pmda.go.jp/go/interview/' . $path, true);
+            [$status, , $body] = $this->fetch($url, true);
             if ($status !== 200 || strncmp($body, '%PDF', 4) !== 0) {
                 return new Response('', 502, ['Cache-Control' => 'no-store']);
             }

@@ -10,7 +10,7 @@ import { RmpDetailPage, rmpForLookup, type RmpItem } from '../rmp/rmp'
 import { PMDA } from './gs1'
 import { LotLookup } from './lot'
 import { LabelRows, labelDocId } from './label'
-import { DocSearchPage, loadIfText, loadLabelText } from './docview'
+import { PdfSearchPage } from './pdfview'
 import { GediffBadge, gediffFor, loadAg, loadGediff, type GediffGroup, type GediffProduct } from './gediff'
 import { genericInfo, loadGeneric, type GenericInfo } from './generic'
 import { figUrls, infoFor, loadInfo, type InfoItem } from './info'
@@ -326,10 +326,10 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
             const d = s.lookup.kind === 'found' ? await labelDocId(s.lookup.yj) : null
             if (!d) return openExternal(s.doc)
             nav.push(
-              <DocSearchPage
+              <PdfSearchPage
                 title="添付文書"
                 name={name}
-                load={() => loadLabelText(d.id)}
+                url={`./pmda-pdf/${d.id}`}
                 original={s.doc}
                 note={d.other ? 'この製品の添付文書が無いため、同じ成分の別の製品の添付文書です。' : ''}
               />,
@@ -344,7 +344,7 @@ export function ScanSummary({ gtin, yj, memo, detail }: { gtin?: string; yj?: st
             onClick={() => {
               if (!s.iff) return openExternal(`https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/${(s.lookup as { yj: string[] }).yj[0].slice(0, 7)}`)
               const u = s.iff.url
-              nav.push(<DocSearchPage title="インタビューフォーム" name={name} load={(p) => loadIfText(u, p)} original={u} />)
+              nav.push(<PdfSearchPage title="インタビューフォーム" name={name} url={`./pmda-if/${u.replace('https://www.info.pmda.go.jp/go/interview/', '')}`} original={u} />)
             }}
           >
             <BookOpen size={20} /> インタビューフォームを開く
