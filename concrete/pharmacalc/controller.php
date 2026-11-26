@@ -20,7 +20,7 @@ class Controller extends Package
 {
     protected $pkgHandle = 'pharmacalc';
     protected $appVersionRequired = '9.0.0';
-    protected $pkgVersion = '1.30.2';
+    protected $pkgVersion = '1.30.3';
 
     /** ログインしていなくても配る物（ホーム画面に追加するときにブラウザが取りに来る。中身に個人情報は無い） */
     private const PUBLIC_FILES = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];

@@ -168,7 +168,7 @@ export function PillCountPage() {
               ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
-                '赤い点が自動で数えた錠剤です。点をタップすると消え、点のない錠剤をタップすると追加します（真ん中が白い赤の点）。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
+                '赤い点が自動で数えた錠剤です。点をすばやく2回タップすると消え、点のない錠剤を2回タップすると追加します（真ん中が白い赤の点）。印を全部消すときは下の「印をすべて消す」。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
               )
             }
           >
@@ -281,6 +281,7 @@ function MarkedImage(props: {
     return { x: (ev.clientX - r.left) / s, y: (ev.clientY - r.top) / s }
   }
 
+  const lastTap = useRef<{ x: number; y: number; t: number } | null>(null)
   const tap = (x: number, y: number) => {
     const s = scale()
     const r = Math.min(Math.max(props.radius * s, 6), 40)
@@ -390,8 +391,15 @@ function MarkedImage(props: {
           setDrag(null)
           return
         }
+        // 誤って触ったときに印が増えたり消えたりしないよう、すばやく2回タップしたときだけ付ける・消す
         const a = toImg(ev)
-        tap(a.x, a.y)
+        const now = Date.now()
+        const prev = lastTap.current
+        const near = prev && Math.hypot(prev.x - a.x, prev.y - a.y) * scale() < 30
+        if (prev && near && now - prev.t < 400) {
+          lastTap.current = null
+          tap(prev.x, prev.y)
+        } else lastTap.current = { x: a.x, y: a.y, t: now }
       }}
     >
       <img src={p.url} alt="数える錠剤の写真" draggable={false} />
