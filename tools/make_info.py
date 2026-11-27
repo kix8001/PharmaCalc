@@ -97,10 +97,26 @@ for d in CACHES:
                 # 色調が「その他」の欄（色調・剤形 など）に書いてある添付文書もある
                 if not col:
                     col = re.search(r"<CategoryName>(?:(?!</CategoryName>).)*色(?:(?!</CategoryName>).)*</CategoryName>\s*<Content>(.*?)</Content>", b, re.S)
+                # 性状・外観の欄の文（「白色のフィルムコーティング錠」など）に色が書いてある添付文書もある
+                if not col:
+                    for cm in re.finditer(r"<CategoryName>((?:(?!</CategoryName>).)*)</CategoryName>\s*<Content>(.*?)</Content>", b, re.S):
+                        if re.search(r"性状|外観", text(cm.group(1))) and "色" in text(cm.group(2)) and "gfname" not in cm.group(2):
+                            col = re.search(r"(.*)", cm.group(2), re.S)
+                            break
                 fm = re.search(r"<Formulation>(.*?)</Formulation>", b, re.S)
                 dia = re.search(r"<SizeDiameter>(.*?)</SizeDiameter>", b, re.S)
                 lng = re.search(r"<SizeLongDiameter>(.*?)</SizeLongDiameter>", b, re.S)
                 sht = re.search(r"<SizeShortDiameter>(.*?)</SizeShortDiameter>", b, re.S)
+                # 大きさが「その他」の欄（大きさ：直径：11.0mm など）に書いてある添付文書もある
+                if not (dia or lng):
+                    for cm in re.finditer(r"<CategoryName>((?:(?!</CategoryName>).)*)</CategoryName>\s*<Content>(.*?)</Content>", b, re.S):
+                        if re.search(r"大きさ|サイズ|寸法|直径|長径", text(cm.group(1))):
+                            t2 = text(cm.group(1)) + " " + text(cm.group(2))
+                            num = r"\s*[:：]?\s*([0-9０-９.．]+\s*(?:mm|ｍｍ)?)"
+                            lng = re.search(r"長径" + num, t2)
+                            sht = re.search(r"短径" + num, t2)
+                            dia = None if lng else re.search(r"直径" + num, t2)
+                            break
                 fmt = text(fm.group(1)).replace("\n", " ")[:30] if fm else ""
                 if not fmt and col and re.search(r"錠|カプセル|丸|散|顆粒", text(col.group(1))):
                     fmt = text(col.group(1)).replace("\n", " ")[:30]
@@ -144,9 +160,33 @@ for d in CACHES:
         for m in re.finditer(r'<PropertyForBrand ref="([^"]+)">(.*?)</PropertyForBrand>', s2, re.S):
             yj = brands.get(m.group(1))
             sh = re.search(r"<Shape>(.*?)</Shape>", m.group(2), re.S)
-            if not yj or yj in fig or not sh:
+            if not yj or yj in fig:
                 continue
-            g = re.findall(r'gfname="([^"]+)\.gif"', sh.group(1))[:3]
+            if sh:
+                src = sh.group(1)
+            else:
+                # 外形の図が「その他」の欄（外形（表）・（裏）・（側面）、平面・側面など）にある添付文書もある。欄の名前で表・裏・横に分ける
+                top, back, side, other = [], [], [], []
+                for cm in re.finditer(r"<CategoryName>((?:(?!</CategoryName>).)*)</CategoryName>\s*<Content>(.*?)</Content>", m.group(2), re.S):
+                    if "gfname" not in cm.group(2):
+                        continue
+                    cn = text(cm.group(1))
+                    ims = re.findall(r'gfname="[^"]+"', cm.group(2))
+                    if re.search(r"側|横|厚", cn):
+                        side += ims
+                    elif re.search(r"裏|下面|背面", cn):
+                        back += ims
+                    elif re.search(r"表|平面|上面|正面", cn):
+                        top += ims
+                    elif re.search(r"外形|形状|外観|形態|形", cn):
+                        other += ims  # 1つの欄に表・裏・横の順で並ぶ
+                if top:
+                    src = " ".join(top[:1] + (back[:1] or top[1:2] or top[:1]) + side[:1])
+                elif other:
+                    src = " ".join(other)
+                else:
+                    src = ""  # 横の図だけでは表・裏が分からないので出さない
+            g = re.findall(r'gfname="([^"]+)\.(?:gif|jpe?g|png)"', src, re.I)[:3]
             if g:
                 # 画像の名前は「添付文書番号_figNN」がふつう。その形なら番号だけ持つ
                 fig[yj] = [doc] + [x[len(doc) + 1:] if x.startswith(doc + "_") else "!" + x for x in g]
