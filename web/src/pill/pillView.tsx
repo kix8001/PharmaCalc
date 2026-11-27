@@ -422,6 +422,7 @@ function MarkedImage(props: {
           </g>
         ))}
       </svg>
+      {!props.busy && !props.selecting && props.markers.length > 0 && <div class="pill-hint">ダブルタップで修正できます</div>}
       {props.busy && (
         <div class="pill-busy" role="status">
           数えています…
