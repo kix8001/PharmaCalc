@@ -168,7 +168,7 @@ export function PillCountPage() {
               ) : selecting ? (
                 <span style={{ color: 'var(--orange)' }}>写真の上を指でなぞって、数える範囲を四角で囲んでください。</span>
               ) : (
-                '赤い点が自動で数えた錠剤です。点をすばやく2回タップすると消え、点のない錠剤を2回タップすると追加します（真ん中が白い赤の点）。印を全部消すときは下の「印をすべて消す」。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
+                '赤い点が自動で数えた錠剤です。点をすばやく2回タップすると消え、点のない錠剤を2回タップすると追加します。印を全部消すときは下の「印をすべて消す」。机の端などが写っているときは「数える範囲を指定」で錠剤だけを囲んでください。'
               )
             }
           >
@@ -412,9 +412,8 @@ function MarkedImage(props: {
         )}
         {props.markers.map((m) => (
           <g>
-            {/* 目立つよう鮮やかな赤に白のふち。手で足した点は真ん中に白い点 */}
+            {/* 目立つよう鮮やかな赤に白のふち。自動・手で足した点とも同じ印 */}
             <circle cx={m.x} cy={m.y} r={dot / 2} fill="#ff1a1a" stroke="#fff" stroke-width={2.5 / (s || 1)} />
-            {m.manual && <circle cx={m.x} cy={m.y} r={dot / 5} fill="#fff" />}
             {m.count > 1 && (
               <text x={m.x + dot} y={m.y - dot} fill="#fff" font-size={dot * 1.2} font-weight="700" stroke="#c2410c" stroke-width={dot * 0.25} paint-order="stroke">
                 {m.count}
