@@ -52,6 +52,8 @@ export function IdentPage() {
   const [score, setScore] = useState(false)
   const [noCode, setNoCode] = useState(false)
   const [size, setSize] = useState('')
+  // 表示する件数（はじめは60件。「さらに表示」で増やす。条件を変えたら戻す）
+  const [limit, setLimit] = useState(60)
   useEffect(() => {
     Promise.all([loadOtc(), loadInfo()]).then(([otc, inf]) => setData({ otc, items: inf.items }))
   }, [])
@@ -59,6 +61,8 @@ export function IdentPage() {
   const q = norm(code)
   // 大きさ（直径・長径、mm）。±0.5mm で当てる
   const mm = parseFloat(size.normalize('NFKC'))
+  const key = [q, colors.join(), shape, score, noCode, size].join('|')
+  useEffect(() => setLimit(60), [key])
   const active = q.length > 0 || colors.length > 0 || !!shape || score || noCode || mm > 0
   let hits: Hit[] = []
   let total = 0
@@ -85,7 +89,7 @@ export function IdentPage() {
     // 刻印が「ちょうど同じ」物を先に、刻印で当たった物、製品名で当たった物の順。その中は名前の順
     const rank = (h: Hit) => (q && norm(h.info.i ?? '') === q ? 0 : h.byName ? 2 : 1)
     hits.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'ja'))
-    hits = hits.slice(0, 60)
+    hits = hits.slice(0, limit)
   }
   const toggle = (c: string) => setColors((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))
   const open = (h: Hit) =>
@@ -143,7 +147,7 @@ export function IdentPage() {
       )}
       {data && active && (
         <Section
-          header={total > hits.length ? `${total}件（はじめの${hits.length}件）` : `${total}件`}
+          header={total > hits.length ? `${total}件（${hits.length}件を表示）` : `${total}件`}
           footer="刻印・色・形は添付文書の「性状」の文から探しています。「無字」は、添付文書の錠剤の図（表・裏）に文字・記号が描かれていない薬です（識別コードは PTP シートだけにある物など。図が写真の薬は入りません）。刻印が図・写真の中にしか無い薬は、刻印の英数字では見つかりません（錠剤に印字された製品名なら探せます）。そのときは色・形で絞るか、PMDA の医薬品検索で探してください。"
         >
           {hits.map((h) => (
@@ -158,6 +162,11 @@ export function IdentPage() {
             </button>
           ))}
           {total === 0 && <div class="row sub">見つかりませんでした。</div>}
+          {total > hits.length && (
+            <button class="row link-row" onClick={() => setLimit((n) => n + 100)}>
+              さらに表示（残り{total - hits.length}件）
+            </button>
+          )}
           <ButtonRow icon={<Search size={20} />} onClick={() => openExternal(PMDA.searchURL)}>
             PMDA の医薬品検索で探す
           </ButtonRow>
